@@ -3818,6 +3818,12 @@
     } else {
       record = DB.solicitacoes.create({ ...data, status: 'pendente' });
       sessionStorage.setItem('vd_saved', `Solicitação "${data.empresa}" enviada para análise!`);
+      const _sess = DB.auth.getSession() || {};
+      App.notifyEmail('nova_solicitacao', {
+        empresa:     data.empresa,
+        cnpj:        data.cnpj,
+        solicitante: _sess.name || '',
+      });
     }
 
     // Envia todos os documentos anexados para o servidor

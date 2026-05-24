@@ -10,9 +10,12 @@ import json
 import os
 import re
 import secrets
+import smtplib
 import uuid
 import zipfile
 from datetime import date, datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -258,6 +261,84 @@ async def auth_logout(response: Response):
 @app.get("/api/auth/me")
 async def auth_me(current_user=Depends(_get_current_user)):
     return {"user": current_user}
+
+
+# ── E-mail ────────────────────────────────────────────────────────────────────
+_SMTP_HOST     = os.getenv("SMTP_HOST", "")
+_SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
+_SMTP_USER     = os.getenv("SMTP_USER", "")
+_SMTP_PASS     = os.getenv("SMTP_PASS", "")
+_NOTIFY_EMAILS = [e.strip() for e in os.getenv("NOTIFY_EMAILS", "").split(",") if e.strip()]
+
+_STATUS_LABEL = {
+    "aprovado":  "Aprovado",
+    "negado":    "Negado",
+    "em_comite": "Encaminhado ao Comitê",
+    "pendente":  "Pendente",
+    "em_analise":"Em Análise",
+}
+_STATUS_COLOR = {
+    "aprovado":  "#22c55e",
+    "negado":    "#ef4444",
+    "em_comite": "#f59e0b",
+    "pendente":  "#6366f1",
+    "em_analise":"#3b82f6",
+}
+
+
+def _email_html(headline: str, color: str, rows: list) -> str:
+    rows_html = "".join(
+        f'<tr>'
+        f'<td style="padding:7px 0;color:#888;font-size:13px;width:155px;vertical-align:top;">{k}</td>'
+        f'<td style="padding:7px 0;color:#111;font-size:13px;font-weight:600;">{v}</td>'
+        f'</tr>'
+        for k, v in rows if v
+    )
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f0f0f0;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f0f0;padding:32px 0;">
+  <tr><td align="center">
+    <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">
+      <tr><td style="background:#1e1b4b;padding:22px 32px;">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="color:#fff;font-size:17px;font-weight:700;letter-spacing:.3px;">Vendemmia</td>
+          <td align="right" style="color:rgba(255,255,255,.55);font-size:11px;letter-spacing:.3px;text-transform:uppercase;">Análise de Crédito</td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:28px 32px 4px;">
+        <span style="display:inline-block;background:{color};color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 11px;border-radius:4px;">{headline}</span>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #ebebeb;margin-top:18px;">{rows_html}</table>
+      </td></tr>
+      <tr><td style="padding:20px 32px;background:#f9f9f9;border-top:1px solid #ebebeb;color:#aaa;font-size:11px;text-align:center;">
+        Sistema interno Vendemmia &middot; Não responda este e-mail
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+
+async def _send_email(subject: str, html: str, to: list) -> None:
+    if not (_SMTP_HOST and _SMTP_USER and _SMTP_PASS and to):
+        return
+
+    def _do():
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = f"Vendemmia Crédito <{_SMTP_USER}>"
+        msg["To"]      = ", ".join(to)
+        msg.attach(MIMEText(html, "html", "utf-8"))
+        with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT, timeout=20) as s:
+            s.ehlo()
+            s.starttls()
+            s.login(_SMTP_USER, _SMTP_PASS)
+            s.sendmail(_SMTP_USER, to, msg.as_string())
+
+    try:
+        await asyncio.to_thread(_do)
+    except Exception:
+        pass  # fire-and-forget; não bloqueia o fluxo do usuário
 
 
 # ── Constantes ────────────────────────────────────────────────────────────────
@@ -986,6 +1067,82 @@ Regras obrigatórias:
         raise HTTPException(422, "Não foi possível extrair os dados financeiros dos documentos")
 
     return extracted
+
+
+# ── Notificações por e-mail ───────────────────────────────────────────────────
+
+class NotifyEmailRequest(BaseModel):
+    event:       str
+    empresa:     Optional[str] = ""
+    cnpj:        Optional[str] = ""
+    solicitante: Optional[str] = ""
+    status:      Optional[str] = ""
+    limite:      Optional[str] = ""
+    prazo:       Optional[str] = ""
+    analista:    Optional[str] = ""
+    deliberacao: Optional[str] = ""
+
+
+@app.post("/api/notify/email")
+@limiter.limit("30/minute")
+async def notify_email(
+    request: Request,
+    body: NotifyEmailRequest,
+    current_user=Depends(_get_current_user),
+):
+    if not _NOTIFY_EMAILS:
+        return {"ok": False, "reason": "NOTIFY_EMAILS não configurado"}
+
+    now_str = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    empresa = body.empresa or "—"
+    cnpj    = body.cnpj or ""
+
+    if body.event == "nova_solicitacao":
+        subject  = f"[Nova Solicitação] {empresa}"
+        headline = "Nova Solicitação de Crédito"
+        color    = "#6366f1"
+        rows = [
+            ("Empresa",     empresa),
+            ("CNPJ",        cnpj),
+            ("Solicitante", body.solicitante or current_user.get("name", "—")),
+            ("Data/hora",   now_str),
+        ]
+
+    elif body.event == "analista_decisao":
+        st_lbl   = _STATUS_LABEL.get(body.status or "", body.status or "—")
+        color    = _STATUS_COLOR.get(body.status or "", "#6366f1")
+        subject  = f"[{st_lbl}] {empresa} — Decisão do Analista"
+        headline = f"Decisão do Analista: {st_lbl}"
+        rows = [
+            ("Empresa",    empresa),
+            ("CNPJ",       cnpj),
+            ("Status",     st_lbl),
+            ("Analista",   body.analista or current_user.get("name", "—")),
+            ("Limite",     body.limite or ""),
+            ("Prazo",      (body.prazo + " dias") if body.prazo else ""),
+            ("Data/hora",  now_str),
+        ]
+
+    elif body.event == "comite_decisao":
+        st_lbl   = _STATUS_LABEL.get(body.status or "", body.status or "—")
+        color    = _STATUS_COLOR.get(body.status or "", "#f59e0b")
+        subject  = f"[Comitê — {st_lbl}] {empresa}"
+        headline = f"Decisão do Comitê: {st_lbl}"
+        rows = [
+            ("Empresa",       empresa),
+            ("CNPJ",          cnpj),
+            ("Status Final",  st_lbl),
+            ("Deliberação",   body.deliberacao or "—"),
+            ("Limite Final",  body.limite or ""),
+            ("Data/hora",     now_str),
+        ]
+
+    else:
+        return {"ok": False, "reason": "Evento desconhecido"}
+
+    html = _email_html(headline, color, rows)
+    asyncio.create_task(_send_email(subject, html, _NOTIFY_EMAILS))
+    return {"ok": True}
 
 
 # ── Endpoints de análise ──────────────────────────────────────────────────────

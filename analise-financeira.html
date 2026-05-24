@@ -1528,6 +1528,14 @@
       }).catch(() => {});
     }
 
+    App.notifyEmail('analista_decisao', {
+      empresa:  sol.empresa,
+      cnpj:     sol.cnpj,
+      status:   newStatus,
+      analista: session ? session.name : '',
+      limite:   limite || '',
+      prazo:    prazo  || '',
+    });
     const label = newStatus === 'aprovado' ? 'Crédito aprovado!' : 'Crédito negado.';
     sessionStorage.setItem('vd_saved', label);
     location.href = 'index.html';
@@ -1551,6 +1559,14 @@
     });
     sol = DB.solicitacoes.getById(sol.id);
 
+    App.notifyEmail('analista_decisao', {
+      empresa:  sol.empresa,
+      cnpj:     sol.cnpj,
+      status:   'em_comite',
+      analista: session ? session.name : '',
+      limite:   (document.getElementById('dec-limite')?.value || '').trim(),
+      prazo:    document.getElementById('dec-prazo')?.value || '',
+    });
     sessionStorage.setItem('vd_saved', 'Análise encaminhada ao Comitê de Crédito!');
     location.href = 'index.html';
   }
@@ -1757,6 +1773,13 @@
     renderDecisionResult();
     App.refreshNav();
     showToast(decision === 'aprovado' ? 'Crédito aprovado pelo Comitê!' : 'Crédito negado pelo Comitê.', decision === 'aprovado' ? 'success' : 'error');
+    App.notifyEmail('comite_decisao', {
+      empresa:     sol.empresa,
+      cnpj:        sol.cnpj,
+      status:      decision,
+      deliberacao: deliberacao,
+      limite:      sol.limiteAprovado || limite || '',
+    });
   }
 
   function maskMoneyComite(el) {

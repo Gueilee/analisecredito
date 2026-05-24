@@ -162,6 +162,21 @@ const App = (() => {
     if (ids.role)     set(ids.role,      s.role);
   }
 
-  return { mount, refreshNav, greeting, initUser };
+  /**
+   * Dispara notificação por e-mail via backend (fire-and-forget).
+   * @param {'nova_solicitacao'|'analista_decisao'|'comite_decisao'} event
+   * @param {object} data — campos do evento (empresa, cnpj, status, etc.)
+   */
+  function notifyEmail(event, data) {
+    const base = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+    fetch(`${base}/api/notify/email`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, ...data }),
+    }).catch(() => {});
+  }
+
+  return { mount, refreshNav, greeting, initUser, notifyEmail };
 
 })();
