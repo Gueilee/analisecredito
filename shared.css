@@ -115,6 +115,7 @@ input[type="number"]::-webkit-outer-spin-button {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  view-transition-name: sidebar;
   position: relative;
   z-index: 10;
 }
@@ -291,7 +292,23 @@ input[type="number"]::-webkit-outer-spin-button {
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  view-transition-name: main-content;
 }
+
+/* ── Page transitions — sidebar fixo, conteúdo desliza ─────── */
+@view-transition { navigation: auto; }
+
+::view-transition-old(sidebar),
+::view-transition-new(sidebar) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@keyframes vd-content-out { to   { opacity: 0; transform: translateX(-6px); } }
+@keyframes vd-content-in  { from { opacity: 0; transform: translateX(6px);  } }
+
+::view-transition-old(main-content) { animation: vd-content-out .16s ease forwards; }
+::view-transition-new(main-content) { animation: vd-content-in  .16s ease forwards; }
 
 /* ── TOPBAR ─────────────────────────────────────────────────── */
 .topbar {
