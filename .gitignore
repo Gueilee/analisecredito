@@ -42,6 +42,7 @@ api/users.json
 *.xlsx
 *.xls
 *.docx
+!PA-GF-013 Processo de Análise de Crédito.docx
 
 # ── IDE e ferramentas de desenvolvimento ─────────────
 .agents/
@@ -62,3 +63,4 @@ node_modules/
 # -- Arquivos desnecessarios para o sistema
 modelo.zip
 Prospec*.png
+!Prospecção de Novos Clientes.png
