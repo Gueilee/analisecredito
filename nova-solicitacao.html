@@ -207,14 +207,19 @@
     /* ── Excel Simulação Financeira 3.1.6 ───────────────── */
     /* Container — sem scroll lateral, ocupa 100% */
     .xls-wrap {
-      margin-top: .9rem; overflow: hidden;
+      margin-top: .9rem; overflow-x: auto; overflow-y: visible;
       border: 1px solid var(--glass-border); border-radius: 14px;
       box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(140,105,220,.35) transparent;
     }
-    /* Tabela: layout fixo, 100%, sem min-width */
+    .xls-wrap::-webkit-scrollbar { height: 6px; }
+    .xls-wrap::-webkit-scrollbar-track { background: transparent; }
+    .xls-wrap::-webkit-scrollbar-thumb { background: rgba(140,105,220,.35); border-radius: 3px; }
+    /* Tabela: layout fixo, largura mínima para valores monetários */
     .xls-table {
       border-collapse: collapse; table-layout: fixed;
-      width: 100%; background: var(--purple-card);
+      width: 100%; min-width: 920px; background: var(--purple-card);
       font-family: inherit; font-size: .75rem;
     }
     /* ── Larguras percentuais ─────────────────────────── */
@@ -271,6 +276,7 @@
       padding: 3px 3px;
       border-bottom: 1px solid rgba(140,105,220,.07);
       background: transparent; vertical-align: middle;
+      overflow: hidden;
     }
 
     /* ── Input chip (card flutuante) ─────────────────────── */
@@ -323,6 +329,7 @@
       border-bottom: 1px solid rgba(140,105,220,.07);
       background: transparent; color: var(--text-faint);
       font-size: .73rem; white-space: nowrap; vertical-align: middle;
+      overflow: hidden; text-overflow: ellipsis;
     }
     .xls-td-calc-center { text-align: center !important; }
     .xls-calc-bold  { font-weight: 700; color: var(--text-secondary); }
