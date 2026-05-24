@@ -225,7 +225,21 @@ async def auth_login(request: Request, response: Response, body: LoginRequest):
         raise HTTPException(503, detail="Sistema não configurado. Execute: python create_user.py")
     user = next((u for u in users if u.get("email", "").lower() == body.email.strip().lower()), None)
     await asyncio.sleep(0.3)  # delay fixo para prevenir timing attacks
-    if not user or not _pwd_ctx.verify(body.password, user.get("hashed_password", "")):
+
+    # Senha: verifica override no Turso (reset) antes do hash original
+    password_hash = user.get("hashed_password", "") if user else ""
+    if user and _turso_ok():
+        try:
+            pw_rows = await _turso_query(
+                "SELECT hashed_password FROM user_passwords WHERE email=?",
+                [body.email.strip().lower()],
+            )
+            if pw_rows:
+                password_hash = pw_rows[0]["hashed_password"]
+        except Exception:
+            pass
+
+    if not user or not _pwd_ctx.verify(body.password, password_hash):
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
     token = _create_token({
         "sub":   user["id"],
@@ -261,6 +275,135 @@ async def auth_logout(response: Response):
 @app.get("/api/auth/me")
 async def auth_me(current_user=Depends(_get_current_user)):
     return {"user": current_user}
+
+
+# ── Reset de senha ────────────────────────────────────────────────────────────
+
+class ResetRequestModel(BaseModel):
+    email: str
+
+class ResetConfirmModel(BaseModel):
+    token: str
+    password: str
+
+
+async def _ensure_reset_tables() -> None:
+    if not _turso_ok():
+        return
+    await _turso_exec(
+        "CREATE TABLE IF NOT EXISTS password_reset_tokens "
+        "(token TEXT PRIMARY KEY, email TEXT NOT NULL, expires_at TEXT NOT NULL, used INTEGER DEFAULT 0)"
+    )
+    await _turso_exec(
+        "CREATE TABLE IF NOT EXISTS user_passwords "
+        "(email TEXT PRIMARY KEY, hashed_password TEXT NOT NULL, updated_at TEXT NOT NULL)"
+    )
+
+
+@app.post("/api/auth/reset-request")
+@limiter.limit("5/minute")
+async def auth_reset_request(request: Request, body: ResetRequestModel):
+    await _ensure_reset_tables()
+    email = body.email.strip().lower()
+
+    users = _load_users()
+    user  = next((u for u in users if u.get("email", "").lower() == email), None)
+
+    # Responde sempre ok para não revelar se o e-mail existe
+    if not user or not _SMTP_HOST:
+        return {"ok": True}
+
+    token      = secrets.token_urlsafe(32)
+    expires_at = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+
+    await _turso_exec(
+        "INSERT INTO password_reset_tokens (token, email, expires_at, used) VALUES (?,?,?,0)",
+        [token, email, expires_at],
+    )
+
+    base_url  = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")[0].strip()
+    reset_url = f"{base_url}/login.html?reset={token}"
+    nome      = user.get("name", email)
+
+    subject = "Redefinição de senha — Vendemmia Análise de Crédito"
+    html = f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f0f0f0;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f0f0;padding:32px 0;">
+  <tr><td align="center">
+    <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">
+      <tr><td style="background:#1e1b4b;padding:22px 32px;">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="color:#fff;font-size:17px;font-weight:700;">Vendemmia</td>
+          <td align="right" style="color:rgba(255,255,255,.55);font-size:11px;text-transform:uppercase;letter-spacing:.3px;">Análise de Crédito</td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:32px 32px 24px;">
+        <span style="display:inline-block;background:#6366f1;color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 11px;border-radius:4px;margin-bottom:20px;">Redefinição de Senha</span>
+        <p style="font-size:15px;color:#222;margin:0 0 12px;">Olá, <strong>{nome}</strong>.</p>
+        <p style="font-size:14px;color:#555;line-height:1.65;margin:0 0 28px;">
+          Recebemos uma solicitação para redefinir a senha da sua conta.<br>
+          Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.
+        </p>
+        <table cellpadding="0" cellspacing="0"><tr><td>
+          <a href="{reset_url}" style="display:inline-block;background:linear-gradient(135deg,#422c76,#7c3aed);color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:14px 32px;border-radius:10px;">
+            Redefinir minha senha
+          </a>
+        </td></tr></table>
+        <p style="font-size:12px;color:#999;margin:24px 0 0;line-height:1.7;">
+          Se não solicitou, ignore este e-mail — sua senha permanece a mesma.<br>
+          Ou copie: <a href="{reset_url}" style="color:#6366f1;word-break:break-all;">{reset_url}</a>
+        </p>
+      </td></tr>
+      <tr><td style="padding:18px 32px;background:#f9f9f9;border-top:1px solid #ebebeb;color:#aaa;font-size:11px;text-align:center;">
+        Sistema interno Vendemmia · Não responda este e-mail
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+    await _send_email(subject, html, [email])
+    return {"ok": True}
+
+
+@app.post("/api/auth/reset-confirm")
+@limiter.limit("10/minute")
+async def auth_reset_confirm(request: Request, body: ResetConfirmModel):
+    await _ensure_reset_tables()
+
+    if not body.token or len(body.token) < 10:
+        raise HTTPException(400, "Token inválido")
+    if not body.password or len(body.password) < 6:
+        raise HTTPException(400, "A senha deve ter no mínimo 6 caracteres")
+
+    rows = await _turso_query(
+        "SELECT email, expires_at, used FROM password_reset_tokens WHERE token=?",
+        [body.token],
+    )
+    if not rows:
+        raise HTTPException(400, "Link de redefinição inválido ou já utilizado")
+
+    row = rows[0]
+    if int(row.get("used") or 0) == 1:
+        raise HTTPException(400, "Este link já foi utilizado. Solicite um novo.")
+
+    if datetime.utcnow() > datetime.fromisoformat(row["expires_at"]):
+        raise HTTPException(400, "Link expirado. Solicite um novo.")
+
+    email    = row["email"]
+    new_hash = _pwd_ctx.hash(body.password)
+    now_iso  = datetime.utcnow().isoformat()
+
+    await _turso_exec(
+        "INSERT OR REPLACE INTO user_passwords (email, hashed_password, updated_at) VALUES (?,?,?)",
+        [email, new_hash, now_iso],
+    )
+    await _turso_exec(
+        "UPDATE password_reset_tokens SET used=1 WHERE token=?",
+        [body.token],
+    )
+    return {"ok": True}
 
 
 # ── E-mail ────────────────────────────────────────────────────────────────────
