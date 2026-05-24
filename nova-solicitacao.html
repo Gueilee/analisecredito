@@ -3820,10 +3820,12 @@
       sessionStorage.setItem('vd_saved', `Solicitação "${data.empresa}" enviada para análise!`);
     }
 
-    // Envia documentos financeiros (balanço + DRE) para o servidor
+    // Envia todos os documentos anexados para o servidor
     const financDocs = [
-      ...storedDocFiles.balanco.map(f => ({ file: f, tipo: 'balanco' })),
-      ...storedDocFiles.dre.map(f    => ({ file: f, tipo: 'dre'     })),
+      ...storedDocFiles.balanco.map(f  => ({ file: f, tipo: 'balanco'  })),
+      ...(storedDocFiles.contrato || []).map(f => ({ file: f, tipo: 'contrato' })),
+      ...storedDocFiles.dre.map(f      => ({ file: f, tipo: 'dre'      })),
+      ...(storedDocFiles.fat || []).map(f      => ({ file: f, tipo: 'fat'      })),
     ];
     if (financDocs.length > 0 && record?.id) {
       try {

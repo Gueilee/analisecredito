@@ -793,24 +793,71 @@ async def atualizar_decisao(hist_id: str, body: Dict[str, Any], current_user=Dep
 
 # ── Upload de documentos financeiros ────────────────────────────────────────
 
+_MIME_MAP = {
+    ".pdf":  "application/pdf",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xls":  "application/vnd.ms-excel",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".doc":  "application/msword",
+    ".png":  "image/png",
+    ".jpg":  "image/jpeg",
+    ".jpeg": "image/jpeg",
+}
+
 @app.post("/api/docs/{sol_id}/upload")
-async def upload_docs(sol_id: str, balanco: List[UploadFile] = File(default=[]), dre: List[UploadFile] = File(default=[]), current_user=Depends(_get_current_user)):
-    """Salva os documentos financeiros (balanço + DRE) associados a uma solicitação."""
+async def upload_docs(
+    sol_id:    str,
+    balanco:   List[UploadFile] = File(default=[]),
+    contrato:  List[UploadFile] = File(default=[]),
+    dre:       List[UploadFile] = File(default=[]),
+    fat:       List[UploadFile] = File(default=[]),
+    current_user=Depends(_get_current_user),
+):
+    """Salva documentos financeiros no Turso (persistente no Vercel)."""
     if not _SOL_ID_RE.match(sol_id):
         raise HTTPException(400, "sol_id inválido")
-    sol_dir = DOCS_DIR / sol_id
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
     sal = []
-    for tipo, uploads in [("balanco", balanco), ("dre", dre)]:
-        if not uploads:
-            continue
-        dest = sol_dir / tipo
-        dest.mkdir(parents=True, exist_ok=True)
+    for tipo, uploads in [("balanco", balanco), ("contrato", contrato), ("dre", dre), ("fat", fat)]:
         for f in uploads:
             raw = await f.read()
+            if not raw:
+                continue
             fname = Path(f.filename or "doc").name
-            (dest / fname).write_bytes(raw)
+            ext   = Path(fname).suffix.lower()
+            mime  = _MIME_MAP.get(ext, f.content_type or "application/octet-stream")
+            b64   = base64.standard_b64encode(raw).decode()
+            doc_id = f"{sol_id}__{tipo}__{fname}"
+            now    = datetime.utcnow().isoformat()
+            await _turso_exec(
+                "INSERT OR REPLACE INTO documents (id, sol_id, tipo, nome, content, mime, size_bytes, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                [doc_id, sol_id, tipo, fname, b64, mime, len(raw), now],
+            )
             sal.append(f"{tipo}/{fname}")
     return {"saved": sal, "sol_id": sol_id}
+
+
+@app.get("/api/docs/{sol_id}/{tipo}/{fname}")
+async def download_doc(sol_id: str, tipo: str, fname: str, current_user=Depends(_get_current_user)):
+    """Baixa um documento armazenado no Turso."""
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
+    rows = await _turso_query(
+        "SELECT content, mime, nome FROM documents WHERE sol_id=? AND tipo=? AND nome=?",
+        [sol_id, tipo, fname],
+    )
+    if not rows:
+        raise HTTPException(404, "Arquivo não encontrado.")
+    row = rows[0]
+    raw = base64.standard_b64decode(row["content"])
+    safe_name = Path(row["nome"]).name
+    return Response(
+        content=raw,
+        media_type=row["mime"] or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+    )
 
 
 # ── Extração de indicadores financeiros ─────────────────────────────────────
@@ -871,15 +918,17 @@ async def extract_financials(
 
     file_list: list[tuple[bytes, str]] = []
 
-    # Prioridade 1: arquivos salvos em disco pelo sol_id
-    if sol_id and _SOL_ID_RE.match(sol_id):
-        sol_dir = DOCS_DIR / sol_id
-        for tipo in ("balanco", "dre"):
-            tipo_dir = sol_dir / tipo
-            if tipo_dir.exists():
-                for fp in sorted(tipo_dir.iterdir()):
-                    if fp.suffix.lower() in (".pdf", ".xlsx", ".xls"):
-                        file_list.append((fp.read_bytes(), fp.name))
+    # Prioridade 1: arquivos salvos no Turso
+    if sol_id and _SOL_ID_RE.match(sol_id) and _turso_ok():
+        rows = await _turso_query(
+            "SELECT nome, content FROM documents WHERE sol_id=? AND tipo IN ('balanco','dre') ORDER BY tipo, nome",
+            [sol_id],
+        )
+        for row in rows:
+            ext = Path(row["nome"]).suffix.lower()
+            if ext in (".pdf", ".xlsx", ".xls"):
+                raw = base64.standard_b64decode(row["content"])
+                file_list.append((raw, row["nome"]))
 
     # Prioridade 2: upload direto (fallback)
     if not file_list and files:
