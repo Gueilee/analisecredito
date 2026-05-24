@@ -147,7 +147,14 @@ _SECURE_COOKIE = os.getenv("HTTPS_ONLY", "false").lower() == "true"
 
 
 def _load_users() -> list:
+    # Vercel: usa variável de ambiente USERS_JSON quando o arquivo não existe
     if not _USERS_FILE.exists():
+        raw = os.getenv("USERS_JSON", "")
+        if raw:
+            try:
+                return json.loads(raw)
+            except Exception:
+                return []
         return []
     try:
         return json.loads(_USERS_FILE.read_text(encoding="utf-8"))
