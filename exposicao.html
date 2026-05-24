@@ -1089,8 +1089,8 @@
               desemb:c.dDesemb, pagexp:c.dPagExp, fat:c.dFat, recvdm:c.dRec}[k] || c.d0;
     }
 
-    // Valores exatos do simStages (células da tabela 3.1.6 salvas pelo usuário)
-    const _simStages    = (sol?.simStages?.stages) || {};
+    // Valores exatos salvos pela 3.1.6 (xlsSimulacao.stages)
+    const _simStages    = (sol?.xlsSimulacao?.stages) || {};
     const _hasSimStages = Object.values(_simStages).some(v =>
       brToFloat(v.fob||'') + brToFloat(v.di||'') + brToFloat(v.fat||'') + brToFloat(v.rec||'') > 0
     );
@@ -1122,17 +1122,18 @@
     const fatTotalActual = fatByCol.reduce((s,v) => s+v, 0) ||
                            (P.volMes > 0 ? P.volMes : P.fobBRL + P.despBRL + P.impBRL);
 
-    // Fluxo de caixa acumulado (ordem fixa da tabela)
+    // Fluxo de caixa acumulado: FOB (saída) + DI (saída) + REC (entrada) — FAT excluído (igual ao XLS)
     const cfCum = XLS_KEYS.map((_, i) => {
       let cf = 0;
-      for (let j = 0; j <= i; j++) cf += fobByCol[j] + diByCol[j] + fatByCol[j] + recByCol[j];
+      for (let j = 0; j <= i; j++) cf += fobByCol[j] + diByCol[j] + recByCol[j];
       return cf;
     });
 
-    // EXP. SEGURO CRÉD. = faturamento não recebido até cada etapa
+    // EXP. SEGURO CRÉD. = saldo negativo (crédito em risco): cumRec - fatTotal, limitado a 0
     const expCred = XLS_KEYS.map((_, i) => {
       const cumRec = recByCol.slice(0, i+1).reduce((s,v) => s+v, 0);
-      return Math.max(0, fatTotalActual - cumRec);
+      const exposure = cumRec - fatTotalActual;
+      return exposure < 0 ? exposure : 0;
     });
 
     // Totais da coluna CICLO
@@ -1141,7 +1142,7 @@
     const cicloFat = fatByCol.reduce((s,v)=>s+v,0);
     const cicloRec = recByCol.reduce((s,v)=>s+v,0);
     const cicloCF  = cfCum[cfCum.length - 1];
-    const cicloExp = Math.max(...expCred);
+    const cicloExp = Math.min(...expCred); // valor mais negativo = maior exposição
 
     // Dias delta por etapa (igual ao prazo de cada input na 3.1.6)
     const deltaDays = [0, P.productionDays, P.embarqueDays, P.transitDays,
@@ -1195,8 +1196,8 @@
       return `<td class="mtz-cell mtz-cf-val ${cls}">${fmtCF(v)}</td>`;
     }).join('');
 
-    const rExp = expCred.map(v => v > 0
-      ? `<td class="mtz-cell mtz-exp-val">${fmtV(v)}</td>`
+    const rExp = expCred.map(v => v < 0
+      ? `<td class="mtz-cell mtz-neg-val">${fmtV(v)}</td>`
       : `<td class="mtz-cell mtz-zero-val">—</td>`).join('');
 
     const rTempo = deltaDays.map((d, i) =>
@@ -1222,7 +1223,7 @@
           <span class="ciclo-hdr-range">${fmtDateFull(c.d0)} → ${fmtDateFull(c.dRec)}</span>
           <span class="ciclo-hdr-spacer"></span>
           <span class="ciclo-hdr-dur">${durTotal} dias</span>
-          ${cicloExp > 0 ? `<span class="ciclo-hdr-exp">Exp. máx. R$ ${Math.round(cicloExp).toLocaleString('pt-BR')}</span>` : ''}
+          ${cicloExp < 0 ? `<span class="ciclo-hdr-exp">Exp. máx. R$ ${Math.round(-cicloExp).toLocaleString('pt-BR')}</span>` : ''}
         </div>
         <div class="ciclo-scroll">
           <table class="mtz-table">
@@ -1245,7 +1246,7 @@
               <tr class="mtz-row-gray"><td class="mtz-row-lbl">FLUXO CAIXA FINAN.</td>
                 <td class="mtz-cell ${cicloCF < 0 ? 'mtz-neg-val' : cicloCF > 0 ? 'mtz-pos-val' : 'mtz-zero-val'} mtz-cf-val">${fmtCF(cicloCF)}</td>${rCF}</tr>
               <tr class="mtz-exp-row"><td class="mtz-row-lbl">EXP. SEGURO CRÉD.</td>
-                <td class="mtz-cell mtz-exp-val">${cicloExp > 0 ? fmtV(cicloExp) : '—'}</td>${rExp}</tr>
+                <td class="mtz-cell mtz-neg-val">${cicloExp < 0 ? fmtV(cicloExp) : '—'}</td>${rExp}</tr>
               <tr class="mtz-row-tempo"><td class="mtz-row-lbl">TEMP. A PARTIR DO PED.</td>
                 <td class="mtz-cell mtz-days">—</td>${rTempo}</tr>
               <tr><td class="mtz-row-lbl">TEMPO ACUMULADO</td>
@@ -1282,7 +1283,7 @@
         </div>
         <div class="ciclo-resumo-item">
           <div class="ciclo-resumo-lbl">Exp. Máx. por Ciclo</div>
-          <div class="ciclo-resumo-val mtz-exp-val">${fmtBRL(cicloExp, true)}</div>
+          <div class="ciclo-resumo-val mtz-neg-val">${fmtBRL(-cicloExp, true)}</div>
         </div>
         <div class="ciclo-resumo-item">
           <div class="ciclo-resumo-lbl">Custo Financeiro</div>
