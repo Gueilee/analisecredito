@@ -527,24 +527,15 @@
     document.getElementById('back-btn').href          = 'analise-financeira.html?id=' + sol.id;
     document.getElementById('link-analise').href      = 'analise-financeira.html?id=' + sol.id;
 
-    // FOB: limiteExportador armazena texto com unidade ("R$ X por container")
-    // Usar limiteExportadorParsed.num (já é número) + converter se moeda != BRL
-    // Câmbio: tenta ler da solicitação (limiteExportadorParsed.equivNum/equivValor) ou usa 5.80
-    const _parsed   = sol.limiteExportadorParsed || {};
-    const _fobMoeda = (_parsed.moeda || 'BRL').toUpperCase();
-    const _fobNum   = typeof _parsed.num === 'number' ? _parsed.num
-                    : brToFloat(_parsed.valor) || brToFloat(sol.limiteExportador) || 0;
-    // Se tem equivalente BRL na solicitação (campo "Equivalente em BRL"), usa direto
-    const _hasBRLequiv = _parsed.temEquiv && (_parsed.equivMoeda || '').toUpperCase() === 'BRL' && _parsed.equivNum > 0;
-    const _cambioSol = (() => {
-      if (_hasBRLequiv && _fobNum > 0) return _parsed.equivNum / _fobNum;
-      return 5.80;
-    })();
-    const fobBRL = _fobMoeda === 'BRL' ? _fobNum : _fobNum * _cambioSol;
+    // Fonte primária: campos da Simulação Financeira 3.1.6
+    const _simFobMoeda = (sol.simFobMoeda || 'USD').toUpperCase();
+    const _simFobValor = brToFloat(sol.simFobValor) || 0;
+    const _cambioSol   = brToFloat(sol.simFobCambio) || 5.80;
+    const fobBRL = _simFobMoeda === 'BRL' ? _simFobValor : _simFobValor * _cambioSol;
 
-    const despBRL = brToFloat(sol.limiteDesp) || 0;
-    const impBRL  = brToFloat(sol.limiteImp)  || 0;
-    const volMes  = brToFloat(sol.volMes)     || 0;
+    const despBRL = brToFloat(sol.simDesp) || 0;
+    const impBRL  = brToFloat(sol.simImp)  || 0;
+    const volMes  = brToFloat(sol.simVol)  || brToFloat(sol.volMes) || 0;
 
     const productionDays = Math.max(0, parseInt(sol.prazoPrepEmbarque) || 10);
     const embarqueDays   = Math.max(0, parseInt(sol.prazoEmbarque)    || 0);
