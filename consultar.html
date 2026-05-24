@@ -876,13 +876,11 @@
   /* ── Aba Despesas ────────────────────────────────────── */
   function renderDespesas(d) {
     document.getElementById('grid-despesas').innerHTML = [
-      infoItem('Limite Proposto Despesas / Mês', vm(d.limiteDesp)),
       infoVal('Prazo Proposto (dias)',           d.prazoDesp),
       infoVal('Forma de Pagto. (Cliente → Vendemmia)', d.pagtoDesp),
     ].join('');
 
     document.getElementById('grid-impostos').innerHTML = [
-      infoItem('Limite Proposto Impostos / Mês', vm(d.limiteImp)),
       infoVal('Prazo Proposto (dias)',            d.prazoImp),
       infoVal('Forma de Pagto. (Cliente → Vendemmia)', d.pagtoImp),
     ].join('');

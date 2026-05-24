@@ -1970,14 +1970,6 @@
               </div>
               <div class="form-grid form-grid-3">
 
-                <div class="form-group" style="display:none">
-                  <label class="form-label" for="limite-desp">3.2.1 Limite Proposto Despesas / Mês <span class="required">*</span></label>
-                  <div class="input-wrap">
-                    <span class="input-prefix">R$</span>
-                    <input id="limite-desp" class="input has-prefix" type="text" placeholder="0,00" oninput="maskMoney(this)" required />
-                  </div>
-                </div>
-
                 <div class="form-group">
                   <label class="form-label" for="prazo-desp">3.2.2 Prazo Proposto Despesas (dias) <span class="required">*</span></label>
                   <input id="prazo-desp" class="input" type="number" value="60" min="1" placeholder="60" required />
@@ -2013,14 +2005,6 @@
                 </div>
               </div>
               <div class="form-grid form-grid-3">
-
-                <div class="form-group" style="display:none">
-                  <label class="form-label" for="limite-imp">3.3.1 Limite Proposto Impostos / Mês <span class="required">*</span></label>
-                  <div class="input-wrap">
-                    <span class="input-prefix">R$</span>
-                    <input id="limite-imp" class="input has-prefix" type="text" placeholder="0,00" oninput="maskMoney(this)" required />
-                  </div>
-                </div>
 
                 <div class="form-group">
                   <label class="form-label" for="prazo-imp">3.3.2 Prazo Proposto Impostos (dias) <span class="required">*</span></label>
@@ -3286,10 +3270,6 @@
     if (typeof updateLimExpHint === 'function') updateLimExpHint();
 
     const fmtBRL = v => v > 0 ? v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
-    const legDespEl = document.getElementById('limite-desp');
-    if (legDespEl) legDespEl.value = fmtBRL(desp);
-    const legImpEl  = document.getElementById('limite-imp');
-    if (legImpEl)  legImpEl.value  = fmtBRL(imp);
     const legVolEl  = document.getElementById('vol-mes');
     if (legVolEl)  legVolEl.value  = fmtBRL(vol);
 
@@ -3803,10 +3783,8 @@
       pagtoClienteExp:  v('pagto-cliente-exp') === 'outro'
                           ? (document.getElementById('pagto-cliente-exp-outro')?.value.trim() || 'Outro')
                           : v('pagto-cliente-exp'),
-      limiteDesp:       v('limite-desp'),
       prazoDesp:        v('prazo-desp'),
       pagtoDesp:        getPagtoSimpleValue('pagto-desp'),
-      limiteImp:        v('limite-imp'),
       prazoImp:         v('prazo-imp'),
       pagtoImp:         getPagtoSimpleValue('pagto-imp'),
       comentario:       v('comentario'),
@@ -4016,8 +3994,8 @@
             const lp = d.limiteExportadorParsed || {};
             if (lp.valor) setXls('xls-fob-pagexp', lp.valor);
           }
-          setXls('xls-di-desemb', d.simDesp || d.limiteDesp);
-          setXls('xls-di-fat',   d.simImp  || d.limiteImp);
+          setXls('xls-di-desemb', d.simDesp);
+          setXls('xls-di-fat',   d.simImp);
           setXls('xls-fat-fat',  d.simVol  || d.volMes);
         }
         xlsUpdate();
@@ -4045,8 +4023,8 @@
           pceOutro.value = d.pagtoClienteExp;
         }
       }
-      set('limite-desp', d.limiteDesp); set('prazo-desp', d.prazoDesp); setPagtoSimpleValue('pagto-desp', d.pagtoDesp);
-      set('limite-imp', d.limiteImp); set('prazo-imp', d.prazoImp); setPagtoSimpleValue('pagto-imp', d.pagtoImp);
+      set('prazo-desp', d.prazoDesp); setPagtoSimpleValue('pagto-desp', d.pagtoDesp);
+      set('prazo-imp', d.prazoImp); setPagtoSimpleValue('pagto-imp', d.pagtoImp);
       set('comentario', d.comentario);
     }
 
