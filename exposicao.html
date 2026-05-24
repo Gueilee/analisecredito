@@ -1146,38 +1146,62 @@
       }
     }
 
-    // Fluxo FOB por etapa (saídas) — usa simPagParcelas se disponível
+    // ── Fonte primária: simStages (valores exatos da tabela 3.1.6) ────────────
+    // Mapeia chaves da XLS (pront, transit…) → chaves do STAGES_DEF
+    const XLS_TO_STAGE = {
+      pedido:'pedido', pront:'prontidao', bl:'bl',
+      transit:'transit', desemb:'desemb', pagexp:'pagexp',
+      fat:'fat', recvdm:'recvdm'
+    };
+    const _simStages   = (sol?.simStages?.stages) || {};
+    const _hasSimStages = Object.values(_simStages).some(v =>
+      brToFloat(v.fob||'') + brToFloat(v.di||'') + brToFloat(v.fat||'') + brToFloat(v.rec||'') > 0
+    );
+
     const fobByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
-    if (P.fobParcelas && P.fobParcelas.length > 0) {
-      P.fobParcelas.forEach(p => {
-        const k = SIM_PAG_TYPE_TO_KEY[p.tipo] ?? typeToKey[p.tipo] ?? typeToKey[p.cond] ?? 'pagexp';
-        fobByKey[k] -= P.fobBRL * ((p.pct || 0) / 100);
-      });
-    } else {
-      fobByKey['pedido'] -= P.fobBRL * 0.20;
-      fobByKey['pagexp'] -= P.fobBRL * 0.80;
-    }
-
-    // Fluxo Desp+Imp (saída em DESEMBARAÇO)
-    const diByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
-    diByKey['desemb'] = -(P.despBRL + P.impBRL);
-
-    // Faturamento ao cliente (crédito em FATURAMENTO)
+    const diByKey  = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
     const fatByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
-    fatByKey['fat'] = fatTotal;
-
-    // Recebimento do cliente — parcelas configuradas (simRecParcelas) ou 100% em RECEB.VDM
     const recByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
-    if (P.recParcelas?.length > 0) {
-      P.recParcelas.forEach(p => {
-        const k = simParcelToKey(p, cycles[0]);
-        recByKey[k] = (recByKey[k] || 0) + fatTotal * ((p.pct || 0) / 100);
+
+    if (_hasSimStages) {
+      // Lê valores exatos da tabela — sem arredondamento de percentual
+      Object.entries(_simStages).forEach(([xlsKey, vals]) => {
+        const k = XLS_TO_STAGE[xlsKey];
+        if (!k) return;
+        const fobV = brToFloat(vals.fob || '');
+        const diV  = brToFloat(vals.di  || '');
+        const fatV = brToFloat(vals.fat || '');
+        const recV = brToFloat(vals.rec || '');
+        if (fobV) fobByKey[k] -= fobV;
+        if (diV)  diByKey[k]  -= diV;
+        if (fatV) fatByKey[k]  += fatV;
+        if (recV) recByKey[k]  += recV;
       });
     } else {
-      recByKey['recvdm'] = fatTotal;
+      // Fallback para solicitações sem simStages (dados mais antigos)
+      if (P.fobParcelas?.length > 0) {
+        P.fobParcelas.forEach(p => {
+          const k = SIM_PAG_TYPE_TO_KEY[p.tipo] ?? typeToKey[p.tipo] ?? typeToKey[p.cond] ?? 'pagexp';
+          fobByKey[k] -= P.fobBRL * ((p.pct || 0) / 100);
+        });
+      } else {
+        fobByKey['pedido'] -= P.fobBRL * 0.20;
+        fobByKey['pagexp'] -= P.fobBRL * 0.80;
+      }
+      diByKey['desemb']  = -(P.despBRL + P.impBRL);
+      fatByKey['fat']    = fatTotal;
+      if (P.recParcelas?.length > 0) {
+        P.recParcelas.forEach(p => {
+          const k = simParcelToKey(p, cycles[0]);
+          recByKey[k] = (recByKey[k] || 0) + fatTotal * ((p.pct || 0) / 100);
+        });
+      } else {
+        recByKey['recvdm'] = fatTotal;
+      }
     }
 
-    const peakExp = Math.max(0, P.fobBRL + P.despBRL + P.impBRL);
+    // Total faturado real (soma das células fat do simStages; fallback fatTotal do parâmetro)
+    const fatTotalActual = Object.values(fatByKey).reduce((s, v) => s + v, 0) || fatTotal;
 
     // Cabeçalhos das colunas na ordem cronológica
     const thCols = sortedStages.map(s =>
@@ -1250,7 +1274,14 @@
         });
         return cf;
       });
-      const expCred = cfCum.map(v => Math.max(0, -v));
+      // Exposição = quanto o cliente ainda deve (faturamento - recebimentos acumulados)
+      const expCred = sortedStages.map(s => {
+        if (fatTotalActual <= 0) return 0;
+        const t = getStageDate(c, s.key).getTime();
+        const cumRec = sortedStages.reduce((sum, ss) =>
+          getStageDate(c, ss.key).getTime() <= t ? sum + (recByKey[ss.key] || 0) : sum, 0);
+        return Math.max(0, fatTotalActual - cumRec);
+      });
 
       const rCF = cfCum.map(v => {
         const cls = v < 0 ? 'mtz-neg-val' : v > 0 ? 'mtz-pos-val' : 'mtz-zero-val';
