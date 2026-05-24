@@ -60,8 +60,8 @@ const DB = (() => {
         };
         write(KEYS.SESSION, session);
         return { ok: true, user: session };
-      } catch (_) {
-        return { ok: false, error: 'Erro de conexão. Verifique se o servidor está ativo.' };
+      } catch (err) {
+        return { ok: false, error: 'Erro de conexão: ' + (err?.message || String(err)) };
       }
     },
     async logout() {
