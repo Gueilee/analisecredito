@@ -1230,11 +1230,6 @@ function buildDetailTableHTML(cycles, P, solObj) {
     return 'R$ '+Math.round(Math.abs(n)).toLocaleString('pt-BR');
   }
 
-  const SEC_ROW = 'background:#1e1b4b;color:white;font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border:1px solid #1e1b4b;';
-  const LBL_TD  = 'padding:4px 8px;font-size:8.5px;font-weight:600;color:#4b5563;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;min-width:80px;';
-  const CELL    = 'text-align:center;padding:4px 5px;border:1px solid #e5e7eb;font-size:8px;';
-  const EMPTY   = `<td style="${CELL}color:#d1d5db;">—</td>`;
-
   const thCols = sortedStages.map(s =>
     `<th style="background:${s.color};color:white;padding:4px 5px;font-size:7px;font-weight:800;text-align:center;border:1px solid rgba(0,0,0,.1);white-space:nowrap;letter-spacing:.3px;">${s.label}</th>`
   ).join('');
