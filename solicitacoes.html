@@ -442,7 +442,10 @@
         <td>${modal}</td>
         <td>${s.solicitanteNome || '—'}</td>
         <td style="white-space:nowrap;">${data}</td>
-        <td><span class="badge ${statusKey}">${statusText}</span></td>
+        <td>
+          <span class="badge ${statusKey}">${statusText}</span>
+          ${s.validadeDias ? DB.utils.validadeBadgeHtml(s) : ''}
+        </td>
         <td>
           <div class="actions" style="justify-content:center;">
             <a href="analise-financeira.html?id=${s.id}" class="btn-action" title="Análise Financeira" style="color:var(--purple-light);border-color:rgba(124,58,237,.35);">

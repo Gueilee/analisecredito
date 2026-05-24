@@ -928,6 +928,17 @@ function renderTimelineEntry(entry, idx) {
         <div class="te-docnum">${esc(dn)}</div>
         <div class="te-submeta">${esc(entry.solicitante || '—')} · <span class="te-date-edit" onclick="editEntryDate('${entry.solicitacao_id}', '${(entry.data_solicitacao || '').split('T')[0]}', event)" title="Clique para corrigir a data">${fmtDate(entry.data_solicitacao)}<svg viewBox="0 0 24 24" fill="none" width="10" height="10"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></div>
         ${tsLine ? `<div class="te-tsline">${tsLine}</div>` : ''}
+        ${(() => {
+          const _vd = sol.validadeDias || dec.validadeDias || null;
+          const _at = sol.decisao_at || dec.decisao_at || null;
+          if (!_vd || !_at) return '';
+          const vs = DB.utils.calcValidadeStatus({ validadeDias: _vd, decisao_at: _at });
+          if (!vs) return '';
+          return `<div style="display:inline-flex;align-items:center;gap:.3rem;margin-top:.2rem;">
+            <svg viewBox="0 0 24 24" fill="none" width="9" height="9"><circle cx="12" cy="12" r="10" stroke="${vs.color}" stroke-width="2.2"/><polyline points="12 6 12 12 16 14" stroke="${vs.color}" stroke-width="2" stroke-linecap="round"/></svg>
+            <span style="font-size:.62rem;font-weight:800;color:${vs.color};letter-spacing:.3px;text-transform:uppercase;">${vs.label}</span>
+          </div>`;
+        })()}
       </div>
       <span class="te-status" style="background:${STATUS_BG[st]};color:${clr};border:1px solid ${clr}40;">
         ${esc(lbl)}
@@ -1411,6 +1422,7 @@ function renderDecisao(sol, dec, ts, eid) {
   const analista      = dec.decisaoAnalista || sol.decisaoAnalista  || '';
   const parecer       = dec.parecerTecnico  || sol.parecerTecnico   || '';
   const obs           = dec.analistaObs     || sol.analistaObs      || '';
+  const validadeDias  = dec.validadeDias    || sol.validadeDias     || null;
   const decisao_at    = dec.decisao_at      || sol.decisao_at       || ts?.decisao_at || '';
 
   if (!st || st === 'pendente' || !analista) {
@@ -1455,7 +1467,9 @@ function renderDecisao(sol, dec, ts, eid) {
     </div>`;
   }
 
-  if (obs) {
+  if (validadeDias) {
+    html += DB.utils.validadeBadgeHtml({ validadeDias, decisao_at });
+  } else if (obs) {
     html += `<div style="font-size:.78rem;color:var(--text-muted);padding:.55rem .7rem;background:rgba(255,255,255,.025);border-radius:7px;line-height:1.6;margin-bottom:.7rem;">
       <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-faint);margin-bottom:.3rem;">Condições e Observações</div>
       ${esc(obs)}
