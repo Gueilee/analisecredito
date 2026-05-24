@@ -144,7 +144,10 @@ const App = (() => {
     const el = document.getElementById(id);
     if (!el) return;
     const h = new Date().getHours();
-    el.textContent = h < 12 ? 'Bom dia,' : h < 18 ? 'Boa tarde,' : 'Boa noite,';
+    const period = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+    const sess = DB.auth.getSession ? DB.auth.getSession() : (typeof session !== 'undefined' ? session : null);
+    const nome = sess?.name ? ', ' + sess.name.split(' ')[0] : '';
+    el.textContent = period + nome + ' 👋';
   }
 
   /**
