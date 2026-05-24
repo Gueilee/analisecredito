@@ -216,16 +216,16 @@
     .xls-wrap::-webkit-scrollbar { height: 6px; }
     .xls-wrap::-webkit-scrollbar-track { background: transparent; }
     .xls-wrap::-webkit-scrollbar-thumb { background: rgba(140,105,220,.35); border-radius: 3px; }
-    /* Tabela: layout fixo, largura mínima para valores monetários */
+    /* Tabela: largura mínima garante que valores monetários e datas caibam */
     .xls-table {
       border-collapse: collapse; table-layout: fixed;
-      width: 100%; min-width: 920px; background: var(--purple-card);
+      width: 100%; min-width: 1440px; background: var(--purple-card);
       font-family: inherit; font-size: .75rem;
     }
-    /* ── Larguras percentuais ─────────────────────────── */
-    .xls-th-label { width: 13.5%; }
-    .xls-th-ciclo { width: 8.5%; }
-    /* 8 colunas restantes dividem (100−22)%/8 ≈ 9.75% cada */
+    /* ── Larguras: label 12%, ciclo 10%, 8 colunas × 9.75% = 78% ── */
+    .xls-th-label { width: 12%; }
+    .xls-th-ciclo { width: 10%; }
+    /* 8 colunas restantes dividem 78%/8 = 9.75% cada (~140px em 1440px) */
 
     /* ── Header ─────────────────────────────────────────── */
     .xls-table thead th {
