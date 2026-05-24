@@ -1122,12 +1122,18 @@
     const fatTotalActual = fatByCol.reduce((s,v) => s+v, 0) ||
                            (P.volMes > 0 ? P.volMes : P.fobBRL + P.despBRL + P.impBRL);
 
-    // Fluxo de caixa acumulado: FOB (saída) + DI (saída) + REC (entrada) — FAT excluído (igual ao XLS)
-    const cfCum = XLS_KEYS.map((_, i) => {
-      let cf = 0;
-      for (let j = 0; j <= i; j++) cf += fobByCol[j] + diByCol[j] + recByCol[j];
-      return cf;
+    // Fluxo de caixa acumulado — replica exatamente o xlsUpdate() da 3.1.6:
+    // PG.EXP. (índice 5) NÃO entra na soma sequencial; usa fórmula própria:
+    //   cfPagexp = cfFinal_recvdm + fob_desemb (negativo) + di/rec_pagexp
+    // Isso representa o saldo no momento em que a Vendemmia paga o exportador.
+    const _PAG = 5, _DES = 4, _RCV = 7;
+    let _run = 0;
+    const _cfSeq = XLS_KEYS.map((_, i) => {
+      if (i !== _PAG) _run += fobByCol[i] + diByCol[i] + recByCol[i];
+      return _run;
     });
+    const cfCum = _cfSeq.slice();
+    cfCum[_PAG] = _cfSeq[_RCV] + fobByCol[_DES] + diByCol[_PAG] + recByCol[_PAG];
 
     // EXP. SEGURO CRÉD. = saldo negativo (crédito em risco): cumRec - fatTotal, limitado a 0
     const expCred = XLS_KEYS.map((_, i) => {
@@ -1141,7 +1147,7 @@
     const cicloDI  = diByCol.reduce((s,v)=>s+v,0);
     const cicloFat = fatByCol.reduce((s,v)=>s+v,0);
     const cicloRec = recByCol.reduce((s,v)=>s+v,0);
-    const cicloCF  = cfCum[cfCum.length - 1];
+    const cicloCF  = Math.min(0, ...cfCum); // pico negativo, igual ao xlsUpdate (minFluxo)
     const cicloExp = Math.min(...expCred); // valor mais negativo = maior exposição
 
     // Dias delta por etapa (igual ao prazo de cada input na 3.1.6)
