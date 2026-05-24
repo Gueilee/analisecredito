@@ -38,13 +38,17 @@ load_dotenv(dotenv_path=_ENV_FILE, override=True)
 limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 
 # ── Diretórios de dados ───────────────────────────────────────────────────────
-HISTORICO_DIR = Path(__file__).parent / "historico"
+# No Vercel o sistema de arquivos é read-only; usa /tmp para dados temporários
+_IS_VERCEL = bool(os.getenv("VERCEL"))
+_TMP_BASE  = Path("/tmp") if _IS_VERCEL else Path(__file__).parent
+
+HISTORICO_DIR = _TMP_BASE / "historico"
 HISTORICO_DIR.mkdir(exist_ok=True)
 
-DOCS_DIR = Path(__file__).parent / "docs"
+DOCS_DIR = _TMP_BASE / "docs"
 DOCS_DIR.mkdir(exist_ok=True)
 
-BACKUPS_DIR = Path(__file__).parent / "backups"
+BACKUPS_DIR = _TMP_BASE / "backups"
 BACKUPS_DIR.mkdir(exist_ok=True)
 
 # ── Turso / libSQL ────────────────────────────────────────────────────────────
@@ -1270,8 +1274,9 @@ async def admin_export_json(current_user=Depends(_require_admin)):
     }
 
 
-# Serve os arquivos HTML estáticos na raiz — acesse via http://localhost:8000
-# (evita problemas de CORS do protocolo file://)
-_static_dir = os.path.join(os.path.dirname(__file__), "..")
-if os.path.isdir(_static_dir):
-    app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
+# Serve os arquivos HTML estáticos na raiz (apenas fora do Vercel;
+# no Vercel os estáticos são servidos nativamente pelo CDN)
+if not _IS_VERCEL:
+    _static_dir = os.path.join(os.path.dirname(__file__), "..")
+    if os.path.isdir(_static_dir):
+        app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
