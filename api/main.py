@@ -1274,9 +1274,7 @@ async def admin_export_json(current_user=Depends(_require_admin)):
     }
 
 
-# Serve os arquivos HTML estáticos na raiz (apenas fora do Vercel;
-# no Vercel os estáticos são servidos nativamente pelo CDN)
-if not _IS_VERCEL:
-    _static_dir = os.path.join(os.path.dirname(__file__), "..")
-    if os.path.isdir(_static_dir):
-        app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
+# Serve os arquivos HTML/JS/CSS estáticos na raiz
+_static_dir = os.path.join(os.path.dirname(__file__), "..")
+if os.path.isdir(_static_dir):
+    app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
