@@ -319,14 +319,17 @@ def _email_html(headline: str, color: str, rows: list) -> str:
 </body></html>"""
 
 
-async def _send_email(subject: str, html: str, to: list) -> None:
+async def _send_email(subject: str, html: str, to: list, from_name: str = "", from_email: str = "") -> None:
     if not (_SMTP_HOST and _SMTP_USER and _SMTP_PASS and to):
         return
+
+    sender_email = from_email or _SMTP_USER
+    sender_label = f"{from_name} <{sender_email}>" if from_name else sender_email
 
     def _do():
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"]    = f"Vendemmia Crédito <{_SMTP_USER}>"
+        msg["From"]    = sender_label
         msg["To"]      = ", ".join(to)
         msg.attach(MIMEText(html, "html", "utf-8"))
         with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT, timeout=20) as s:
@@ -1141,7 +1144,11 @@ async def notify_email(
         return {"ok": False, "reason": "Evento desconhecido"}
 
     html = _email_html(headline, color, rows)
-    asyncio.create_task(_send_email(subject, html, _NOTIFY_EMAILS))
+    asyncio.create_task(_send_email(
+        subject, html, _NOTIFY_EMAILS,
+        from_name=current_user.get("name", ""),
+        from_email=current_user.get("email", ""),
+    ))
     return {"ok": True}
 
 
