@@ -457,10 +457,38 @@
             <a href="nova-solicitacao.html?id=${s.id}" class="btn-action" title="Editar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </a>
+            ${(() => {
+              if (!s.validadeDias) return '';
+              const _vs = DB.utils.calcValidadeStatus(s);
+              if (!_vs || _vs.days > 30) return '';
+              return `<button onclick="reabrirSolicitacao('${s.id}')" class="btn-action" title="Reabrir para Reanálise" style="color:#ef4444;border-color:rgba(239,68,68,.35);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>
+              </button>`;
+            })()}
           </div>
         </td>
       </tr>`;
     }).join('');
+  }
+
+  function reabrirSolicitacao(solId) {
+    const _sol = DB.solicitacoes.getById(solId);
+    const _vs  = _sol ? DB.utils.calcValidadeStatus(_sol) : null;
+    const _msg = _vs?.days < 0 ? 'vencida' : 'vencendo';
+    if (!confirm(`Reabrir para reanálise?\n\nA análise de "${_sol?.empresa || ''}" está ${_msg}. Todo o parecer, limites e decisão do Comitê serão apagados.\n\nConfirmar?`)) return;
+    DB.solicitacoes.update(solId, {
+      status:             'pendente',
+      parecerTecnico:     '',
+      limiteAprovado:     '',
+      prazoAprovado:      '',
+      validadeDias:       null,
+      decisaoAnalista:    '',
+      decisao_at:         '',
+      deliberacaoComite:  '',
+      decisaoComite:      '',
+      comite_at:          '',
+    });
+    window.location.href = 'analise-financeira.html?id=' + solId;
   }
 
   DB.ready.then(() => setFilter(currentFilter));

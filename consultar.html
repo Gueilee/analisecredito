@@ -609,6 +609,27 @@
     </div>`;
   }
 
+  /* ── Reabrir análise vencida/vencendo ─────────────────── */
+  function reabrirAnalise(solId) {
+    const _sol = DB.solicitacoes.getById(solId);
+    const _vs  = _sol ? calcValidadeStatus(_sol) : null;
+    const _msg = _vs?.days < 0 ? 'vencida' : 'vencendo';
+    if (!confirm(`Reabrir para reanálise?\n\nA análise de "${_sol?.empresa || ''}" está ${_msg}. Todo o parecer, limites e decisão do Comitê serão apagados e o processo retornará para a fila de análise.\n\nConfirmar?`)) return;
+    DB.solicitacoes.update(solId, {
+      status:             'pendente',
+      parecerTecnico:     '',
+      limiteAprovado:     '',
+      prazoAprovado:      '',
+      validadeDias:       null,
+      decisaoAnalista:    '',
+      decisao_at:         '',
+      deliberacaoComite:  '',
+      decisaoComite:      '',
+      comite_at:          '',
+    });
+    window.location.href = 'analise-financeira.html?id=' + solId;
+  }
+
   /* ── Carregar solicitação da URL ─────────────────────── */
   const urlParams = new URLSearchParams(window.location.search);
   const id = urlParams.get('id');
@@ -969,6 +990,11 @@
             <span class="limite-aprovado-value">${DB.utils.fmtMoney(d.limiteAprovado)}</span>
           </div>
           ${validadeBadgeHtml(d)}
+          ${(() => { const _vs = calcValidadeStatus(d); return _vs && _vs.days <= 30 ? `
+          <button onclick="reabrirAnalise('${d.id}')" style="display:flex;align-items:center;gap:.45rem;margin-top:.85rem;padding:.62rem 1rem;background:rgba(239,68,68,.1);border:1.5px solid rgba(239,68,68,.35);border-radius:6px;color:#ef4444;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M3 3v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Reabrir para Reanálise
+          </button>` : ''; })()}
         </div>`;
     } else if (d.status === 'negado') {
       el.innerHTML = `
@@ -982,6 +1008,11 @@
           </div>
           <p class="parecer-text">${v(d.parecerFinanceiro)}</p>
           ${validadeBadgeHtml(d)}
+          ${(() => { const _vs = calcValidadeStatus(d); return _vs && _vs.days <= 30 ? `
+          <button onclick="reabrirAnalise('${d.id}')" style="display:flex;align-items:center;gap:.45rem;margin-top:.85rem;padding:.62rem 1rem;background:rgba(239,68,68,.1);border:1.5px solid rgba(239,68,68,.35);border-radius:6px;color:#ef4444;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M3 3v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Reabrir para Reanálise
+          </button>` : ''; })()}
         </div>`;
     } else if (d.status === 'em_comite') {
       const analista  = d.decisaoAnalista || d.parecerAnalista || '';

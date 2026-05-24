@@ -1703,6 +1703,8 @@
           </div>
         </div>`;
     } else {
+      const _vsReopen = sol.validadeDias ? calcValidadeStatus(sol) : null;
+      const _showReopen = _vsReopen && _vsReopen.days <= 30;
       card.innerHTML = `<div class="decision-result">
         <div class="big-emoji">${emoji[sol.status] || '—'}</div>
         <span class="badge ${DB.utils.statusBadge[sol.status] || 'pendente'}" style="font-size:.82rem;padding:.3rem .9rem;">${DB.utils.statusLabel[sol.status] || sol.status}</span>
@@ -1713,7 +1715,12 @@
         ${sol.validadeDias ? validadeBadgeHtml(sol) : ''}
         ${sol.parecerTecnico ? `<div class="dec-obs-box" style="margin-top:.8rem;font-style:italic;">"${sol.parecerTecnico}"</div>` : ''}
       </div>
-      <div style="margin-top:1.1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.07);">
+      <div style="margin-top:1.1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:.55rem;">
+        ${_showReopen ? `
+        <button onclick="reabrirParaReanalise()" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.82rem;background:rgba(239,68,68,.12);border:1.5px solid rgba(239,68,68,.4);border-radius:var(--radius-sm);color:#ef4444;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;transition:background .15s;">
+          <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M3 3v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Reabrir para Reanálise
+        </button>` : ''}
         <a href="relatorio.html?id=${sol.id}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.82rem;background:linear-gradient(135deg,#5b21b6,#7c3aed);border:none;border-radius:var(--radius-sm);color:#fff;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;text-decoration:none;box-shadow:0 4px 18px rgba(124,58,237,.35);transition:transform .15s;">
           <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           Gerar Relatório PDF
@@ -1762,6 +1769,33 @@
     let v = el.value.replace(/\D/g,'');
     if (!v) { el.value = ''; return; }
     el.value = (parseInt(v,10)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  /* ── Reabrir processo vencido/vencendo para reanálise completa ── */
+  function reabrirParaReanalise() {
+    showConfirm({
+      title:    'Reabrir para reanálise?',
+      sub:      sol.empresa || '',
+      body:     'A análise está ' + (calcValidadeStatus(sol)?.days < 0 ? 'vencida' : 'vencendo') + '. Todo o parecer, limites e decisão do Comitê serão apagados e o processo retornará para a fila de análise.',
+      variant:  'warn',
+      okLabel:  'Sim, reabrir',
+      onConfirm: () => {
+        DB.solicitacoes.update(sol.id, {
+          status:             'pendente',
+          parecerTecnico:     '',
+          limiteAprovado:     '',
+          prazoAprovado:      '',
+          validadeDias:       null,
+          decisaoAnalista:    '',
+          decisao_at:         '',
+          deliberacaoComite:  '',
+          decisaoComite:      '',
+          comite_at:          '',
+        });
+        showToast('Processo reaberto para reanálise.', 'success');
+        setTimeout(() => { window.location.href = 'analise-financeira.html?id=' + sol.id; }, 900);
+      },
+    });
   }
 
   /* ── Devolver processo para Em Análise (reabrir) ── */
