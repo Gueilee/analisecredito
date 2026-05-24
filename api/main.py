@@ -610,15 +610,21 @@ def _hist_id_safe(hist_id: str) -> bool:
 
 @app.post("/api/historico")
 async def salvar_historico(entry: HistoricoSaveRequest, current_user=Depends(_get_current_user)):
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
     now_iso = datetime.now().isoformat()
     hist_id = str(uuid.uuid4())
+    created_by = {
+        "id":    current_user.get("sub", ""),
+        "email": current_user.get("email", ""),
+        "name":  current_user.get("name", ""),
+    }
     record = {
         "id": hist_id,
         "solicitacao_id": entry.solicitacao_id,
         "empresa": entry.empresa,
         "cnpj": entry.cnpj,
         "status_solicitacao": entry.status_solicitacao or "",
-        # Sobrescreve com o usuário autenticado — não confia no valor enviado pelo frontend
         "solicitante": current_user.get("name", entry.solicitante or ""),
         "data_solicitacao": entry.data_solicitacao or "",
         "dados_solicitacao": entry.dados_solicitacao or {},
@@ -626,13 +632,7 @@ async def salvar_historico(entry: HistoricoSaveRequest, current_user=Depends(_ge
         "analise_ia": entry.analise_ia or {},
         "modelo_ia": entry.modelo_ia or "claude-sonnet-4-6",
         "decisao_analista": None,
-        # RLS: identidade do criador (usado para filtro por perfil)
-        "created_by": {
-            "id":    current_user.get("sub", ""),
-            "email": current_user.get("email", ""),
-            "name":  current_user.get("name", ""),
-        },
-        # Timestamps auditáveis de cada etapa do processo
+        "created_by": created_by,
         "timestamps": {
             "solicitacao_criada_at": entry.solicitacao_criada_at or entry.data_solicitacao or "",
             "rf_consultada_at":      entry.rf_consultada_at or now_iso,
@@ -641,8 +641,14 @@ async def salvar_historico(entry: HistoricoSaveRequest, current_user=Depends(_ge
             "decisao_at":            None,
         },
     }
-    (HISTORICO_DIR / f"{hist_id}.json").write_text(
-        json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"
+    await _turso_exec(
+        "INSERT INTO analises (id, sol_id, empresa, cnpj, status, created_by, data, created_at, updated_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
+        [hist_id, entry.solicitacao_id or "", entry.empresa, entry.cnpj,
+         record["status_solicitacao"] or "pendente",
+         json.dumps(created_by, ensure_ascii=False),
+         json.dumps(record, ensure_ascii=False),
+         now_iso, now_iso],
     )
     return {"id": hist_id, "salvo_em": now_iso}
 
@@ -654,18 +660,17 @@ async def listar_historico(
     limit: int = 200,
     current_user=Depends(_get_current_user),
 ):
-    files = sorted(
-        HISTORICO_DIR.glob("*.json"),
-        key=lambda f: f.stat().st_mtime,
-        reverse=True,
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
+    rows = await _turso_query(
+        "SELECT data FROM analises ORDER BY created_at DESC LIMIT ?", [limit * 5]
     )
     entries: List[dict] = []
-    for f in files:
+    for row in rows:
         if len(entries) >= limit:
             break
         try:
-            data = json.loads(f.read_text(encoding="utf-8"))
-            # RLS — filtra pelo criador se o usuário não tem perfil de decisão
+            data = json.loads(row["data"])
             if not _record_visible_to(data, current_user):
                 continue
             if cnpj:
@@ -674,9 +679,9 @@ async def listar_historico(
             if empresa:
                 if empresa.lower() not in data.get("empresa", "").lower():
                     continue
-            ai = data.get("analise_ia") or {}
-            rf = (data.get("receita_federal") or {}).get("data") or {}
-            ts = data.get("timestamps") or {}
+            ai  = data.get("analise_ia") or {}
+            rf  = (data.get("receita_federal") or {}).get("data") or {}
+            ts  = data.get("timestamps") or {}
             dec = data.get("decisao_analista") or {}
             entries.append({
                 "id": data["id"],
@@ -699,11 +704,9 @@ async def listar_historico(
                 "decisao_analista": dec,
                 "modelo_ia": data.get("modelo_ia"),
                 "solicitacao_id": data.get("solicitacao_id"),
-                # Objetos completos — necessários para exibição detalhada na tela Consulta
                 "receita_federal": data.get("receita_federal") or {},
                 "analise_ia":      data.get("analise_ia")      or {},
                 "dados_solicitacao": data.get("dados_solicitacao") or {},
-                # Timestamps auditáveis
                 "timestamps": {
                     "solicitacao_criada_at": ts.get("solicitacao_criada_at") or data.get("data_solicitacao"),
                     "rf_consultada_at":      ts.get("rf_consultada_at"),
@@ -721,11 +724,12 @@ async def listar_historico(
 async def buscar_historico(hist_id: str, current_user=Depends(_get_current_user)):
     if not _hist_id_safe(hist_id):
         raise HTTPException(400, "ID inválido")
-    f = HISTORICO_DIR / f"{hist_id}.json"
-    if not f.exists():
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
+    rows = await _turso_query("SELECT data FROM analises WHERE id=?", [hist_id])
+    if not rows:
         raise HTTPException(404, "Análise não encontrada")
-    data = json.loads(f.read_text(encoding="utf-8"))
-    # RLS — retorna 404 intencional para não revelar a existência do registro
+    data = json.loads(rows[0]["data"])
     if not _record_visible_to(data, current_user):
         raise HTTPException(404, "Análise não encontrada")
     return data
@@ -733,61 +737,43 @@ async def buscar_historico(hist_id: str, current_user=Depends(_get_current_user)
 
 @app.patch("/api/historico/{hist_id}/decisao")
 async def atualizar_decisao(hist_id: str, body: Dict[str, Any], current_user=Depends(_get_current_user)):
-    # RBAC — apenas Financeiro, Administrador e Diretor podem registrar decisões
     if not _user_can_decide(current_user):
         raise HTTPException(403, "Acesso negado — apenas Financeiro e Administrador podem registrar decisões de crédito")
     if not _hist_id_safe(hist_id):
         raise HTTPException(400, "ID inválido")
-    f = HISTORICO_DIR / f"{hist_id}.json"
-    if not f.exists():
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
+    rows = await _turso_query("SELECT data FROM analises WHERE id=?", [hist_id])
+    if not rows:
         raise HTTPException(404, "Análise não encontrada")
-    data = json.loads(f.read_text(encoding="utf-8"))
+    data    = json.loads(rows[0]["data"])
     now_iso = datetime.now().isoformat()
-
-    # Campos da decisão que vêm do frontend
     decisao_at = body.get("decisao_at") or now_iso
     decisao_payload = {
-        "status":           body.get("status", ""),
-        "limiteAprovado":   body.get("limiteAprovado", ""),
-        "limiteDesp":       body.get("limiteDesp", ""),
-        "limiteImp":        body.get("limiteImp", ""),
-        "prazoAprovado":    body.get("prazoAprovado", ""),
-        "analistaObs":      body.get("analistaObs", ""),
-        "parecerTecnico":   body.get("parecerTecnico", ""),
-        # Sobrescreve com o usuário autenticado — não confia no valor enviado pelo frontend
-        "decisaoAnalista":  current_user.get("name", body.get("decisaoAnalista", "Analista")),
-        "decisao_at":       decisao_at,
+        "status":          body.get("status", ""),
+        "limiteAprovado":  body.get("limiteAprovado", ""),
+        "limiteDesp":      body.get("limiteDesp", ""),
+        "limiteImp":       body.get("limiteImp", ""),
+        "prazoAprovado":   body.get("prazoAprovado", ""),
+        "analistaObs":     body.get("analistaObs", ""),
+        "parecerTecnico":  body.get("parecerTecnico", ""),
+        "decisaoAnalista": current_user.get("name", body.get("decisaoAnalista", "Analista")),
+        "decisao_at":      decisao_at,
     }
-
-    # Grava em decisao_analista (campo dedicado)
     data["decisao_analista"] = decisao_payload
-
-    # Atualiza status_solicitacao no nível raiz (usado em listagens)
     if decisao_payload["status"]:
         data["status_solicitacao"] = decisao_payload["status"]
-
-    # Mescla campos da decisão em dados_solicitacao para consulta completa
     ds = data.get("dados_solicitacao") or {}
-    ds.update({
-        "status":          decisao_payload["status"],
-        "limiteAprovado":  decisao_payload["limiteAprovado"],
-        "limiteDesp":      decisao_payload["limiteDesp"],
-        "limiteImp":       decisao_payload["limiteImp"],
-        "prazoAprovado":   decisao_payload["prazoAprovado"],
-        "analistaObs":     decisao_payload["analistaObs"],
-        "parecerTecnico":  decisao_payload["parecerTecnico"],
-        "decisaoAnalista": decisao_payload["decisaoAnalista"],
-        "decisao_at":      decisao_at,
-    })
+    ds.update({k: decisao_payload[k] for k in decisao_payload})
     data["dados_solicitacao"] = ds
-
-    # Atualiza timestamp da decisão
     if "timestamps" not in data:
         data["timestamps"] = {}
     data["timestamps"]["decisao_at"] = decisao_at
-
     data["atualizado_em"] = now_iso
-    f.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    await _turso_exec(
+        "UPDATE analises SET data=?, status=?, updated_at=? WHERE id=?",
+        [json.dumps(data, ensure_ascii=False), decisao_payload["status"] or data.get("status", "pendente"), now_iso, hist_id],
+    )
     return {"ok": True, "decisao_at": decisao_at}
 
 
