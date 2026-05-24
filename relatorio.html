@@ -1382,6 +1382,11 @@ function render() {
   const solicitante = sol.solicitanteNome || '—';
   const dataSol     = fmtDate(sol.dataSolicitacao || sol.createdAt);
 
+  // Nome do arquivo ao salvar PDF = título da página
+  if (sol.empresa) {
+    document.title = 'Relatório de Análise de Crédito — ' + sol.empresa;
+  }
+
   /* ── Header ── */
   let html = `
   <div class="doc-header">
