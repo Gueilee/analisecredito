@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -185,7 +185,10 @@
       .hist-grid { grid-template-columns: 1fr; }
       .toolbar { flex-direction: column; align-items: stretch; }
     }
-  </style>
+  
+    @view-transition { navigation: auto; }
+    body { animation: vd-fade-in .18s ease; }
+    @keyframes vd-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }    </style>
 </head>
 <body>
 <script>const session = DB.auth.requireAuth();</script>

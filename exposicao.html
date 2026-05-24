@@ -221,7 +221,10 @@
     .ps-ops   .param-section-label::before  { background: linear-gradient(to bottom,#f59e0b,#fb923c); }
     .ps-fin   .param-section-label::before  { background: linear-gradient(to bottom,#22d3ee,#3b82f6); }
     .ps-lim   .param-section-label::before  { background: linear-gradient(to bottom,#01E18E,#22d3ee); }
-  </style>
+  
+    @view-transition { navigation: auto; }
+    body { animation: vd-fade-in .18s ease; }
+    @keyframes vd-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }    </style>
 </head>
 <body>
 <script>const session = DB.auth.requireAuth();</script>
