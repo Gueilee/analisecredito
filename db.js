@@ -186,6 +186,28 @@ const DB = (() => {
   const integradoLabel = { logistica: 'Logística', trade: 'Trade', armazem: 'Armazém', multiplos: 'Múltiplos' };
   const tipoOpLabel    = { encomenda: 'Encomenda', 'conta-ordem': 'Conta e Ordem', gestao: 'Gestão' };
 
+  function calcValidadeStatus(solObj) {
+    const dias = parseInt(solObj.validadeDias, 10);
+    const at   = solObj.decisao_at;
+    if (!dias || !at) return null;
+    const expiry = new Date(at);
+    expiry.setDate(expiry.getDate() + dias);
+    const today = new Date(); today.setHours(0,0,0,0); expiry.setHours(0,0,0,0);
+    const diff = Math.round((expiry - today) / 86400000);
+    if (diff < 0)   return { label: 'VENCIDO',                                    color: '#ef4444', bg: 'rgba(239,68,68,.1)',   border: 'rgba(239,68,68,.3)',   days: diff, expiry };
+    if (diff <= 30) return { label: `VENCENDO EM ${diff} DIA${diff!==1?'S':''}`,  color: '#f59e0b', bg: 'rgba(245,158,11,.1)', border: 'rgba(245,158,11,.3)', days: diff, expiry };
+    return              { label: 'ATIVO',                                          color: '#22c55e', bg: 'rgba(34,197,94,.1)',  border: 'rgba(34,197,94,.3)',  days: diff, expiry };
+  }
+  function validadeBadgeHtml(solObj) {
+    const vs = calcValidadeStatus(solObj);
+    if (!vs) return '';
+    const expiryStr = vs.expiry.toLocaleDateString('pt-BR');
+    return `<div style="display:inline-flex;align-items:center;gap:.45rem;background:${vs.bg};border:1px solid ${vs.border};border-radius:6px;padding:.38rem .75rem;margin-top:.5rem;">` +
+      `<svg viewBox="0 0 24 24" fill="none" width="11" height="11"><circle cx="12" cy="12" r="10" stroke="${vs.color}" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="${vs.color}" stroke-width="1.8" stroke-linecap="round"/></svg>` +
+      `<span style="font-size:.7rem;font-weight:800;color:${vs.color};letter-spacing:.4px;text-transform:uppercase;">${vs.label}</span>` +
+      `<span style="font-size:.67rem;color:${vs.color};opacity:.75;">· válido até ${expiryStr}</span></div>`;
+  }
+
   const deletedIds = {
     getAll() { return new Set(read(KEYS.DELETED_IDS) || []); },
     add(id)  { _trackDeleted(id); },
@@ -199,6 +221,6 @@ const DB = (() => {
     solicitacoes,
     deletedIds,
     ready,
-    utils: { uid, now, fmt, fmtDate, fmtMoney, statusLabel, statusBadge, modalLabel, integradoLabel, tipoOpLabel },
+    utils: { uid, now, fmt, fmtDate, fmtMoney, statusLabel, statusBadge, modalLabel, integradoLabel, tipoOpLabel, calcValidadeStatus, validadeBadgeHtml },
   };
 })();

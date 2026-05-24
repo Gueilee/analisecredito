@@ -938,8 +938,9 @@
               <textarea class="form-input" id="dec-parecer" rows="6" placeholder="Descreva os fundamentos técnicos da decisão, condições especiais, restrições ou recomendações para o Comitê de Crédito…" style="resize:vertical;"></textarea>
             </div>
             <div class="dec-row">
-              <div class="dec-label">Condições e Observações</div>
-              <textarea class="form-input" id="dec-obs" rows="2" placeholder="Notas adicionais e condições…" style="resize:vertical;"></textarea>
+              <div class="dec-label">Validade da Análise (dias)</div>
+              <input type="number" class="form-input" id="dec-validade" min="1" max="9999" placeholder="Ex: 90" style="max-width:180px;" />
+              <div style="font-size:.72rem;color:var(--text-muted);margin-top:.35rem;">Quantidade de dias que esta análise permanecerá válida após a decisão.</div>
             </div>
 
             <div class="dec-sep"></div>
@@ -1459,21 +1460,46 @@
     document.getElementById('rf-card').style.display = '';
   }
 
+  /* ── Validade da análise ─────────────────────────────── */
+  function calcValidadeStatus(solObj) {
+    const dias = parseInt(solObj.validadeDias, 10);
+    const at   = solObj.decisao_at;
+    if (!dias || !at) return null;
+    const expiry = new Date(at);
+    expiry.setDate(expiry.getDate() + dias);
+    const today = new Date(); today.setHours(0,0,0,0); expiry.setHours(0,0,0,0);
+    const diff = Math.round((expiry - today) / 86400000);
+    if (diff < 0)  return { label:'VENCIDO',                                   color:'#ef4444', bg:'rgba(239,68,68,.1)',   border:'rgba(239,68,68,.3)',   days:diff, expiry };
+    if (diff <= 30) return { label:`VENCENDO EM ${diff} DIA${diff!==1?'S':''}`, color:'#f59e0b', bg:'rgba(245,158,11,.1)', border:'rgba(245,158,11,.3)', days:diff, expiry };
+    return              { label:'ATIVO',                                        color:'#22c55e', bg:'rgba(34,197,94,.1)',  border:'rgba(34,197,94,.3)',  days:diff, expiry };
+  }
+  function validadeBadgeHtml(solObj) {
+    const v = calcValidadeStatus(solObj);
+    if (!v) return '';
+    const expiryStr = v.expiry.toLocaleDateString('pt-BR');
+    return `<div style="display:inline-flex;align-items:center;gap:.45rem;background:${v.bg};border:1px solid ${v.border};border-radius:6px;padding:.38rem .75rem;margin-top:.5rem;">
+      <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><circle cx="12" cy="12" r="10" stroke="${v.color}" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="${v.color}" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span style="font-size:.7rem;font-weight:800;color:${v.color};letter-spacing:.4px;text-transform:uppercase;">${v.label}</span>
+      <span style="font-size:.67rem;color:${v.color};opacity:.75;">· válido até ${expiryStr}</span>
+    </div>`;
+  }
+
   /* ── Decisão do analista ─────────────────────────────── */
   function decide(newStatus) {
-    const limite  = document.getElementById('dec-limite').value.trim();
-    const prazo   = document.getElementById('dec-prazo').value;
-    const obs     = document.getElementById('dec-obs').value.trim();
-    const parecer = document.getElementById('dec-parecer').value.trim();
-    const histId  = sol.hist_id;
+    const limite   = document.getElementById('dec-limite').value.trim();
+    const prazo    = document.getElementById('dec-prazo').value;
+    const validade = parseInt(document.getElementById('dec-validade').value||'0',10)||null;
+    const parecer  = document.getElementById('dec-parecer').value.trim();
+    const histId   = sol.hist_id;
+    const decisao_at = new Date().toISOString();
 
     DB.solicitacoes.update(sol.id, {
       status: newStatus,
       limiteAprovado: limite || '',
       prazoAprovado: prazo,
-      analistaObs: obs,
+      validadeDias: validade,
       parecerTecnico: parecer || '',
-      decisao_at: new Date().toISOString(),
+      decisao_at: decisao_at,
       decisaoAnalista: session ? session.name : 'Analista',
     });
     sol = DB.solicitacoes.getById(sol.id);
@@ -1494,9 +1520,9 @@
           limiteDesp:      sol.limiteDesp   || '',
           limiteImp:       sol.limiteImp    || '',
           prazoAprovado:   prazo,
-          analistaObs:     obs || '',
+          validadeDias:    validade || null,
           parecerTecnico:  parecer || '',
-          decisao_at:      new Date().toISOString(),
+          decisao_at:      decisao_at,
           decisaoAnalista: session ? session.name : 'Analista',
         }),
       }).catch(() => {});
@@ -1509,17 +1535,17 @@
 
   /* ── Enviar para Comitê ─────────────────────────────── */
   function decideComite() {
-    const parecer = document.getElementById('dec-parecer').value.trim();
-    const limite  = document.getElementById('dec-limite').value.trim();
-    const prazo   = document.getElementById('dec-prazo').value;
-    const obs     = document.getElementById('dec-obs').value.trim();
+    const parecer  = document.getElementById('dec-parecer').value.trim();
+    const limite   = document.getElementById('dec-limite').value.trim();
+    const prazo    = document.getElementById('dec-prazo').value;
+    const validade = parseInt(document.getElementById('dec-validade').value||'0',10)||null;
 
     DB.solicitacoes.update(sol.id, {
       status:          'em_comite',
       parecerTecnico:  parecer || '',
       limiteAprovado:  limite  || '',
       prazoAprovado:   prazo   || '',
-      analistaObs:     obs     || '',
+      validadeDias:    validade || null,
       decisaoAnalista: session ? session.name : 'Analista',
       decisao_at:      new Date().toISOString(),
     });
@@ -1531,13 +1557,11 @@
 
   /* ── Devolver para operações / solicitar mais informações ── */
   function decideSolicitarInfo() {
-    const obs     = document.getElementById('dec-obs').value.trim();
     const parecer = document.getElementById('dec-parecer').value.trim();
     const histId  = sol.hist_id;
 
     DB.solicitacoes.update(sol.id, {
       status:          'pendente',
-      analistaObs:     obs || '',
       parecerTecnico:  parecer || '',
       decisaoAnalista: session ? session.name : 'Analista',
       decisao_at:      new Date().toISOString(),
@@ -1550,7 +1574,6 @@
         credentials: 'include',
         body: JSON.stringify({
           status:          'pendente',
-          analistaObs:     obs || '',
           parecerTecnico:  parecer || '',
           decisao_at:      new Date().toISOString(),
           decisaoAnalista: session ? session.name : 'Analista',
@@ -1622,8 +1645,11 @@
               </div>
               <textarea id="ep-parecer" rows="3" placeholder="Parecer técnico do analista…"
                 style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.55rem .75rem;outline:none;resize:vertical;line-height:1.5;box-sizing:border-box;margin-bottom:.4rem;"></textarea>
-              <textarea id="ep-obs" rows="2" placeholder="Condições e observações (opcional)…"
-                style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.55rem .75rem;outline:none;resize:vertical;line-height:1.5;box-sizing:border-box;margin-bottom:.55rem;"></textarea>
+              <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.55rem;">
+                <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;">Validade (dias)</div>
+                <input id="ep-validade" type="number" min="1" max="9999" placeholder="Ex: 90"
+                  style="width:100px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;outline:none;" />
+              </div>
               <button onclick="salvarParecerAnalista()"
                 style="width:100%;padding:.7rem;background:linear-gradient(135deg,#c97d00,#f59e0b);color:#1a0f00;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:.83rem;font-weight:700;cursor:pointer;">
                 Salvar Parecer
@@ -1644,10 +1670,7 @@
           </div>
           ${sol.parecerTecnico ? `
             <div style="font-size:.79rem;color:var(--text-muted);line-height:1.65;font-style:italic;background:rgba(245,158,11,.04);border-left:2.5px solid rgba(245,158,11,.4);padding:.6rem .9rem;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-bottom:.5rem;">"${sol.parecerTecnico}"</div>` : ''}
-          ${sol.analistaObs ? `
-            <div style="font-size:.75rem;color:var(--text-muted);line-height:1.6;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius-sm);padding:.5rem .8rem;margin-bottom:.65rem;">
-              <strong style="color:var(--text-secondary);font-style:normal;">Condições e Observações:</strong> ${sol.analistaObs}
-            </div>` : ''}`;
+          ${sol.validadeDias ? validadeBadgeHtml(sol) : ''}`;
         })()}
 
         <!-- Deliberação do Comitê -->
@@ -1687,8 +1710,8 @@
         ${sol.prazoAprovado  ? `<div style="font-size:.78rem;color:var(--text-muted);">Prazo: ${sol.prazoAprovado} dias</div>` : ''}
         ${sol.decisaoAnalista ? `<div style="font-size:.73rem;color:var(--text-faint);margin-top:.4rem;">por ${sol.decisaoAnalista}</div>` : ''}
         ${sol.deliberacaoComite ? `<div style="font-size:.73rem;color:var(--text-faint);margin-top:.15rem;">Comitê: ${sol.decisaoComite || ''}</div>` : ''}
+        ${sol.validadeDias ? validadeBadgeHtml(sol) : ''}
         ${sol.parecerTecnico ? `<div class="dec-obs-box" style="margin-top:.8rem;font-style:italic;">"${sol.parecerTecnico}"</div>` : ''}
-        ${sol.analistaObs ? `<div class="dec-obs-box">${sol.analistaObs}</div>` : ''}
       </div>
       <div style="margin-top:1.1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.07);">
         <a href="relatorio.html?id=${sol.id}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.82rem;background:linear-gradient(135deg,#5b21b6,#7c3aed);border:none;border-radius:var(--radius-sm);color:#fff;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;text-decoration:none;box-shadow:0 4px 18px rgba(124,58,237,.35);transition:transform .15s;">
@@ -1758,7 +1781,7 @@
       parecerTecnico:  '',
       limiteAprovado:  '',
       prazoAprovado:   '',
-      analistaObs:     '',
+      validadeDias:    null,
       decisaoAnalista: '',
       decisao_at:      '',
     });
@@ -1768,10 +1791,10 @@
 
   /* ── Salvar/corrigir parecer do analista em registro em_comite ── */
   function salvarParecerAnalista() {
-    const limite  = (document.getElementById('ep-limite')?.value || '').trim();
-    const prazo   = document.getElementById('ep-prazo')?.value || '';
-    const parecer = (document.getElementById('ep-parecer')?.value || '').trim();
-    const obs     = (document.getElementById('ep-obs')?.value || '').trim();
+    const limite   = (document.getElementById('ep-limite')?.value || '').trim();
+    const prazo    = document.getElementById('ep-prazo')?.value || '';
+    const parecer  = (document.getElementById('ep-parecer')?.value || '').trim();
+    const validade = parseInt(document.getElementById('ep-validade')?.value||'0',10)||null;
 
     if (!parecer) {
       const el = document.getElementById('ep-parecer');
@@ -1784,7 +1807,7 @@
       limiteAprovado: limite,
       prazoAprovado:  prazo,
       parecerTecnico: parecer,
-      analistaObs:    obs,
+      validadeDias:   validade,
       decisaoAnalista: sol.decisaoAnalista || (session ? session.name : 'Analista'),
     });
     sol = DB.solicitacoes.getById(sol.id);

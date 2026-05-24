@@ -585,6 +585,30 @@
     return infoItem(label, `<span class="info-value ${display === '—' ? 'empty' : cls}">${display}</span>`);
   }
 
+  /* ── Validade da análise ─────────────────────────────── */
+  function calcValidadeStatus(dObj) {
+    const dias = parseInt(dObj.validadeDias, 10);
+    const at   = dObj.decisao_at;
+    if (!dias || !at) return null;
+    const expiry = new Date(at);
+    expiry.setDate(expiry.getDate() + dias);
+    const today = new Date(); today.setHours(0,0,0,0); expiry.setHours(0,0,0,0);
+    const diff = Math.round((expiry - today) / 86400000);
+    if (diff < 0)   return { label:'VENCIDO',                                   color:'#ef4444', bg:'rgba(239,68,68,.1)',   border:'rgba(239,68,68,.3)',   days:diff, expiry };
+    if (diff <= 30) return { label:`VENCENDO EM ${diff} DIA${diff!==1?'S':''}`, color:'#f59e0b', bg:'rgba(245,158,11,.1)', border:'rgba(245,158,11,.3)', days:diff, expiry };
+    return              { label:'ATIVO',                                        color:'#22c55e', bg:'rgba(34,197,94,.1)',  border:'rgba(34,197,94,.3)',  days:diff, expiry };
+  }
+  function validadeBadgeHtml(dObj) {
+    const vs = calcValidadeStatus(dObj);
+    if (!vs) return '';
+    const expiryStr = vs.expiry.toLocaleDateString('pt-BR');
+    return `<div style="display:inline-flex;align-items:center;gap:.45rem;background:${vs.bg};border:1px solid ${vs.border};border-radius:6px;padding:.38rem .75rem;margin-top:.65rem;">
+      <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><circle cx="12" cy="12" r="10" stroke="${vs.color}" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="${vs.color}" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span style="font-size:.7rem;font-weight:800;color:${vs.color};letter-spacing:.4px;text-transform:uppercase;">${vs.label}</span>
+      <span style="font-size:.67rem;color:${vs.color};opacity:.75;">· válido até ${expiryStr}</span>
+    </div>`;
+  }
+
   /* ── Carregar solicitação da URL ─────────────────────── */
   const urlParams = new URLSearchParams(window.location.search);
   const id = urlParams.get('id');
@@ -939,10 +963,12 @@
             </div>
           </div>
           <p class="parecer-text">${v(d.parecerFinanceiro)}</p>
+          ${d.parecerTecnico ? `<p class="parecer-text" style="font-style:italic;margin-top:.35rem;">"${d.parecerTecnico}"</p>` : ''}
           <div class="limite-aprovado-display">
             <span class="limite-aprovado-label">Limite aprovado:</span>
             <span class="limite-aprovado-value">${DB.utils.fmtMoney(d.limiteAprovado)}</span>
           </div>
+          ${validadeBadgeHtml(d)}
         </div>`;
     } else if (d.status === 'negado') {
       el.innerHTML = `
@@ -955,6 +981,7 @@
             </div>
           </div>
           <p class="parecer-text">${v(d.parecerFinanceiro)}</p>
+          ${validadeBadgeHtml(d)}
         </div>`;
     } else if (d.status === 'em_comite') {
       const analista  = d.decisaoAnalista || d.parecerAnalista || '';
