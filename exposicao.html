@@ -104,7 +104,7 @@
 
     .ciclo-scroll { overflow-x:auto; padding-bottom:.35rem; }
 
-    .mtz-table { width:100%; border-collapse:collapse; min-width:900px; font-size:.73rem; }
+    .mtz-table { width:100%; border-collapse:collapse; min-width:1100px; font-size:.73rem; }
 
     .mtz-table thead tr th { padding:.5rem .55rem; text-align:center; font-size:.62rem; font-weight:800; letter-spacing:.5px; white-space:nowrap; border-bottom:2px solid rgba(255,255,255,.07); }
     .mtz-row-lbl-hdr { text-align:left !important; width:112px; min-width:112px; color:transparent !important; background:transparent !important; border-bottom-color:transparent !important; }
@@ -127,6 +127,9 @@
     .mtz-empty-cell { color:rgba(255,255,255,.1) !important; }
     .mtz-exp-row  { background:rgba(251,191,36,.03); }
     .mtz-dates-sep td { border-bottom:1px solid rgba(255,255,255,.07) !important; }
+    .mtz-row-gray .mtz-row-lbl, .mtz-row-gray .mtz-cell { background:rgba(100,65,180,.16) !important; }
+    .mtz-row-tempo .mtz-row-lbl { color:#f87171 !important; font-weight:900; }
+    .mtz-row-tempo .mtz-cell { background:rgba(248,113,113,.08) !important; color:#f87171 !important; font-weight:600; }
 
     /* Summary */
     .ciclo-resumo { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:1rem 1.2rem; }
@@ -1067,7 +1070,7 @@
 
 
   /* ══════════════════════════════════════════════════════
-     DETAIL TABLE — MATRIX POR CICLO
+     DETAIL TABLE — MATRIX POR CICLO (espelha 3.1.6)
   ══════════════════════════════════════════════════════ */
   function renderDetailTable(cycles, totalCost, totalRevenue, P) {
     if (!cycles || cycles.length === 0 || !P) return;
@@ -1075,138 +1078,85 @@
     const CYC_COLORS = ['#a855f7','#60a5fa','#22d3ee'];
     const CYC_NAMES  = ['Ciclo 1','Ciclo 2','Ciclo 3'];
 
-    const fatTotal = P.volMes > 0 ? P.volMes : (P.fobBRL + P.despBRL + P.impBRL);
+    // Ordem fixa — idêntica à 3.1.6 Simulação Financeira
+    const XLS_KEYS   = ['pedido','pront','bl','transit','desemb','pagexp','fat','recvdm'];
+    const XLS_LABELS = ['PEDIDO','PRONT.','BL','TRANSP.','DESEMB.','PG.EXP.','FATUR.','RECEB.<br>VDM'];
+    const XLS_COLORS = ['#6366f1','#3b82f6','#7c3aed','#f59e0b','#06b6d4','#f43f5e','#8b5cf6','#01E18E'];
 
-    // Definições dos estágios (chave → label / cor)
-    const STAGES_DEF = [
-      { key:'pedido',    label:'PEDIDO',       color:'#6366f1' },
-      { key:'prontidao', label:'PRONTIDÃO',    color:'#3b82f6' },
-      { key:'bl',        label:'BL',           color:'#7c3aed' },
-      { key:'transit',   label:'TRANSIT',      color:'#f59e0b' },
-      { key:'desemb',    label:'DESEMBARAÇO',  color:'#06b6d4' },
-      { key:'fat',       label:'FATURAMENTO',  color:'#8b5cf6' },
-      { key:'recvdm',    label:'RECEB. VDM',   color:'#01E18E' },
-      { key:'pagexp',    label:'PAGTO. EXP.',  color:'#f43f5e' },
-    ];
-
-    function getStageDate(c, key) {
-      return { pedido:c.d0, prontidao:c.dPrepDone, bl:c.dBL, transit:c.dReg,
-               desemb:c.dDesemb, fat:c.dFat, recvdm:c.dRec, pagexp:c.dPagExp }[key];
+    // Data real de cada coluna dentro de um ciclo
+    function getDate(c, k) {
+      return {pedido:c.d0, pront:c.dPrepDone, bl:c.dBL, transit:c.dReg,
+              desemb:c.dDesemb, pagexp:c.dPagExp, fat:c.dFat, recvdm:c.dRec}[k] || c.d0;
     }
 
-    // Ordena colunas pela data real do 1º ciclo (mesma ordem relativa para todos os ciclos)
-    const sortedStages = [...STAGES_DEF].sort((a, b) =>
-      getStageDate(cycles[0], a.key).getTime() - getStageDate(cycles[0], b.key).getTime()
-    );
-
-    // Mapeamento tipo de parcela → chave de etapa (legado)
-    const typeToKey = { avista:'pedido', producao:'pedido', embarque:'bl', registro:'transit',
-                        entrega:'recvdm', lc:'bl', cobranca:'bl' };
-
-    // Mapeamento para tipos da Simulação (simPagParcelas / simRecParcelas)
-    const SIM_PAG_TYPE_TO_KEY = {
-      pedido:'pedido', bl:'bl', transit:'transit', desemb:'desemb',
-      entrega:'recvdm', data:'pagexp'
-    };
-
-    // Encontra a etapa mais próxima (última etapa cuja data <= dt)
-    function dateToNearestStageKey(dt, c) {
-      const t = dt.getTime();
-      let result = sortedStages[0]?.key || 'pedido';
-      for (const s of sortedStages) {
-        if (getStageDate(c, s.key).getTime() <= t) result = s.key;
-        else break;
-      }
-      return result;
-    }
-
-    // Resolve tipo de parcela → chave de etapa considerando datas absolutas e offsets
-    function simParcelToKey(p, c) {
-      switch(p.tipo || '') {
-        case 'pedido':  return 'pedido';
-        case 'bl':      return 'bl';
-        case 'transit': return 'transit';
-        case 'desemb':  return 'desemb';
-        case 'fat':     return 'fat';
-        case 'fat_n': {
-          const n = parseInt(p.dias || 0) || 0;
-          return n > 0 ? dateToNearestStageKey(addDays(c.dFat, n), c) : 'fat';
-        }
-        case 'recvdm':  return 'recvdm';
-        case 'pagexp':  return 'pagexp';
-        case 'entrega': return 'recvdm';
-        case 'data': {
-          if (!p.data) return 'pagexp';
-          try {
-            const dt = new Date(p.data);
-            return isNaN(dt.getTime()) ? 'pagexp' : dateToNearestStageKey(dt, c);
-          } catch { return 'pagexp'; }
-        }
-        default: return 'recvdm';
-      }
-    }
-
-    // ── Fonte primária: simStages (valores exatos da tabela 3.1.6) ────────────
-    // Mapeia chaves da XLS (pront, transit…) → chaves do STAGES_DEF
-    const XLS_TO_STAGE = {
-      pedido:'pedido', pront:'prontidao', bl:'bl',
-      transit:'transit', desemb:'desemb', pagexp:'pagexp',
-      fat:'fat', recvdm:'recvdm'
-    };
-    const _simStages   = (sol?.simStages?.stages) || {};
+    // Valores exatos do simStages (células da tabela 3.1.6 salvas pelo usuário)
+    const _simStages    = (sol?.simStages?.stages) || {};
     const _hasSimStages = Object.values(_simStages).some(v =>
       brToFloat(v.fob||'') + brToFloat(v.di||'') + brToFloat(v.fat||'') + brToFloat(v.rec||'') > 0
     );
 
-    const fobByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
-    const diByKey  = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
-    const fatByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
-    const recByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+    const fobByCol = XLS_KEYS.map(k => _hasSimStages ? -brToFloat((_simStages[k]||{}).fob||'') : 0);
+    const diByCol  = XLS_KEYS.map(k => _hasSimStages ? -brToFloat((_simStages[k]||{}).di ||'') : 0);
+    const fatByCol = XLS_KEYS.map(k => _hasSimStages ?  brToFloat((_simStages[k]||{}).fat||'') : 0);
+    const recByCol = XLS_KEYS.map(k => _hasSimStages ?  brToFloat((_simStages[k]||{}).rec||'') : 0);
 
-    if (_hasSimStages) {
-      // Lê valores exatos da tabela — sem arredondamento de percentual
-      Object.entries(_simStages).forEach(([xlsKey, vals]) => {
-        const k = XLS_TO_STAGE[xlsKey];
-        if (!k) return;
-        const fobV = brToFloat(vals.fob || '');
-        const diV  = brToFloat(vals.di  || '');
-        const fatV = brToFloat(vals.fat || '');
-        const recV = brToFloat(vals.rec || '');
-        if (fobV) fobByKey[k] -= fobV;
-        if (diV)  diByKey[k]  -= diV;
-        if (fatV) fatByKey[k]  += fatV;
-        if (recV) recByKey[k]  += recV;
-      });
-    } else {
-      // Fallback para solicitações sem simStages (dados mais antigos)
+    if (!_hasSimStages) {
+      // Fallback para solicitações sem simStages
+      const fatFallback = P.volMes > 0 ? P.volMes : (P.fobBRL + P.despBRL + P.impBRL);
+      const PAG_IDX = {pedido:0,pront:1,bl:2,transit:3,desemb:4,pagexp:5,fat:6,recvdm:7};
       if (P.fobParcelas?.length > 0) {
-        P.fobParcelas.forEach(p => {
-          const k = SIM_PAG_TYPE_TO_KEY[p.tipo] ?? typeToKey[p.tipo] ?? typeToKey[p.cond] ?? 'pagexp';
-          fobByKey[k] -= P.fobBRL * ((p.pct || 0) / 100);
-        });
+        P.fobParcelas.forEach(p => { fobByCol[PAG_IDX[p.tipo] ?? 5] -= P.fobBRL * ((p.pct||0)/100); });
       } else {
-        fobByKey['pedido'] -= P.fobBRL * 0.20;
-        fobByKey['pagexp'] -= P.fobBRL * 0.80;
+        fobByCol[0] -= P.fobBRL * 0.20;
+        fobByCol[5] -= P.fobBRL * 0.80;
       }
-      diByKey['desemb']  = -(P.despBRL + P.impBRL);
-      fatByKey['fat']    = fatTotal;
+      diByCol[4] = -(P.despBRL + P.impBRL);
+      fatByCol[6] = fatFallback;
       if (P.recParcelas?.length > 0) {
-        P.recParcelas.forEach(p => {
-          const k = simParcelToKey(p, cycles[0]);
-          recByKey[k] = (recByKey[k] || 0) + fatTotal * ((p.pct || 0) / 100);
-        });
+        P.recParcelas.forEach(p => { recByCol[PAG_IDX[p.tipo] ?? 7] += fatFallback * ((p.pct||0)/100); });
       } else {
-        recByKey['recvdm'] = fatTotal;
+        recByCol[7] = fatFallback;
       }
     }
 
-    // Total faturado real (soma das células fat do simStages; fallback fatTotal do parâmetro)
-    const fatTotalActual = Object.values(fatByKey).reduce((s, v) => s + v, 0) || fatTotal;
+    const fatTotalActual = fatByCol.reduce((s,v) => s+v, 0) ||
+                           (P.volMes > 0 ? P.volMes : P.fobBRL + P.despBRL + P.impBRL);
 
-    // Cabeçalhos das colunas na ordem cronológica
-    const thCols = sortedStages.map(s =>
-      `<th class="mtz-col-stage-th" style="--sc:${s.color}">${s.label}</th>`
-    ).join('');
+    // Fluxo de caixa acumulado (ordem fixa da tabela)
+    const cfCum = XLS_KEYS.map((_, i) => {
+      let cf = 0;
+      for (let j = 0; j <= i; j++) cf += fobByCol[j] + diByCol[j] + fatByCol[j] + recByCol[j];
+      return cf;
+    });
+
+    // EXP. SEGURO CRÉD. = faturamento não recebido até cada etapa
+    const expCred = XLS_KEYS.map((_, i) => {
+      const cumRec = recByCol.slice(0, i+1).reduce((s,v) => s+v, 0);
+      return Math.max(0, fatTotalActual - cumRec);
+    });
+
+    // Totais da coluna CICLO
+    const cicloFob = fobByCol.reduce((s,v)=>s+v,0);
+    const cicloDI  = diByCol.reduce((s,v)=>s+v,0);
+    const cicloFat = fatByCol.reduce((s,v)=>s+v,0);
+    const cicloRec = recByCol.reduce((s,v)=>s+v,0);
+    const cicloCF  = cfCum[cfCum.length - 1];
+    const cicloExp = Math.max(...expCred);
+
+    // Dias delta por etapa (igual ao prazo de cada input na 3.1.6)
+    const deltaDays = [0, P.productionDays, P.embarqueDays, P.transitDays,
+                       P.desembarDays, P.pagExpDays, P.fatDays, P.creditTerms];
+    // Tempo acumulado desde o pedido
+    const accumDays = [
+      0,
+      P.productionDays,
+      P.productionDays + P.embarqueDays,
+      P.productionDays + P.embarqueDays + P.transitDays,
+      P.productionDays + P.embarqueDays + P.transitDays + P.desembarDays,
+      P.pagExpDays,
+      P.productionDays + P.embarqueDays + P.transitDays + P.desembarDays + P.fatDays,
+      P.productionDays + P.embarqueDays + P.transitDays + P.desembarDays + P.fatDays + P.creditTerms,
+    ];
 
     function fmtV(v) {
       if (!v || v === 0) return '—';
@@ -1218,82 +1168,51 @@
       const abs = Math.abs(Math.round(v));
       return (v < 0 ? '- ' : '+ ') + 'R$ ' + abs.toLocaleString('pt-BR');
     }
-    function emptyCell() { return `<td class="mtz-cell mtz-empty-cell">—</td>`; }
+
+    const thCols = XLS_KEYS.map((k, i) =>
+      `<th class="mtz-col-stage-th" style="--sc:${XLS_COLORS[i]}">${XLS_LABELS[i]}</th>`
+    ).join('');
+
+    // Linhas financeiras — iguais para os 3 ciclos (apenas DATA muda)
+    const rFOB = fobByCol.map(v => v !== 0
+      ? `<td class="mtz-cell mtz-neg-val">${fmtV(v)}</td>`
+      : `<td class="mtz-cell mtz-empty-cell">—</td>`).join('');
+
+    const rDI = diByCol.map(v => v !== 0
+      ? `<td class="mtz-cell mtz-neg-val">${fmtV(v)}</td>`
+      : `<td class="mtz-cell mtz-empty-cell">—</td>`).join('');
+
+    const rFat = fatByCol.map(v => v !== 0
+      ? `<td class="mtz-cell mtz-fat-val">${fmtV(v)}</td>`
+      : `<td class="mtz-cell mtz-empty-cell">—</td>`).join('');
+
+    const rRec = recByCol.map(v => v !== 0
+      ? `<td class="mtz-cell mtz-pos-val">${fmtV(v)}</td>`
+      : `<td class="mtz-cell mtz-empty-cell">—</td>`).join('');
+
+    const rCF = cfCum.map(v => {
+      const cls = v < 0 ? 'mtz-neg-val' : v > 0 ? 'mtz-pos-val' : 'mtz-zero-val';
+      return `<td class="mtz-cell mtz-cf-val ${cls}">${fmtCF(v)}</td>`;
+    }).join('');
+
+    const rExp = expCred.map(v => v > 0
+      ? `<td class="mtz-cell mtz-exp-val">${fmtV(v)}</td>`
+      : `<td class="mtz-cell mtz-zero-val">—</td>`).join('');
+
+    const rTempo = deltaDays.map((d, i) =>
+      `<td class="mtz-cell mtz-days">${i === 0 ? 'Dia 0' : d + 'd'}</td>`).join('');
+
+    const rAcum = accumDays.map((d, i) =>
+      `<td class="mtz-cell mtz-days">${i === 0 ? '0' : d + 'd'}</td>`).join('');
 
     let html = '<div class="ciclos-wrapper">';
 
     cycles.forEach((c, ci) => {
-      // Dias Etapa: duração desde a etapa anterior na ordem cronológica real
-      const rDiasEtapa = sortedStages.map((s, idx) => {
-        if (idx === 0) return `<td class="mtz-cell mtz-days">—</td>`;
-        const d = diffDays(getStageDate(c, sortedStages[idx-1].key), getStageDate(c, s.key));
-        return `<td class="mtz-cell mtz-days">${d > 0 ? d + 'd' : '—'}</td>`;
-      }).join('');
-
-      // Dias Acum: dias corridos desde o Pedido (d0)
-      const rDiasAcum = sortedStages.map((s, idx) => {
-        if (idx === 0) return `<td class="mtz-cell mtz-days">—</td>`;
-        const d = diffDays(c.d0, getStageDate(c, s.key));
-        return `<td class="mtz-cell mtz-days">${d + 'd'}</td>`;
-      }).join('');
-
-      // Datas
-      const rDatas = sortedStages.map(s =>
-        `<td class="mtz-cell mtz-date-cell">${fmtDateFull(getStageDate(c, s.key))}</td>`
-      ).join('');
-
-      // Fluxos financeiros
-      const rFOB = sortedStages.map(s => {
-        const v = fobByKey[s.key];
-        return v !== 0 ? `<td class="mtz-cell mtz-neg-val">${fmtV(v)}</td>` : emptyCell();
-      }).join('');
-
-      const rDI = sortedStages.map(s => {
-        const v = diByKey[s.key];
-        return v !== 0 ? `<td class="mtz-cell mtz-neg-val">${fmtV(v)}</td>` : emptyCell();
-      }).join('');
-
-      const rFat = sortedStages.map(s => {
-        const v = fatByKey[s.key];
-        return v !== 0 ? `<td class="mtz-cell mtz-fat-val">${fmtV(v)}</td>` : emptyCell();
-      }).join('');
-
-      const rRec = sortedStages.map(s => {
-        const v = recByKey[s.key];
-        return v !== 0 ? `<td class="mtz-cell mtz-pos-val">${fmtV(v)}</td>` : emptyCell();
-      }).join('');
-
-      // CF acumulado: soma de todos os fluxos cuja data <= data da coluna atual
-      const cfCum = sortedStages.map(s => {
-        const t = getStageDate(c, s.key).getTime();
-        let cf = 0;
-        sortedStages.forEach(ss => {
-          if (getStageDate(c, ss.key).getTime() <= t) {
-            cf += (fobByKey[ss.key] || 0) + (diByKey[ss.key] || 0) + (recByKey[ss.key] || 0);
-          }
-        });
-        return cf;
-      });
-      // Exposição = quanto o cliente ainda deve (faturamento - recebimentos acumulados)
-      const expCred = sortedStages.map(s => {
-        if (fatTotalActual <= 0) return 0;
-        const t = getStageDate(c, s.key).getTime();
-        const cumRec = sortedStages.reduce((sum, ss) =>
-          getStageDate(c, ss.key).getTime() <= t ? sum + (recByKey[ss.key] || 0) : sum, 0);
-        return Math.max(0, fatTotalActual - cumRec);
-      });
-
-      const rCF = cfCum.map(v => {
-        const cls = v < 0 ? 'mtz-neg-val' : v > 0 ? 'mtz-pos-val' : 'mtz-zero-val';
-        return `<td class="mtz-cell mtz-cf-val ${cls}">${fmtCF(v)}</td>`;
-      }).join('');
-
-      const rExp = expCred.map(v =>
-        v > 0 ? `<td class="mtz-cell mtz-exp-val">${fmtV(v)}</td>`
-              : `<td class="mtz-cell mtz-zero-val">—</td>`
-      ).join('');
-
       const durTotal = diffDays(c.d0, c.dRec);
+
+      const rDatas = XLS_KEYS.map(k =>
+        `<td class="mtz-cell mtz-date-cell">${fmtDateFull(getDate(c, k))}</td>`
+      ).join('');
 
       html += `
       <div class="ciclo-card">
@@ -1303,31 +1222,36 @@
           <span class="ciclo-hdr-range">${fmtDateFull(c.d0)} → ${fmtDateFull(c.dRec)}</span>
           <span class="ciclo-hdr-spacer"></span>
           <span class="ciclo-hdr-dur">${durTotal} dias</span>
-          ${Math.max(...expCred) > 0 ? `<span class="ciclo-hdr-exp">Exp. máx. R$ ${Math.round(Math.max(...expCred)).toLocaleString('pt-BR')}</span>` : ''}
+          ${cicloExp > 0 ? `<span class="ciclo-hdr-exp">Exp. máx. R$ ${Math.round(cicloExp).toLocaleString('pt-BR')}</span>` : ''}
         </div>
         <div class="ciclo-scroll">
           <table class="mtz-table">
             <thead>
               <tr>
                 <th class="mtz-row-lbl-hdr"></th>
+                <th class="mtz-col-stage-th" style="--sc:#94a3b8">CICLO</th>
                 ${thCols}
               </tr>
             </thead>
             <tbody>
-              <tr class="mtz-sec-hdr"><td colspan="9">Cronograma</td></tr>
-              <tr><td class="mtz-row-lbl">Dias Etapa</td>${rDiasEtapa}</tr>
-              <tr><td class="mtz-row-lbl">Dias Acum.</td>${rDiasAcum}</tr>
-              <tr class="mtz-dates-sep"><td class="mtz-row-lbl">Data</td>${rDatas}</tr>
-
-              <tr class="mtz-sec-hdr"><td colspan="9">Fluxo Financeiro</td></tr>
-              <tr><td class="mtz-row-lbl">Pagto. FOB</td>${rFOB}</tr>
-              <tr><td class="mtz-row-lbl">Desp + Imp</td>${rDI}</tr>
-              <tr><td class="mtz-row-lbl">Fat. Cliente</td>${rFat}</tr>
-              <tr><td class="mtz-row-lbl">Recebimento</td>${rRec}</tr>
-
-              <tr class="mtz-sec-hdr"><td colspan="9">Posição</td></tr>
-              <tr><td class="mtz-row-lbl">Flx. de Caixa</td>${rCF}</tr>
-              <tr class="mtz-exp-row"><td class="mtz-row-lbl">Exp. de Crédito</td>${rExp}</tr>
+              <tr><td class="mtz-row-lbl">PAGTO FOB</td>
+                <td class="mtz-cell mtz-neg-val">${cicloFob !== 0 ? fmtV(cicloFob) : '—'}</td>${rFOB}</tr>
+              <tr><td class="mtz-row-lbl">DESP / IMPOSTOS</td>
+                <td class="mtz-cell mtz-neg-val">${cicloDI !== 0 ? fmtV(cicloDI) : '—'}</td>${rDI}</tr>
+              <tr><td class="mtz-row-lbl">FATURAMENTO</td>
+                <td class="mtz-cell mtz-fat-val">${cicloFat !== 0 ? fmtV(cicloFat) : '—'}</td>${rFat}</tr>
+              <tr><td class="mtz-row-lbl">RECEB. VDM</td>
+                <td class="mtz-cell mtz-pos-val">${cicloRec !== 0 ? fmtV(cicloRec) : '—'}</td>${rRec}</tr>
+              <tr class="mtz-row-gray"><td class="mtz-row-lbl">FLUXO CAIXA FINAN.</td>
+                <td class="mtz-cell ${cicloCF < 0 ? 'mtz-neg-val' : cicloCF > 0 ? 'mtz-pos-val' : 'mtz-zero-val'} mtz-cf-val">${fmtCF(cicloCF)}</td>${rCF}</tr>
+              <tr class="mtz-exp-row"><td class="mtz-row-lbl">EXP. SEGURO CRÉD.</td>
+                <td class="mtz-cell mtz-exp-val">${cicloExp > 0 ? fmtV(cicloExp) : '—'}</td>${rExp}</tr>
+              <tr class="mtz-row-tempo"><td class="mtz-row-lbl">TEMP. A PARTIR DO PED.</td>
+                <td class="mtz-cell mtz-days">—</td>${rTempo}</tr>
+              <tr><td class="mtz-row-lbl">TEMPO ACUMULADO</td>
+                <td class="mtz-cell mtz-days">${accumDays[accumDays.length-1]}d</td>${rAcum}</tr>
+              <tr class="mtz-dates-sep"><td class="mtz-row-lbl">DATA</td>
+                <td class="mtz-cell mtz-date-cell">${fmtDateFull(c.d0)}</td>${rDatas}</tr>
             </tbody>
           </table>
         </div>
@@ -1335,11 +1259,10 @@
     });
 
     // Resumo consolidado
-    const totFOB     = P.fobBRL * cycles.length;
-    const totDI      = (P.despBRL + P.impBRL) * cycles.length;
-    const totFat     = fatTotal * cycles.length;
-    const net        = totalRevenue - totalCost;
-    const peakExpSum = P.fobBRL + P.despBRL + P.impBRL;
+    const totFOB = P.fobBRL * cycles.length;
+    const totDI  = (P.despBRL + P.impBRL) * cycles.length;
+    const totFat = fatTotalActual * cycles.length;
+    const net    = totalRevenue - totalCost;
 
     html += `
     <div class="ciclo-resumo">
@@ -1359,7 +1282,7 @@
         </div>
         <div class="ciclo-resumo-item">
           <div class="ciclo-resumo-lbl">Exp. Máx. por Ciclo</div>
-          <div class="ciclo-resumo-val mtz-exp-val">${fmtBRL(peakExpSum, true)}</div>
+          <div class="ciclo-resumo-val mtz-exp-val">${fmtBRL(cicloExp, true)}</div>
         </div>
         <div class="ciclo-resumo-item">
           <div class="ciclo-resumo-lbl">Custo Financeiro</div>

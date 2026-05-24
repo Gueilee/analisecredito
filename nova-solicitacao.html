@@ -3112,7 +3112,7 @@
     if (rL) {
       rL.innerHTML = '';
       if (recTotal > 0) {
-        const recTypeMap = {pedido:'pedido',pront:'pedido',bl:'bl',transit:'bl',desemb:'bl',pagexp:'pagexp',fat:'fat',recvdm:'recvdm'};
+        const recTypeMap = {pedido:'pedido',pront:'pront',bl:'bl',transit:'transit',desemb:'desemb',pagexp:'pagexp',fat:'fat',recvdm:'recvdm'};
         const hasStgRec = STAGES.some(s => recSt[s] > 0);
         if (hasStgRec) {
           STAGES.forEach(s => {
