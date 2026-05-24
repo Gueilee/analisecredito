@@ -1,0 +1,64 @@
+﻿# ── Secrets e configuração ───────────────────────────
+.env
+*.env
+!.env.example
+
+# ── Python ───────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# ── Logs ─────────────────────────────────────────────
+*.log
+api-*.log
+api/api-out.log
+api/api-err.log
+
+# ── Dados confidenciais de clientes ─────────────────
+api/historico/
+api/docs/
+api/backups/
+Arquivos/
+
+# ── Usuários do sistema (senhas hashed — não commitar)
+api/users.json
+
+# ── Arquivos temporários do Excel/Office ─────────────
+~$*
+*.tmp
+~$*.xlsx
+~$*.xls
+~$*.docx
+
+# ── Planilhas internas (dados sensíveis) ─────────────
+*.xlsx
+*.xls
+*.docx
+
+# ── IDE e ferramentas de desenvolvimento ─────────────
+.agents/
+skills-lock.json
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -- Dependencias Node
+node_modules/
+
+# -- Arquivos desnecessarios para o sistema
+modelo.zip
+Prospec*.png

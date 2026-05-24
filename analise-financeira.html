@@ -1,0 +1,2641 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Análise Financeira — Vendemmia</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="db.js"></script>
+  <script src="components.js"></script>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── Grid principal ──────────────────────────────────── */
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      gap: 1.2rem;
+      align-items: start;
+    }
+    .analysis-main  { display: flex; flex-direction: column; gap: 1.2rem; }
+    .analysis-right { display: flex; flex-direction: column; gap: 1.2rem; position: sticky; top: 1.2rem; }
+
+    /* ── Hero card ───────────────────────────────────────── */
+    .hero-card {
+      background: var(--purple-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 1.6rem 1.8rem;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 1.2rem;
+    }
+    .hero-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--brand-deep-purple), var(--brand-pink));
+    }
+    .hero-top { display: flex; align-items: flex-start; gap: 1.3rem; flex-wrap: wrap; }
+    .hero-avatar {
+      width: 58px; height: 58px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--brand-deep-purple), var(--brand-pink));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; font-weight: 800; color: #fff; flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(124,58,237,.3);
+    }
+    .hero-info { flex: 1; min-width: 0; }
+    .hero-name { font-size: 1.2rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
+    .hero-cnpj { font-size: .8rem; color: var(--text-muted); margin-top: .2rem; }
+    .hero-tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .65rem; }
+    .hero-tag {
+      background: rgba(255,255,255,.05); border: 1px solid var(--glass-border);
+      border-radius: 99px; padding: .2rem .65rem;
+      font-size: .72rem; color: var(--text-muted);
+    }
+    .breadcrumb { font-size: .74rem; color: var(--text-faint); margin-bottom: .18rem; }
+    .breadcrumb a { color: var(--purple-light); text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+
+    /* ── Bureau grid ─────────────────────────────────────── */
+    .bureau-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .bureau-item {
+      background: var(--input-bg); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm); padding: .85rem 1rem;
+      display: flex; align-items: center; gap: .7rem;
+    }
+    .bureau-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .bureau-icon svg { width: 17px; height: 17px; }
+    .bureau-icon.ok     { background: rgba(1,225,142,.1);   color: var(--brand-neon-green); }
+    .bureau-icon.error  { background: var(--red-bg);         color: var(--red); }
+    .bureau-icon.wait   { background: rgba(255,255,255,.05); color: var(--text-faint); }
+    .bureau-icon.soon   { background: rgba(124,58,237,.1);  color: var(--purple-light); }
+    .bureau-name        { font-size: .82rem; font-weight: 600; color: var(--text-primary); }
+    .bureau-sub         { font-size: .7rem;  color: var(--text-muted); margin-top: .08rem; }
+
+    /* ── Score gauge ─────────────────────────────────────── */
+    .score-section { display: flex; align-items: center; gap: 2rem; padding: 1rem 0; flex-wrap: wrap; }
+    .gauge-wrap    { display: flex; flex-direction: column; align-items: center; }
+    #score-arc     { transition: stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1); }
+
+    .score-meta    { flex: 1; min-width: 200px; }
+    .class-badge {
+      display: inline-flex; align-items: center;
+      padding: .25rem .8rem; border-radius: 99px;
+      font-size: .72rem; font-weight: 800; letter-spacing: .6px; margin-bottom: .55rem;
+    }
+    .class-badge.aaa { background: rgba(1,225,142,.14);  color: #01E18E;  border: 1px solid rgba(1,225,142,.35); }
+    .class-badge.aa  { background: rgba(1,200,130,.1);   color: #01c882;  border: 1px solid rgba(1,200,130,.3);  }
+    .class-badge.a   { background: rgba(59,130,246,.12); color: #60a5fa;  border: 1px solid rgba(59,130,246,.3); }
+    .class-badge.bb  { background: rgba(99,179,237,.1);  color: #90cdf4;  border: 1px solid rgba(99,179,237,.3); }
+    .class-badge.b   { background: rgba(245,158,11,.1);  color: #f59e0b;  border: 1px solid rgba(245,158,11,.3); }
+    .class-badge.cc  { background: rgba(249,115,22,.1);  color: #fb923c;  border: 1px solid rgba(249,115,22,.3); }
+    .class-badge.c   { background: rgba(249,115,22,.12); color: #f97316;  border: 1px solid rgba(249,115,22,.35);}
+    .class-badge.d   { background: var(--red-bg);         color: var(--red); border: 1px solid rgba(239,68,68,.35); }
+
+    .rec-pill {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .45rem 1rem; border-radius: var(--radius-sm);
+      font-size: .85rem; font-weight: 700; margin-bottom: .55rem;
+    }
+    .rec-pill svg   { width: 15px; height: 15px; }
+    .rec-pill.aprovar { background: rgba(1,225,142,.1); color: var(--brand-neon-green); border: 1px solid rgba(1,225,142,.3); }
+    .rec-pill.negar   { background: var(--red-bg);       color: var(--red);              border: 1px solid rgba(239,68,68,.3); }
+    .rec-pill.revisar { background: var(--yellow-bg);    color: var(--yellow);           border: 1px solid rgba(245,158,11,.3); }
+
+    .score-resumo { font-size: .82rem; color: var(--text-muted); line-height: 1.65; margin-top: .35rem; }
+
+    /* ── Points grid ─────────────────────────────────────── */
+    .points-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: .5rem; }
+    .points-col  { display: flex; flex-direction: column; gap: .45rem; }
+    .point-item  { display: flex; align-items: flex-start; gap: .55rem; font-size: .79rem; color: var(--text-secondary); line-height: 1.45; }
+    .point-dot   { width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: .06rem; }
+    .point-dot svg { width: 9px; height: 9px; }
+    .point-dot.pos { background: rgba(1,225,142,.12); color: var(--brand-neon-green); }
+    .point-dot.att { background: var(--yellow-bg);    color: var(--yellow); }
+    .point-dot.crit{ background: var(--red-bg);       color: var(--red); }
+
+    .alert-strip {
+      background: rgba(239,68,68,.07); border: 1px solid rgba(239,68,68,.25);
+      border-radius: var(--radius-sm); padding: .7rem .9rem;
+      display: flex; gap: .65rem; align-items: flex-start;
+      font-size: .79rem; color: #fca5a5; line-height: 1.5; margin-top: .75rem;
+    }
+    .alert-strip svg { width: 15px; height: 15px; color: var(--red); flex-shrink: 0; margin-top: .1rem; }
+
+    /* ── Detail sections ─────────────────────────────────── */
+    .detail-block + .detail-block { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,.05); padding-top: 1rem; }
+    .detail-title { font-size: .76rem; font-weight: 600; color: var(--text-secondary); margin-bottom: .4rem; }
+    .detail-text  { font-size: .81rem; color: var(--text-muted); line-height: 1.7; white-space: pre-wrap; }
+
+    /* ── Info grid ───────────────────────────────────────── */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .6rem; }
+    .info-item { background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: .65rem .8rem; }
+    .info-key  { font-size: .64rem; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .4px; margin-bottom: .18rem; }
+    .info-val  { font-size: .82rem; color: var(--text-primary); font-weight: 500; word-break: break-word; }
+    .info-val.money { color: var(--brand-neon-green); }
+    .info-val.empty { color: var(--text-faint); font-style: italic; }
+    .info-val.ok    { color: var(--brand-neon-green); }
+    .info-val.warn  { color: var(--yellow); }
+    .info-val.bad   { color: var(--red); }
+
+    /* ── QSA table ───────────────────────────────────────── */
+    .qsa-table { width: 100%; border-collapse: collapse; font-size: .78rem; margin-top: .5rem; }
+    .qsa-table th { color: var(--text-faint); font-size: .63rem; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; padding: .38rem .55rem; text-align: left; border-bottom: 1px solid var(--glass-border); }
+    .qsa-table td { padding: .5rem .55rem; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,.03); }
+    .qsa-table tr:last-child td { border-bottom: none; }
+
+    /* ── Trigger card ────────────────────────────────────── */
+    .trigger-wrap  { display: flex; flex-direction: column; align-items: center; gap: .8rem; padding: .3rem 0 .6rem; }
+    .trigger-icon  { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--brand-deep-purple), var(--brand-pink)); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(124,58,237,.35); }
+    .trigger-icon svg { width: 24px; height: 24px; color: #fff; }
+    .trigger-title { font-size: .92rem; font-weight: 700; color: var(--text-primary); text-align: center; }
+    .trigger-sub   { font-size: .76rem; color: var(--text-muted); text-align: center; line-height: 1.5; }
+
+    .btn-run {
+      display: flex; align-items: center; justify-content: center; gap: .55rem;
+      width: 100%; padding: .85rem;
+      background: linear-gradient(135deg, var(--brand-deep-purple), var(--brand-pink));
+      border: none; border-radius: var(--radius-sm);
+      color: #fff; font-family: inherit; font-size: .88rem; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 18px rgba(255,47,105,.3);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn-run:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,47,105,.45); }
+    .btn-run:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-run svg { width: 17px; height: 17px; }
+
+    /* ── Decision inputs ─────────────────────────────────── */
+    .form-input,
+    .form-select {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: .83rem;
+      padding: .6rem .85rem;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .form-input:focus,
+    .form-select:focus {
+      border-color: var(--purple-light);
+      box-shadow: 0 0 0 3px rgba(139,92,246,.15);
+    }
+    .form-input::placeholder { color: var(--text-faint); font-style: italic; }
+    textarea.form-input { resize: vertical; line-height: 1.6; }
+    .form-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpolyline points='6 9 12 15 18 9' stroke='rgba%28255%2C255%2C255%2C0.35%29' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .7rem center;
+      background-size: 16px;
+      padding-right: 2.2rem;
+      cursor: pointer;
+    }
+    .form-select option { background: #1a1040; color: var(--text-primary); }
+
+    /* ── Decision panel ──────────────────────────────────── */
+    .dec-label { font-size: .68rem; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .4px; margin-bottom: .22rem; }
+    .dec-row   { margin-bottom: .7rem; }
+    .dec-ai    { font-size: .8rem; color: var(--purple-light); font-style: italic; padding: .2rem 0; }
+    .dec-sep   { height: 1px; background: rgba(255,255,255,.06); margin: .9rem 0; }
+
+    .dec-btn {
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      width: 100%; padding: .78rem;
+      border-radius: var(--radius-sm); border: 1.5px solid transparent;
+      font-family: inherit; font-size: .85rem; font-weight: 700;
+      cursor: pointer; transition: all .18s; margin-top: .4rem;
+    }
+    .dec-btn svg { width: 15px; height: 15px; }
+    .dec-btn.aprovar { background: rgba(1,225,142,.12); color: var(--brand-neon-green); border-color: rgba(1,225,142,.3); }
+    .dec-btn.aprovar:hover { background: rgba(1,225,142,.2); }
+    .dec-btn.negar   { background: var(--red-bg);        color: var(--red);              border-color: rgba(239,68,68,.3); }
+    .dec-btn.negar:hover { background: rgba(239,68,68,.15); }
+    .dec-btn.revisar { background: var(--yellow-bg);     color: var(--yellow);           border-color: rgba(245,158,11,.3); }
+    .dec-btn.revisar:hover { background: rgba(245,158,11,.15); }
+    .dec-btn.comite  { background: linear-gradient(135deg, rgba(201,125,0,.2), rgba(245,158,11,.15)); color: #f59e0b; border-color: rgba(245,158,11,.4); }
+    .dec-btn.comite:hover { background: linear-gradient(135deg, rgba(201,125,0,.3), rgba(245,158,11,.25)); box-shadow: 0 4px 16px rgba(245,158,11,.2); }
+
+    /* ── Encomenda notice ────────────────────────────────── */
+    .encomenda-notice {
+      display: flex; align-items: flex-start; gap: .75rem;
+      background: rgba(245,158,11,.08);
+      border: 1px solid rgba(245,158,11,.22);
+      border-radius: var(--radius-sm);
+      padding: .8rem 1rem;
+      margin-bottom: .9rem;
+      font-size: .78rem;
+      color: #f59e0b;
+      line-height: 1.5;
+    }
+    .encomenda-notice svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: .05rem; }
+
+    /* ── Encomenda hero banner ───────────────────────────── */
+    .hero-encomenda {
+      margin-top: .9rem;
+      display: flex; align-items: center; gap: .65rem;
+      background: rgba(245,158,11,.08);
+      border: 1px solid rgba(245,158,11,.2);
+      border-radius: var(--radius-sm);
+      padding: .6rem .9rem;
+      font-size: .77rem; color: #f59e0b; font-weight: 600;
+    }
+    .hero-encomenda svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ── Spinner ─────────────────────────────────────────── */
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Section label ───────────────────────────────────── */
+    .sec-label { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-faint); margin-bottom: .7rem; }
+
+    /* ── API hint ────────────────────────────────────────── */
+    .api-note { display: none; }
+
+    /* ── Decision result ─────────────────────────────────── */
+    .decision-result { text-align: center; padding: .5rem 0; }
+    .decision-result .big-emoji { font-size: 2.2rem; margin-bottom: .4rem; }
+    .decision-result .dec-obs-box { background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: .7rem; font-size: .78rem; color: var(--text-muted); text-align: left; margin-top: .75rem; line-height: 1.5; }
+
+    /* ── Análise Financeira — Tabela ────────────────────── */
+    .fin-card-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: .9rem; flex-wrap: wrap; gap: .6rem;
+    }
+    .fin-card-hd .card-title { margin: 0; }
+    .fin-actions { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
+
+    .fin-year-bar {
+      display: flex; align-items: center; gap: .5rem;
+      margin-bottom: 1rem; padding-bottom: .7rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      flex-wrap: wrap;
+    }
+    .fin-year-lbl { font-size: .68rem; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+    .fin-year-inp {
+      width: 68px; background: var(--input-bg); border: 1px solid var(--glass-border);
+      border-radius: 6px; color: var(--text-primary); font-family: inherit;
+      font-size: .8rem; font-weight: 700; padding: .28rem .5rem; text-align: center; outline: none;
+      transition: border-color .14s;
+    }
+    .fin-year-inp:focus { border-color: var(--purple-light); }
+
+    .fin-thead {
+      display: grid; grid-template-columns: 1fr 118px 118px 76px;
+      gap: .35rem; padding: .25rem .35rem .55rem; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: .15rem;
+    }
+    .fin-th { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .55px; color: var(--text-faint); text-align: right; }
+    .fin-th:first-child { text-align: left; }
+
+    .fin-group-hd {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .38rem .5rem; background: rgba(124,58,237,.07);
+      border-left: 3px solid rgba(124,58,237,.5);
+      border-radius: 0 6px 6px 0; margin: .8rem 0 .35rem;
+    }
+    .fin-group-hd:first-of-type { margin-top: 0; }
+    .fin-group-hd svg { width: 12px; height: 12px; color: var(--purple-light); flex-shrink: 0; }
+    .fin-group-hd span { font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .65px; color: var(--purple-light); }
+
+    .fin-row {
+      display: grid; grid-template-columns: 1fr 118px 118px 76px;
+      gap: .35rem; align-items: center; padding: .18rem .35rem;
+      border-radius: 6px; transition: background .1s;
+    }
+    .fin-row:hover { background: rgba(255,255,255,.018); }
+    .fin-row.is-derived .fin-row-lbl { color: var(--text-muted); font-style: italic; font-size: .72rem; }
+    .fin-row.is-derived .fin-row-lbl::before { content:'↳ '; color: rgba(255,255,255,.18); }
+
+    .fin-row-lbl {
+      font-size: .76rem; color: var(--text-secondary);
+      display: flex; align-items: center; gap: .38rem; line-height: 1.25; padding-left: .15rem;
+    }
+    .src-bd {
+      font-size: .54rem; font-weight: 700; text-transform: uppercase; letter-spacing: .15px;
+      padding: .05rem .26rem; border-radius: 99px; flex-shrink: 0;
+    }
+    .src-bd.dre  { background: rgba(59,130,246,.12);  color: #60a5fa;  border: 1px solid rgba(59,130,246,.18); }
+    .src-bd.bp   { background: rgba(16,185,129,.1);   color: #34d399;  border: 1px solid rgba(16,185,129,.18); }
+    .src-bd.dfc  { background: rgba(245,158,11,.1);   color: #f59e0b;  border: 1px solid rgba(245,158,11,.18); }
+    .src-bd.calc { background: rgba(124,58,237,.1);   color: var(--purple-light); border: 1px solid rgba(124,58,237,.18); }
+
+    .fin-inp {
+      width: 100%; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.32);
+      border-radius: 6px; color: #ffffff;
+      font-family: 'SF Mono','Fira Code',monospace,var(--font-main);
+      font-size: .75rem; font-weight: 700; padding: .32rem .48rem;
+      text-align: right; outline: none; box-sizing: border-box; transition: border-color .14s, background .14s;
+      text-shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+    .fin-inp:focus { border-color: var(--purple-light); background: rgba(124,58,237,.25); box-shadow: 0 0 0 2px rgba(124,58,237,.22); }
+    .fin-inp::placeholder { color: rgba(255,255,255,.35); font-size: .65rem; font-family: inherit; }
+    .fin-inp.derived-inp { background: rgba(0,0,0,.45); border-color: rgba(124,58,237,.55); color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; cursor: default; }
+    .fin-inp.derived-inp:focus { background: rgba(0,0,0,.45); border-color: rgba(124,58,237,.8); box-shadow: 0 0 0 2px rgba(124,58,237,.15); }
+
+    .fin-var {
+      text-align: right; font-size: .69rem; font-weight: 700;
+      padding: .32rem .2rem; border-radius: 4px;
+    }
+    .fin-var.pos  { color: #34d399; }
+    .fin-var.neg  { color: #f87171; }
+    .fin-var.warn { color: #f59e0b; }
+    .fin-var.neu  { color: var(--text-faint); }
+
+    .fin-sep { height: 1px; background: rgba(255,255,255,.04); margin: .45rem 0; }
+
+    .btn-fin-extract {
+      display: inline-flex; align-items: center; gap: .38rem; padding: .4rem .85rem;
+      background: rgba(124,58,237,.13); border: 1px solid rgba(124,58,237,.35);
+      border-radius: var(--radius-sm); color: var(--purple-light);
+      font-family: inherit; font-size: .74rem; font-weight: 600; cursor: pointer; transition: all .14s;
+    }
+    .btn-fin-extract:hover:not(:disabled) { background: rgba(124,58,237,.22); border-color: rgba(124,58,237,.55); }
+    .btn-fin-extract:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-fin-extract svg { width: 12px; height: 12px; }
+
+    .btn-fin-save {
+      display: inline-flex; align-items: center; gap: .38rem; padding: .4rem .95rem;
+      background: linear-gradient(135deg, rgba(1,225,142,.13), rgba(1,185,115,.09));
+      border: 1px solid rgba(1,225,142,.3); border-radius: var(--radius-sm);
+      color: var(--brand-neon-green); font-family: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; transition: all .14s;
+    }
+    .btn-fin-save:hover { background: linear-gradient(135deg, rgba(1,225,142,.22), rgba(1,185,115,.16)); }
+    .btn-fin-save svg { width: 12px; height: 12px; }
+
+    .fin-saved-tag {
+      display: none; align-items: center; gap: .28rem;
+      font-size: .68rem; color: var(--brand-neon-green); font-weight: 600;
+    }
+    .fin-saved-tag svg { width: 11px; height: 11px; }
+
+    .fin-hint { font-size: .66rem; color: var(--text-faint); line-height: 1.6; margin-top: .65rem; padding-top: .55rem; border-top: 1px solid rgba(255,255,255,.04); }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 1100px) { .analysis-grid { grid-template-columns: 1fr; } .analysis-right { position: static; } }
+    @media (max-width: 700px)  { .points-grid  { grid-template-columns: 1fr; } .bureau-grid { grid-template-columns: 1fr; }
+      .fin-thead, .fin-row { grid-template-columns: 1fr 90px 90px 62px; }
+      .fin-year-inp { width: 58px; }
+    }
+
+    /* ── Serasa ──────────────────────────────────────────── */
+    .btn-serasa-upload { display:inline-flex; align-items:center; gap:.45rem; padding:.32rem .75rem; background:rgba(139,92,246,.18); border:1px solid rgba(139,92,246,.4); border-radius:6px; color:var(--purple-light); font-size:.75rem; font-weight:600; cursor:pointer; transition:all .2s; margin-top:.3rem; }
+    .btn-serasa-upload:hover { background:rgba(139,92,246,.32); border-color:rgba(139,92,246,.7); }
+    .btn-serasa-upload svg { width:12px; height:12px; flex-shrink:0; }
+    .serasa-card { margin-top:.9rem; padding:1.2rem 1.35rem; background:rgba(139,92,246,.07); border:1px solid rgba(139,92,246,.2); border-radius:var(--radius); display:none; }
+    .serasa-card.visible { display:block; }
+    .serasa-card-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .serasa-card-hd-left { display:flex; align-items:center; gap:.55rem; }
+    .serasa-card-hd-left svg { color:var(--purple-light); width:16px; height:16px; }
+    .serasa-card-title { font-size:.82rem; font-weight:700; color:var(--text-primary); letter-spacing:.03em; }
+    .serasa-card-date { font-size:.72rem; color:var(--text-faint); }
+    .btn-serasa-edit { background:none; border:1px solid rgba(255,255,255,.1); border-radius:5px; color:var(--text-faint); font-size:.7rem; padding:.22rem .55rem; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:.3rem; }
+    .btn-serasa-edit:hover { border-color:rgba(139,92,246,.5); color:var(--purple-light); }
+    .serasa-score-row { display:grid; grid-template-columns:140px 1fr; gap:1.2rem; align-items:start; margin-bottom:1.1rem; }
+    .serasa-score-circle { width:140px; aspect-ratio:1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .serasa-score-circle svg { position:absolute; top:0; left:0; width:100%; height:100%; }
+    .serasa-score-val { font-size:2rem; font-weight:800; color:var(--text-primary); line-height:1; z-index:1; }
+    .serasa-score-max { font-size:.72rem; color:var(--text-faint); z-index:1; }
+    .serasa-score-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; z-index:1; margin-top:.15rem; }
+    .serasa-score-label.baixo      { color:#4ade80; }
+    .serasa-score-label.medio      { color:#facc15; }
+    .serasa-score-label.alto       { color:#f97316; }
+    .serasa-score-label.muito_alto { color:#f87171; }
+    .serasa-kpis { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; }
+    .serasa-kpi { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.6rem .75rem; }
+    .serasa-kpi-label { font-size:.68rem; color:var(--text-faint); margin-bottom:.2rem; }
+    .serasa-kpi-val { font-size:.95rem; font-weight:700; color:var(--text-primary); }
+    .serasa-kpi-val.green  { color:#4ade80; }
+    .serasa-kpi-val.yellow { color:#facc15; }
+    .serasa-kpi-val.red    { color:#f87171; }
+    .serasa-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:.55rem; margin-bottom:1rem; }
+    .serasa-metric { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.6rem .75rem; }
+    .serasa-metric-label { font-size:.68rem; color:var(--text-faint); margin-bottom:.2rem; }
+    .serasa-metric-val { font-size:.88rem; font-weight:700; color:var(--text-primary); }
+    .serasa-section-title { font-size:.72rem; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:.55rem; }
+    .anot-grid { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1rem; }
+    .anot-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .6rem; border-radius:20px; font-size:.72rem; font-weight:600; }
+    .anot-chip.ok  { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.25); color:#4ade80; }
+    .anot-chip.bad { background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.25); color:#f87171; }
+    .anot-chip svg { width:10px; height:10px; }
+    .serasa-bottom-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .serasa-setorial { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.75rem 1rem; }
+    .serasa-setorial-title { font-size:.7rem; color:var(--text-faint); margin-bottom:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+    .serasa-setorial-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem; font-size:.78rem; }
+    .serasa-setorial-row:last-child { margin-bottom:0; }
+    .serasa-setorial-name { color:var(--text-secondary); }
+    .serasa-setorial-val { font-weight:700; color:var(--text-primary); }
+    .serasa-consultas { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.75rem 1rem; }
+    .serasa-consultas-title { font-size:.7rem; color:var(--text-faint); margin-bottom:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+    .serasa-consultas-grid { display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
+    .serasa-consultas-item { text-align:center; }
+    .serasa-consultas-num { font-size:1.4rem; font-weight:800; color:var(--text-primary); line-height:1; }
+    .serasa-consultas-lbl { font-size:.7rem; color:var(--text-faint); margin-top:.1rem; }
+    /* ── Modal Serasa ────────────────────────────────────── */
+    .serasa-overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:3000; display:none; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(4px); }
+    .serasa-overlay.open { display:flex; }
+    .serasa-modal { background:var(--purple-card); border:1px solid var(--glass-border); border-radius:var(--radius); width:100%; max-width:580px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column; }
+    .serasa-modal-hd { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 1.4rem; border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; }
+    .serasa-modal-hd h3 { font-size:.95rem; font-weight:700; display:flex; align-items:center; gap:.5rem; }
+    .serasa-modal-hd h3 svg { color:var(--purple-light); width:16px; height:16px; }
+    .btn-modal-close { background:none; border:none; color:var(--text-faint); font-size:1.3rem; cursor:pointer; line-height:1; padding:.2rem .4rem; border-radius:4px; transition:color .2s; }
+    .btn-modal-close:hover { color:var(--text-primary); }
+    .serasa-modal-body { overflow-y:auto; padding:1.2rem 1.4rem; flex:1; }
+    .serasa-modal-body::-webkit-scrollbar { width:5px; }
+    .serasa-modal-body::-webkit-scrollbar-track { background:transparent; }
+    .serasa-modal-body::-webkit-scrollbar-thumb { background:rgba(139,92,246,.3); border-radius:3px; }
+    .serasa-modal-ft { padding:1rem 1.4rem; border-top:1px solid rgba(255,255,255,.07); display:flex; justify-content:flex-end; gap:.7rem; flex-shrink:0; }
+    /* drop zone */
+    .serasa-drop-area { position:relative; border:2px dashed rgba(139,92,246,.35); border-radius:10px; padding:2.2rem 1.5rem; text-align:center; cursor:pointer; transition:all .2s; }
+    .serasa-drop-area:hover, .serasa-drop-area.drag-over { border-color:rgba(139,92,246,.7); background:rgba(139,92,246,.07); }
+    .serasa-drop-area input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .serasa-drop-icon { width:38px; height:38px; color:rgba(139,92,246,.55); margin:0 auto .75rem; }
+    .serasa-drop-title { font-size:.88rem; font-weight:600; color:var(--text-primary); margin-bottom:.3rem; }
+    .serasa-drop-sub { font-size:.75rem; color:var(--text-faint); }
+    .serasa-file-name { font-size:.76rem; color:var(--purple-light); font-weight:600; margin-top:.55rem; display:none; }
+    /* status bar */
+    .serasa-status { margin-top:.9rem; padding:.6rem .9rem; border-radius:8px; font-size:.79rem; display:none; align-items:center; gap:.5rem; line-height:1.4; }
+    .serasa-status.loading { display:flex; background:rgba(139,92,246,.12); border:1px solid rgba(139,92,246,.2); color:var(--purple-light); }
+    .serasa-status.ok      { display:flex; background:rgba(74,222,128,.08); border:1px solid rgba(74,222,128,.2); color:#4ade80; }
+    .serasa-status.err     { display:flex; background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.2); color:#f87171; }
+    .serasa-status svg { width:14px; height:14px; flex-shrink:0; }
+    /* preview */
+    .serasa-preview { margin-top:1rem; display:none; }
+    .serasa-preview.visible { display:block; }
+    .serasa-preview-title { font-size:.7rem; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:.55rem; }
+    .serasa-preview-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.45rem; }
+    .sp-item { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:7px; padding:.5rem .65rem; }
+    .sp-label { font-size:.66rem; color:var(--text-faint); margin-bottom:.12rem; }
+    .sp-val { font-size:.81rem; font-weight:700; color:var(--text-primary); }
+    .sp-val.green  { color:#4ade80; }
+    .sp-val.yellow { color:#facc15; }
+    .sp-val.red    { color:#f87171; }
+    .serasa-anot-preview { margin-top:.55rem; display:flex; flex-wrap:wrap; gap:.35rem; }
+    /* anotações card redesign */
+    .anot-summary { display:flex; align-items:center; gap:.55rem; padding:.6rem .9rem; border-radius:8px; margin-bottom:.65rem; font-size:.78rem; font-weight:600; line-height:1.4; }
+    .anot-summary.all-ok  { background:rgba(74,222,128,.09); border:1px solid rgba(74,222,128,.2); color:#4ade80; }
+    .anot-summary.has-bad { background:rgba(248,113,113,.09); border:1px solid rgba(248,113,113,.2); color:#f87171; }
+    .anot-summary svg { width:14px; height:14px; flex-shrink:0; }
+    .anot-bad-list { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.55rem; }
+    .anot-bad-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.28rem .7rem; border-radius:20px; font-size:.74rem; font-weight:700; background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.3); color:#f87171; }
+    .anot-bad-chip svg { width:9px; height:9px; }
+    .anot-ok-row { font-size:.7rem; color:var(--text-faint); display:flex; flex-wrap:wrap; gap:.3rem .55rem; align-items:center; }
+    .anot-ok-tag { color:rgba(74,222,128,.6); display:inline-flex; align-items:center; gap:.2rem; }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; max-width: 420px;
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius); padding: .85rem 1.2rem;
+      font-size: .83rem; color: var(--text-primary);
+      box-shadow: 0 8px 32px rgba(0,0,0,.45); z-index: 2000;
+      display: flex; align-items: flex-start; gap: .65rem; line-height: 1.45;
+      animation: none;
+      pointer-events: none;
+      opacity: 0; transform: translateY(100px);
+      transition: opacity .3s ease, transform .35s cubic-bezier(.22,.68,0,1.2);
+    }
+    .toast.show {
+      pointer-events: auto;
+      opacity: 1; transform: translateY(0);
+    }
+    .toast svg  { width: 16px; height: 16px; flex-shrink: 0; }
+    .toast.success { border-left: 3px solid var(--brand-neon-green); }
+    .toast.success svg { color: var(--brand-neon-green); }
+    .toast.error   { border-left: 3px solid var(--red); }
+    .toast.error svg   { color: var(--red); }
+    .toast.warning { border-left: 3px solid var(--yellow); }
+    .toast.warning svg { color: var(--yellow); }
+
+    /* ── Read-only mode (aprovado / negado) ─────────────── */
+    .page-readonly-banner {
+      display: flex; align-items: center; gap: .65rem;
+      background: rgba(1,225,142,.06); border: 1px solid rgba(1,225,142,.18);
+      border-radius: var(--radius-sm); padding: .55rem 1rem;
+      font-size: .77rem; color: var(--brand-neon-green); font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .page-readonly-banner.negado {
+      background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.2); color: var(--red);
+    }
+    .page-readonly-banner svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    body.view-only .fin-inp,
+    body.view-only .fin-year-inp {
+      pointer-events: none; opacity: .5; cursor: not-allowed;
+    }
+    body.view-only .btn-fin-extract,
+    body.view-only .btn-fin-save,
+    body.view-only .btn-serasa-upload,
+    body.view-only .btn-serasa-edit,
+    body.view-only #btn-run,
+    body.view-only #fin-file-input { display: none !important; }
+
+    body.view-only .config-toggle-btn { pointer-events: none; opacity: .4; }
+
+    /* ── Confirm dialog ──────────────────────────────────── */
+    .confirm-overlay {
+      position: fixed; inset: 0; z-index: 5000;
+      background: rgba(0,0,0,.65); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+      opacity: 0; pointer-events: none; transition: opacity .2s ease;
+    }
+    .confirm-overlay.open { opacity: 1; pointer-events: all; }
+    .confirm-box {
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius); width: 100%; max-width: 400px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.6);
+      transform: scale(.94) translateY(8px); transition: transform .22s cubic-bezier(.22,.68,0,1.2);
+    }
+    .confirm-overlay.open .confirm-box { transform: scale(1) translateY(0); }
+    .confirm-box-hd {
+      display: flex; align-items: center; gap: .75rem;
+      padding: 1.15rem 1.35rem .85rem;
+    }
+    .confirm-icon {
+      width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .confirm-icon.warn { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.25); color: #f59e0b; }
+    .confirm-icon.danger { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25); color: var(--red); }
+    .confirm-title { font-size: .93rem; font-weight: 800; color: var(--text-primary); line-height: 1.25; }
+    .confirm-sub   { font-size: .75rem; color: var(--text-muted); margin-top: .18rem; line-height: 1.5; }
+    .confirm-body  { padding: 0 1.35rem .9rem; font-size: .82rem; color: var(--text-muted); line-height: 1.6; }
+    .confirm-ft {
+      padding: .85rem 1.35rem 1.1rem;
+      border-top: 1px solid rgba(255,255,255,.06);
+      display: flex; justify-content: flex-end; gap: .55rem;
+    }
+    .confirm-btn-cancel {
+      padding: .58rem 1.1rem; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      color: var(--text-muted); font-family: inherit; font-size: .82rem; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .confirm-btn-cancel:hover { background: rgba(255,255,255,.09); color: var(--text-primary); }
+    .confirm-btn-ok {
+      padding: .58rem 1.25rem; border-radius: var(--radius-sm);
+      border: none; font-family: inherit; font-size: .82rem; font-weight: 700;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .confirm-btn-ok.warn  { background: linear-gradient(135deg,#c97d00,#f59e0b); color: #1a0f00; }
+    .confirm-btn-ok.danger { background: var(--red); color: #fff; }
+    .confirm-btn-ok:hover { opacity: .88; }
+  </style>
+</head>
+<body>
+<script>
+  const session = DB.auth.requireAuth();
+  // RBAC: perfis com permissão de registrar decisão de crédito
+  const _DECISION_ROLES = ['Financeiro', 'Administrador', 'Admin', 'Diretor'];
+  const canDecide = session && _DECISION_ROLES.some(r => (session.role || '').includes(r));
+</script>
+
+<div class="app-shell">
+  <aside class="sidebar"></aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-title">
+        <div class="breadcrumb">
+          <a href="solicitacoes.html">Solicitações</a> › Análise Financeira
+        </div>
+        <h1 id="page-title">Análise Financeira</h1>
+      </div>
+      <div class="topbar-actions">
+        <a href="solicitacoes.html" class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Voltar
+        </a>
+        <a href="#" id="btn-ver-sol" class="btn btn-ghost btn-sm">Ver Solicitação</a>
+        <a href="#" id="btn-exposicao" class="btn btn-secondary btn-sm" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Simular Exposição
+        </a>
+        <a href="#" id="btn-pdf" target="_blank" class="btn btn-sm" style="display:none;background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border:none;">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/></svg>
+          Relatório PDF
+        </a>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <!-- ── HERO ── -->
+      <div class="hero-card animate-in">
+        <div class="hero-top">
+          <div class="hero-avatar" id="hero-av">—</div>
+          <div class="hero-info">
+            <div class="hero-name" id="hero-name">—</div>
+            <div class="hero-cnpj" id="hero-cnpj"></div>
+            <div class="hero-tags" id="hero-tags"></div>
+          </div>
+          <div id="hero-badge"></div>
+        </div>
+      </div>
+
+      <div class="analysis-grid">
+
+        <!-- ══ ESQUERDA ════════════════════════════════════ -->
+        <div class="analysis-main">
+
+          <!-- Bureau -->
+          <div class="card animate-in delay-1">
+            <div class="card-title" style="margin-bottom:.9rem;">Consulta de Bureau</div>
+            <div class="bureau-grid">
+              <div class="bureau-item">
+                <div class="bureau-icon wait" id="rf-icon">
+                  <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </div>
+                <div>
+                  <div class="bureau-name">Receita Federal</div>
+                  <div class="bureau-sub" id="rf-status">Aguardando análise…</div>
+                </div>
+              </div>
+              <div class="bureau-item">
+                <div class="bureau-icon soon" id="serasa-icon">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </div>
+                <div>
+                  <div class="bureau-name">Serasa Experian</div>
+                  <div class="bureau-sub" id="serasa-bureau-sub" style="color:var(--text-faint);">Nenhuma consulta registrada</div>
+                  <button class="btn-serasa-upload" onclick="openSerasaModal()">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    Lançar Consulta
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Serasa Card ── -->
+          <div class="card animate-in delay-1 serasa-card" id="serasa-card">
+            <div class="serasa-card-hd">
+              <div class="serasa-card-hd-left">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7"/></svg>
+                <span class="serasa-card-title">Serasa Experian</span>
+                <span class="serasa-card-date" id="serasa-consulta-date"></span>
+              </div>
+              <button class="btn-serasa-edit" onclick="openSerasaModal()">
+                <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Editar
+              </button>
+            </div>
+            <div class="serasa-score-row">
+              <div class="serasa-score-circle" id="serasa-score-circle">
+                <span class="serasa-score-val" id="serasa-score-val">—</span>
+                <span class="serasa-score-max">/1000</span>
+                <span class="serasa-score-label" id="serasa-score-label">—</span>
+              </div>
+              <div class="serasa-kpis">
+                <div class="serasa-kpi">
+                  <div class="serasa-kpi-label">Prob. Inadimplência</div>
+                  <div class="serasa-kpi-val" id="sk-inadimp">—</div>
+                </div>
+                <div class="serasa-kpi">
+                  <div class="serasa-kpi-label">Honram Compromissos</div>
+                  <div class="serasa-kpi-val green" id="sk-honra">—</div>
+                </div>
+                <div class="serasa-kpi">
+                  <div class="serasa-kpi-label">Limite Crédito PJ</div>
+                  <div class="serasa-kpi-val" id="sk-limite-pj">—</div>
+                </div>
+                <div class="serasa-kpi">
+                  <div class="serasa-kpi-label">Limite Mensal</div>
+                  <div class="serasa-kpi-val" id="sk-limite-mensal">—</div>
+                </div>
+              </div>
+            </div>
+            <div class="serasa-metrics">
+              <div class="serasa-metric">
+                <div class="serasa-metric-label">Pontualidade</div>
+                <div class="serasa-metric-val" id="sk-pont">—</div>
+              </div>
+              <div class="serasa-metric">
+                <div class="serasa-metric-label">Fat. Estimado/ano</div>
+                <div class="serasa-metric-val" id="sk-fat">—</div>
+              </div>
+              <div class="serasa-metric">
+                <div class="serasa-metric-label">Score Fraude</div>
+                <div class="serasa-metric-val" id="sk-fraude">—</div>
+              </div>
+              <div class="serasa-metric">
+                <div class="serasa-metric-label">Recomendação</div>
+                <div class="serasa-metric-val" id="sk-rec">—</div>
+              </div>
+            </div>
+            <div class="serasa-section-title">Anotações Negativas</div>
+            <div class="anot-grid" id="serasa-anot-grid"></div>
+            <div class="serasa-bottom-row">
+              <div class="serasa-setorial">
+                <div class="serasa-setorial-title">Score Setorial</div>
+                <div class="serasa-setorial-row">
+                  <span class="serasa-setorial-name" id="sk-sp-nome">Estado</span>
+                  <span class="serasa-setorial-val" id="sk-sp-val">—</span>
+                </div>
+                <div class="serasa-setorial-row">
+                  <span class="serasa-setorial-name" id="sk-reg-nome">Região</span>
+                  <span class="serasa-setorial-val" id="sk-reg-val">—</span>
+                </div>
+                <div class="serasa-setorial-row">
+                  <span class="serasa-setorial-name">Brasil</span>
+                  <span class="serasa-setorial-val" id="sk-pais-val">—</span>
+                </div>
+              </div>
+              <div class="serasa-consultas">
+                <div class="serasa-consultas-title">Consultas ao CNPJ</div>
+                <div class="serasa-consultas-grid">
+                  <div class="serasa-consultas-item">
+                    <div class="serasa-consultas-num" id="sk-cons-mes">—</div>
+                    <div class="serasa-consultas-lbl">este mês</div>
+                  </div>
+                  <div class="serasa-consultas-item">
+                    <div class="serasa-consultas-num" id="sk-cons-ano">—</div>
+                    <div class="serasa-consultas-lbl">últ. 13 meses</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Análise Financeira — Indicadores ── -->
+          <div class="card animate-in delay-2" id="fin-card">
+            <div class="fin-card-hd">
+              <div style="display:flex;align-items:center;gap:.6rem;">
+                <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style="color:var(--purple-light);flex-shrink:0"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <span class="card-title">Análise Financeira — Indicadores</span>
+              </div>
+              <div class="fin-actions">
+                <button class="btn-fin-extract" id="btn-fin-extract" onclick="triggerFinExtract()">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Extrair via IA
+                </button>
+                <label id="btn-fin-upload-manual" class="btn-fin-extract" style="display:none;cursor:pointer;" title="Selecionar arquivos manualmente">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                  Selecionar Arquivos
+                  <input type="file" id="fin-file-input" accept=".pdf,.xlsx,.xls" multiple style="display:none" onchange="handleFinFiles(this.files)">
+                </label>
+                <button class="btn-fin-save" onclick="saveFinancials()">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="1.7"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="1.7"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="1.7"/></svg>
+                  Salvar
+                </button>
+                <span class="fin-saved-tag" id="fin-saved-tag">
+                  <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Salvo
+                </span>
+              </div>
+            </div>
+
+            <!-- Banner: documentos não encontrados no servidor -->
+            <div id="docs-missing-banner" style="display:none;margin:.6rem 0 .2rem;padding:.75rem 1rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.28);border-left:3px solid var(--yellow);border-radius:var(--radius-sm);display:none;align-items:flex-start;gap:.75rem;">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16" style="color:var(--yellow);flex-shrink:0;margin-top:.1rem"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <div>
+                <div style="font-size:.82rem;font-weight:700;color:var(--yellow);margin-bottom:.2rem;">Documentos não encontrados no servidor</div>
+                <div style="font-size:.79rem;color:var(--text-secondary);line-height:1.5;">Os arquivos de Balanço e DRE precisam ser selecionados para a extração via IA. Clique em <strong style="color:var(--text-primary);">Selecionar Arquivos</strong> ao lado para enviar os documentos.</div>
+              </div>
+            </div>
+
+            <div class="fin-year-bar">
+              <span class="fin-year-lbl">Exercícios:</span>
+              <input type="text" class="fin-year-inp" id="fin-y0" value="2023" maxlength="4" oninput="updateYearHeaders()">
+              <span style="color:var(--text-faint);font-size:.8rem;">→</span>
+              <input type="text" class="fin-year-inp" id="fin-y1" value="2024" maxlength="4" oninput="updateYearHeaders()">
+            </div>
+
+            <div class="fin-thead">
+              <div class="fin-th" style="text-align:left;">Indicador</div>
+              <div class="fin-th" id="fth-0">2023</div>
+              <div class="fin-th" id="fth-1">2024</div>
+              <div class="fin-th">Var.</div>
+            </div>
+
+            <div id="fin-body"></div>
+
+            <div class="fin-hint">
+              Campos em itálico são calculados automaticamente a partir dos dados inseridos — você pode substituí-los digitando diretamente.
+              Clique em <strong>Extrair via IA</strong> para enviar os PDFs/Excel dos balanços e ter os campos preenchidos automaticamente.
+            </div>
+          </div>
+
+          <!-- Pré-análise IA (oculto até análise rodar) -->
+          <div class="card animate-in delay-2" id="ai-card" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+              <div class="card-title">Pré-análise por IA</div>
+              <div style="font-size:.69rem;color:var(--text-faint);" id="ai-model-lbl"></div>
+            </div>
+
+            <!-- Gauge SVG -->
+            <div class="score-section">
+              <div class="gauge-wrap">
+                <svg viewBox="10 14 180 100" width="190" height="105">
+                  <defs>
+                    <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%"   stop-color="#ef4444"/>
+                      <stop offset="35%"  stop-color="#f59e0b"/>
+                      <stop offset="68%"  stop-color="#60a5fa"/>
+                      <stop offset="100%" stop-color="#01E18E"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- track -->
+                  <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="13" stroke-linecap="round"/>
+                  <!-- filled arc -->
+                  <path id="score-arc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGrad)" stroke-width="13" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="251"/>
+                  <!-- score number -->
+                  <text x="100" y="87" text-anchor="middle" font-size="29" font-weight="800" fill="white" id="score-num">—</text>
+                  <text x="100" y="104" text-anchor="middle" font-size="8.5" fill="rgba(255,255,255,.38)" font-weight="500">SCORE DE RISCO</text>
+                </svg>
+              </div>
+              <div class="score-meta">
+                <div id="cls-badge-wrap"></div>
+                <div id="rec-pill-wrap" style="margin-top:.5rem;"></div>
+                <div class="score-resumo" id="score-resumo"></div>
+              </div>
+            </div>
+
+            <!-- Pontos positivos / atenção -->
+            <div class="points-grid" id="points-grid"></div>
+
+            <!-- Alertas críticos -->
+            <div id="alertas-wrap"></div>
+          </div>
+
+          <!-- Análise detalhada -->
+          <div class="card animate-in" id="detail-card" style="display:none;">
+            <div class="card-title" style="margin-bottom:.9rem;">Análise Detalhada</div>
+            <div id="detail-content"></div>
+          </div>
+
+          <!-- Dados cadastrais (BrasilAPI) -->
+          <div class="card animate-in" id="rf-card" style="display:none;">
+            <div class="card-title" style="margin-bottom:.9rem;">Dados Cadastrais — Receita Federal</div>
+            <div id="rf-content"></div>
+          </div>
+
+          <!-- Dados da solicitação (ops) -->
+          <div class="card animate-in">
+            <div class="card-title" style="margin-bottom:.9rem;">Dados da Solicitação</div>
+            <div class="info-grid" id="sol-details"></div>
+          </div>
+
+        </div>
+
+        <!-- ══ DIREITA ══════════════════════════════════════ -->
+        <div class="analysis-right">
+
+          <!-- Trigger -->
+          <div class="card" id="trigger-card">
+            <div class="trigger-wrap">
+              <div class="trigger-icon">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="trigger-title">Análise de Crédito</div>
+              <div class="trigger-sub" id="trigger-sub">Consulta automática da Receita Federal e pré-análise gerada por IA para este CNPJ.</div>
+            </div>
+            <button class="btn-run" id="btn-run" onclick="runAnalysis()">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Iniciar Análise
+            </button>
+            <div class="api-note" id="api-note" style="display:none;"></div>
+          </div>
+
+          <!-- Limites da IA (aparece após análise) -->
+          <div class="card" id="limits-card" style="display:none;">
+            <div class="card-title" style="margin-bottom:.8rem;">Limites Recomendados pela IA</div>
+            <div id="limits-content"></div>
+          </div>
+
+          <!-- Banner para Operações: decisão fica com Financeiro -->
+          <div id="pending-decision-banner" style="display:none;background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.18);border-radius:10px;padding:.85rem 1.1rem;font-size:.82rem;color:rgba(255,200,80,.9);margin-bottom:1rem;">
+            <strong>Análise concluída.</strong> A decisão final será registrada pelo time de Financeiro.
+          </div>
+
+          <!-- Decisão do analista (aparece após análise) -->
+          <div class="card" id="decision-card" style="display:none;">
+            <div class="card-title" style="margin-bottom:.9rem;">Decisão do Analista</div>
+
+            <div class="dec-row">
+              <div class="dec-label">Limite a Aprovar (Exportador)</div>
+              <input type="text" class="form-input" id="dec-limite" placeholder="Ex: 250.000,00" oninput="maskDecLimite(this)" />
+            </div>
+            <div class="dec-row">
+              <div class="dec-label">Prazo aprovado</div>
+              <select class="form-select" id="dec-prazo">
+                <option value="30">30 dias</option>
+                <option value="45">45 dias</option>
+                <option value="60">60 dias</option>
+                <option value="90">90 dias</option>
+                <option value="120">120 dias</option>
+              </select>
+            </div>
+            <div class="dec-row">
+              <div class="dec-label">Parecer Técnico do Analista</div>
+              <textarea class="form-input" id="dec-parecer" rows="6" placeholder="Descreva os fundamentos técnicos da decisão, condições especiais, restrições ou recomendações para o Comitê de Crédito…" style="resize:vertical;"></textarea>
+            </div>
+            <div class="dec-row">
+              <div class="dec-label">Condições e Observações</div>
+              <textarea class="form-input" id="dec-obs" rows="2" placeholder="Notas adicionais e condições…" style="resize:vertical;"></textarea>
+            </div>
+
+            <div class="dec-sep"></div>
+
+            <!-- Aviso de Encomenda (mostrado apenas para tipoOp === 'encomenda') -->
+            <div class="encomenda-notice" id="encomenda-notice" style="display:none;">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Operação por <strong>Encomenda</strong> — a aprovação final deve ser deliberada pelo Comitê de Crédito (diretoria e sócios). Envie o processo ao Comitê após preencher seu parecer.</span>
+            </div>
+
+            <!-- Botão Comitê (apenas encomenda) -->
+            <button id="dec-btn-comite" class="dec-btn comite" onclick="decideComite()" style="display:none;">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Enviar para Comitê de Crédito
+            </button>
+
+            <!-- Botão Aprovar (oculto para encomenda) -->
+            <button id="dec-btn-aprovar" class="dec-btn aprovar" onclick="decide('aprovado')">
+              <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Aprovar Crédito
+            </button>
+            <button class="dec-btn negar" onclick="decide('negado')">
+              <svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+              Negar Crédito
+            </button>
+            <button class="dec-btn revisar" onclick="decideSolicitarInfo()">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              Devolver / Solicitar info
+            </button>
+          </div>
+
+          <!-- Resultado após decisão -->
+          <div class="card" id="result-card" style="display:none;"></div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span id="toast-msg"></span>
+</div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirm-overlay" onclick="if(event.target===this)_confirmClose()">
+  <div class="confirm-box">
+    <div class="confirm-box-hd">
+      <div class="confirm-icon" id="confirm-icon"></div>
+      <div>
+        <div class="confirm-title" id="confirm-title"></div>
+        <div class="confirm-sub"  id="confirm-sub"></div>
+      </div>
+    </div>
+    <div class="confirm-body" id="confirm-body"></div>
+    <div class="confirm-ft">
+      <button class="confirm-btn-cancel" onclick="_confirmClose()">Cancelar</button>
+      <button class="confirm-btn-ok" id="confirm-btn-ok" onclick="_confirmOk()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Configuração ────────────────────────────────────── */
+  const API_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+
+  /* ── Init ────────────────────────────────────────────── */
+  App.mount('solicitacoes');
+
+  const params = new URLSearchParams(location.search);
+  const solId  = params.get('id');
+  let sol = null;
+
+  // Declaradas aqui para evitar TDZ — initFin() é function declaration (hoisted)
+  let finData  = [initFin(), initFin()];
+  let finYears = ['2023', '2024'];
+
+  if (!solId) { location.href = 'solicitacoes.html'; }
+  else {
+    sol = DB.solicitacoes.getById(solId);
+    if (!sol) location.href = 'solicitacoes.html';
+    // boot() chamado no final do script após todas as const/let serem inicializadas
+  }
+
+  /* ── Boot ────────────────────────────────────────────── */
+  function boot() {
+    // Breadcrumb / title
+    document.getElementById('page-title').textContent  = 'Análise — ' + sol.empresa;
+    document.getElementById('btn-ver-sol').href        = 'consultar.html?id=' + sol.id;
+    document.getElementById('btn-exposicao').href = 'exposicao.html?id=' + sol.id;
+    document.getElementById('btn-pdf').href       = 'relatorio.html?id=' + sol.id;
+
+    // Hero
+    const av = sol.empresa.split(' ').filter(w => w.length > 2).slice(0,2).map(w => w[0].toUpperCase()).join('') || sol.empresa.slice(0,2).toUpperCase();
+    document.getElementById('hero-av').textContent   = av;
+    document.getElementById('hero-name').textContent = sol.empresa;
+    document.getElementById('hero-cnpj').textContent = 'CNPJ: ' + sol.cnpj;
+    document.getElementById('hero-badge').innerHTML  =
+      `<span class="badge ${DB.utils.statusBadge[sol.status] || 'pendente'}">${DB.utils.statusLabel[sol.status] || sol.status}</span>`;
+
+    const tags = [
+      sol.modal    && (DB.utils.modalLabel[sol.modal] || sol.modal),
+      sol.produto,
+      sol.segmento,
+    ].filter(Boolean);
+    document.getElementById('hero-tags').innerHTML = tags.map(t => `<span class="hero-tag">${t}</span>`).join('');
+
+    // Solicitação details
+    renderSolDetails();
+    loadFinancials();
+
+    // Se já tem análise salva, exibir
+    if (sol.analise) {
+      document.getElementById('btn-exposicao').style.display = '';
+      document.getElementById('btn-pdf').style.display = '';
+      const cachedAlerts = sol.analise?.analysis?.alertas_criticos || [];
+      const isFailed = cachedAlerts.some(a => a.includes('Erro ao processar'));
+      if (isFailed) {
+        // Análise anterior falhou — limpa o cache e pede nova análise
+        DB.solicitacoes.update(sol.id, { analise: null, analise_at: null });
+        sol = DB.solicitacoes.getById(sol.id);
+        document.getElementById('trigger-sub').textContent = 'Análise anterior falhou. Clique para tentar novamente.';
+      } else {
+        renderAnalysis(sol.analise);
+        document.getElementById('trigger-sub').textContent =
+          'Última análise: ' + (sol.analise_at ? new Date(sol.analise_at).toLocaleString('pt-BR') : '—');
+        const btnRun = document.getElementById('btn-run');
+        btnRun.disabled = true;
+        btnRun.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Análise Concluída`;
+      }
+    }
+
+    // Encomenda: adiciona banner no hero e configura botões específicos
+    if (sol.tipoOp === 'encomenda') {
+      document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
+        `<div class="hero-encomenda">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Operação por Encomenda — exige deliberação do Comitê de Crédito antes da aprovação final
+        </div>`
+      );
+      document.getElementById('encomenda-notice').style.display = '';
+      document.getElementById('dec-btn-comite').style.display   = '';
+      document.getElementById('dec-btn-aprovar').style.display  = 'none';
+    }
+
+    // Auto-transição: pendente → em_analise ao abrir a tela de análise
+    if (sol.status === 'pendente' || sol.status === 'rascunho') {
+      DB.solicitacoes.update(sol.id, { status: 'em_analise' });
+      sol = DB.solicitacoes.getById(sol.id);
+      document.getElementById('hero-badge').innerHTML =
+        `<span class="badge ${DB.utils.statusBadge['em_analise']}">${DB.utils.statusLabel['em_analise']}</span>`;
+    }
+
+    // Se já tem decisão
+    if (['aprovado','negado','em_comite'].includes(sol.status)) renderDecisionResult();
+
+    // Bloquear edição em processos finalizados
+    if (['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
+
+    // Serasa — chamado ao final do 2º bloco <script>, depois que renderSerasaCard é definido
+  }
+
+  /* ── Dados da solicitação ────────────────────────────── */
+  function renderSolDetails() {
+    const iv = (k, v, cls = '') => {
+      const d = v && v !== '0' ? v : '—';
+      return `<div class="info-item"><div class="info-key">${k}</div><div class="info-val ${d === '—' ? 'empty' : cls}">${d}</div></div>`;
+    };
+    const fm = v => v ? DB.utils.fmtMoney(v) : '—';
+
+    // Calcula exposição total
+    const expTotal = ['limiteExportador','limiteDesp','limiteImp']
+      .reduce((s, k) => s + (parseFloat((sol[k]||'0').replace(/\./g,'').replace(',','.')) || 0), 0);
+
+    document.getElementById('sol-details').innerHTML = [
+      iv('Produto', sol.produto),
+      iv('Modal', DB.utils.modalLabel[sol.modal] || sol.modal),
+      iv('Segmento', sol.segmento),
+      iv('Incoterms', sol.incoterms),
+      iv('Tipo Operação', DB.utils.tipoOpLabel[sol.tipoOp] || sol.tipoOp),
+      iv('Origens', sol.origens),
+      iv('Limite Exportador', fm(sol.limiteExportador), 'money'),
+      iv('Limite Despesas', fm(sol.limiteDesp), 'money'),
+      iv('Limite Impostos', fm(sol.limiteImp), 'money'),
+      iv('Exposição Total', expTotal > 0 ? DB.utils.fmtMoney(expTotal.toFixed(2).replace('.',',')) : '—', 'money'),
+      iv('Volume/mês', sol.volMes ? sol.volMes + ' ' + (sol.volMesMoeda||'') : '—'),
+      iv('Potencial', sol.volPotencial ? sol.volPotencial + ' ' + (sol.volPotencialMoeda||'') : '—'),
+      iv('Trânsito', sol.prazoTransit ? sol.prazoTransit + ' dias' : '—'),
+      iv('Rentabilidade', sol.rentabilidade ? sol.rentabilidade + '%' : '—'),
+      iv('Solicitante', sol.solicitanteNome),
+      iv('Data', DB.utils.fmtDate(sol.dataSolicitacao || sol.createdAt)),
+    ].join('');
+  }
+
+  /* ── Coerce helper: garante string mesmo para array/objeto/null ── */
+  const toStr = v => {
+    if (v === null || v === undefined) return '';
+    if (Array.isArray(v)) return v.join(', ');
+    if (typeof v === 'object') return '';
+    return String(v);
+  };
+
+  /* ── Executa análise ─────────────────────────────────── */
+  async function runAnalysis() {
+    const btn = document.getElementById('btn-run');
+    btn.disabled = true;
+
+    const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="17" height="17"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+    btn.innerHTML = spin + ' Consultando Receita Federal…';
+    document.getElementById('rf-status').textContent = 'Consultando…';
+    document.getElementById('rf-icon').className = 'bureau-icon wait';
+
+    const payload = {
+      cnpj: sol.cnpj || '',
+      empresa: sol.empresa || '',
+      ramo:                toStr(sol.ramo),
+      produto:             toStr(sol.produto),
+      modal:               toStr(sol.modal),
+      segmento:            toStr(sol.segmento),
+      origens:             toStr(sol.origens),
+      incoterms:           toStr(sol.incoterms),
+      tipoOp:              toStr(sol.tipoOp),
+      limiteExportador:    toStr(sol.limiteExportador),
+      limiteDesp:          toStr(sol.limiteDesp),
+      limiteImp:           toStr(sol.limiteImp),
+      volMes:              toStr(sol.volMes),
+      volMesMoeda:         toStr(sol.volMesMoeda)      || 'BRL',
+      vol6Meses:           toStr(sol.vol6Meses),
+      vol6MesesMoeda:      toStr(sol.vol6MesesMoeda)   || 'USD',
+      volPotencial:        toStr(sol.volPotencial),
+      volPotencialMoeda:   toStr(sol.volPotencialMoeda) || 'USD',
+      prazoInvoiceData:    toStr(sol.prazoInvoiceData),
+      prazoPrepEmbarque:   toStr(sol.prazoPrepEmbarque),
+      prazoEmbarque:       toStr(sol.prazoEmbarque),
+      prazoTransit:        toStr(sol.prazoTransit),
+      prazoDesembaraco:    toStr(sol.prazoDesembaraco),
+      prazoFaturamento:    toStr(sol.prazoFaturamento),
+      prazoPagtoVendemmia: toStr(sol.prazoPagtoVendemmia),
+      fundacao:            toStr(sol.fundacao),
+      importadorFatura:    toStr(sol.importadorFatura),
+      consignatario:       toStr(sol.consignatario),
+      pagtoClienteExp:     toStr(sol.pagtoClienteExp),
+      custoFin:            toStr(sol.custoFin),
+      custoFinDesc:        toStr(sol.custoFinDesc),
+      cessao:              toStr(sol.cessao),
+      cessaoResp:          toStr(sol.cessaoResp),
+      rentabilidade:       toStr(sol.rentabilidade),
+      rentabilidadeObs:    toStr(sol.rentabilidadeObs),
+      custoAdm:            toStr(sol.custoAdm),
+      custoAdmObs:         toStr(sol.custoAdmObs),
+      desconto:            toStr(sol.desconto),
+      comentario:          toStr(sol.comentario),
+    };
+
+    try {
+      btn.innerHTML = spin + ' Gerando Análise…';
+
+      const res = await fetch(`${API_URL}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const det = err.detail;
+        const msg = Array.isArray(det)
+          ? det.map(d => d.msg || d.message || JSON.stringify(d)).join('; ')
+          : (typeof det === 'string' ? det : `HTTP ${res.status}`);
+        throw new Error(msg);
+      }
+
+      const data = await res.json();
+      const analise_ia_at = new Date().toISOString();
+
+      // Salva no localStorage com timestamps precisos
+      // Safety net: garante em_analise se ainda estiver pendente
+      const statusUpdate = sol.status === 'pendente' ? { status: 'em_analise' } : {};
+      DB.solicitacoes.update(sol.id, {
+        ...statusUpdate,
+        analise:          data,
+        analise_at:       analise_ia_at,
+        analise_modelo:   data.modelo_ia || 'claude-sonnet-4-6',
+        rf_consultada_at: analise_ia_at,
+      });
+      sol = DB.solicitacoes.getById(sol.id);
+      if (statusUpdate.status) {
+        document.getElementById('hero-badge').innerHTML =
+          `<span class="badge ${DB.utils.statusBadge['em_analise']}">${DB.utils.statusLabel['em_analise']}</span>`;
+      }
+
+      renderAnalysis(data);
+      showToast('Análise concluída!', 'success');
+
+      // Salva no histórico backend com timestamps auditáveis
+      fetch(`${API_URL}/api/historico`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          solicitacao_id:       sol.id,
+          empresa:              sol.empresa || '',
+          cnpj:                 sol.cnpj || '',
+          status_solicitacao:   sol.status || '',
+          solicitante:          sol.solicitanteNome || '',
+          data_solicitacao:     sol.dataSolicitacao || sol.createdAt || '',
+          dados_solicitacao:    sol,
+          receita_federal:      data.cnpj_data || {},
+          analise_ia:           data.analysis || {},
+          modelo_ia:            data.modelo_ia || 'claude-sonnet-4-6',
+          // Timestamps de cada etapa
+          solicitacao_criada_at: sol.createdAt || sol.dataSolicitacao || '',
+          rf_consultada_at:      analise_ia_at,
+          analise_ia_at:         analise_ia_at,
+        }),
+      }).then(r => r.ok ? r.json() : null).then(h => {
+        if (h && h.id) {
+          DB.solicitacoes.update(sol.id, { hist_id: h.id });
+          sol = DB.solicitacoes.getById(sol.id);
+        }
+      }).catch(() => {});
+
+      btn.disabled = true;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Análise Concluída`;
+      document.getElementById('trigger-sub').textContent = 'Última análise: ' + new Date().toLocaleString('pt-BR');
+
+    } catch (e) {
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Iniciar Análise`;
+      document.getElementById('rf-icon').className = 'bureau-icon error';
+      document.getElementById('rf-status').textContent = 'Erro: ' + e.message;
+
+      const msg = e.message || '';
+      let toast;
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        toast = 'Servidor offline. Reinicie o FastAPI e tente novamente.';
+      } else if (msg.includes('401')) {
+        DB.auth.logout().then(() => { window.location.href = 'login.html'; });
+        return;
+      } else if (msg.includes('429') || msg.includes('rate_limit')) {
+        toast = 'Limite de requisições atingido. Aguarde um momento e tente novamente.';
+      } else {
+        toast = 'Erro: ' + msg;
+      }
+      showToast(toast, 'error');
+    }
+  }
+
+  /* ── Renderiza resultados ────────────────────────────── */
+  function renderAnalysis(data) {
+    const an  = data.analysis  || {};
+    const rf  = data.cnpj_data || {};
+    const rfd = rf.data        || {};
+
+    // Bureau
+    if (rf.status === 'ok') {
+      document.getElementById('rf-icon').className = 'bureau-icon ok';
+      document.getElementById('rf-status').textContent = 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK');
+    } else {
+      document.getElementById('rf-icon').className = 'bureau-icon error';
+      document.getElementById('rf-status').textContent = rf.error || 'Erro na consulta';
+    }
+
+    // Gauge
+    const score = Math.max(0, Math.min(100, an.score || 0));
+    requestAnimationFrame(() => {
+      const arc = document.getElementById('score-arc');
+      if (arc) arc.style.strokeDashoffset = (251 * (1 - score / 100)).toFixed(1);
+      const num = document.getElementById('score-num');
+      if (num) num.textContent = score;
+    });
+
+    // Classificação
+    const cls = (an.classificacao || 'D').toLowerCase().replace(/\+/g, 'p');
+    document.getElementById('cls-badge-wrap').innerHTML =
+      `<span class="class-badge ${cls}">${an.classificacao || '—'}</span>`;
+
+    // Recomendação
+    const rec = an.recomendacao || 'revisar';
+    const recMap = {
+      aprovar: { icon: '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>', label: 'Recomendação: APROVAR' },
+      negar:   { icon: '<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>', label: 'Recomendação: NEGAR' },
+      revisar: { icon: '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>', label: 'Recomendação: REVISAR' },
+    };
+    const rm = recMap[rec] || recMap.revisar;
+    document.getElementById('rec-pill-wrap').innerHTML =
+      `<span class="rec-pill ${rec}"><svg viewBox="0 0 24 24" fill="none">${rm.icon}</svg>${rm.label}</span>`;
+
+    document.getElementById('score-resumo').textContent = an.resumo_executivo || '';
+    document.getElementById('ai-model-lbl').textContent = 'Gerado por ' + (data.modelo_ia || 'Claude AI');
+
+    // Pontos
+    const pSVG  = `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const wSVG  = `<svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    const empty = `<div style="font-size:.75rem;color:var(--text-faint);font-style:italic;">Nenhum identificado</div>`;
+    const mkPoints = (arr, cls, icon) => arr.length
+      ? arr.map(p => `<div class="point-item"><div class="point-dot ${cls}">${icon}</div><span>${p}</span></div>`).join('')
+      : empty;
+
+    document.getElementById('points-grid').innerHTML = `
+      <div>
+        <div class="sec-label">Pontos Positivos</div>
+        <div class="points-col">${mkPoints(an.pontos_positivos || [], 'pos', pSVG)}</div>
+      </div>
+      <div>
+        <div class="sec-label">Pontos de Atenção</div>
+        <div class="points-col">${mkPoints(an.pontos_atencao || [], 'att', wSVG)}</div>
+      </div>`;
+
+    const alertas = an.alertas_criticos || [];
+    document.getElementById('alertas-wrap').innerHTML = alertas.length
+      ? alertas.map(a => `<div class="alert-strip"><svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>${a}</span></div>`).join('')
+      : '';
+
+    document.getElementById('ai-card').style.display = '';
+    document.getElementById('btn-exposicao').style.display = '';
+    document.getElementById('btn-pdf').style.display = '';
+
+    // Análise detalhada
+    const detailBlocks = [
+      { title: 'Análise Cadastral',                key: 'analise_cadastral' },
+      { title: 'Análise Societária',               key: 'analise_societaria' },
+      { title: 'Proporcionalidade do Crédito',     key: 'analise_proporcionalidade' },
+      { title: 'Riscos Operacionais',              key: 'analise_operacional' },
+      { title: 'Fundamentação',                    key: 'fundamentacao' },
+    ].filter(b => an[b.key]);
+
+    if (detailBlocks.length) {
+      document.getElementById('detail-content').innerHTML = detailBlocks
+        .map(b => `<div class="detail-block"><div class="detail-title">${b.title}</div><div class="detail-text">${an[b.key]}</div></div>`)
+        .join('');
+      document.getElementById('detail-card').style.display = '';
+    }
+
+    // Dados da Receita Federal
+    if (rf.status === 'ok' && rfd.razao_social) renderRF(rfd);
+
+    // Painel de limites recomendados
+    const lc = document.getElementById('limits-content');
+    lc.innerHTML = [
+      { k: 'Exportador (câmbio)', v: an.limite_recomendado_exportador },
+      { k: 'Despesas alfand.',    v: an.limite_recomendado_desp },
+      { k: 'Impostos',           v: an.limite_recomendado_imp },
+      { k: 'Exposição Total',    v: an.exposicao_total_recomendada },
+    ].map(r => `<div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.8rem;">
+      <span style="color:var(--text-muted);">${r.k}</span>
+      <strong style="color:${r.v && r.v !== 'Não recomendado' ? 'var(--brand-neon-green)' : 'var(--red)'};">${r.v || '—'}</strong>
+    </div>`).join('') + (an.prazo_recomendado ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:.6rem;">Prazo recomendado: <strong style="color:var(--text-primary);">${an.prazo_recomendado} dias</strong></div>` : '');
+    document.getElementById('limits-card').style.display = '';
+
+    // Preenche prazo recomendado no select
+    if (an.prazo_recomendado) {
+      const sel = document.getElementById('dec-prazo');
+      [...sel.options].forEach(o => { if (o.value == an.prazo_recomendado) o.selected = true; });
+    }
+
+    // Painel de decisão — apenas para perfis com permissão de decisão (RBAC)
+    if (canDecide) {
+      document.getElementById('decision-card').style.display = '';
+    } else {
+      document.getElementById('pending-decision-banner').style.display = '';
+    }
+  }
+
+  /* ── Dados da Receita Federal ────────────────────────── */
+  function renderRF(d) {
+    const iv = (k, v, cls = '') => {
+      const s = v !== null && v !== undefined && v !== '' ? String(v) : '—';
+      return `<div class="info-item"><div class="info-key">${k}</div><div class="info-val ${s === '—' ? 'empty' : cls}">${s}</div></div>`;
+    };
+    const sit = (d.descricao_situacao_cadastral || '—');
+    const sitCls = sit.toLowerCase().includes('ativa') ? 'ok' : sit.toLowerCase().includes('inapta') || sit.toLowerCase().includes('baixada') ? 'bad' : 'warn';
+
+    let anos = '—';
+    if (d.data_inicio_atividade) {
+      const dt = new Date(d.data_inicio_atividade);
+      anos = Math.floor((Date.now() - dt) / (365.25 * 864e5)) + ' anos';
+    }
+    const cap = d.capital_social ? 'R$ ' + d.capital_social.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '—';
+
+    let html = `<div class="info-grid">
+      ${iv('Razão Social', d.razao_social)}
+      ${iv('Nome Fantasia', d.nome_fantasia || '—')}
+      ${iv('Situação Cadastral', sit, sitCls)}
+      ${iv('Data de Abertura', d.data_inicio_atividade)}
+      ${iv('Tempo de Mercado', anos)}
+      ${iv('Capital Social', cap, 'money')}
+      ${iv('Natureza Jurídica', d.descricao_natureza_juridica)}
+      ${iv('Porte', d.descricao_porte)}
+      ${iv('CNAE', d.cnae_fiscal_descricao)}
+      ${iv('Simples Nacional', d.opcao_pelo_simples ? 'Sim' : 'Não')}
+      ${iv('MEI', d.opcao_pelo_mei ? 'Sim' : 'Não')}
+      ${iv('UF / Município', (d.uf || '') + ' / ' + (d.municipio || ''))}
+    </div>`;
+
+    if (d.qsa && d.qsa.length) {
+      html += `<div style="margin-top:1rem;">
+        <div class="sec-label" style="margin-bottom:.5rem;">Quadro Societário (QSA)</div>
+        <table class="qsa-table">
+          <thead><tr><th>Sócio</th><th>Part. %</th><th>Faixa Etária</th><th>Entrada</th></tr></thead>
+          <tbody>${d.qsa.map(s => `<tr>
+            <td>${s.nome_socio || '—'}</td>
+            <td>${s.percentual_capital_social != null ? s.percentual_capital_social + '%' : '—'}</td>
+            <td>${s.faixa_etaria || '—'}</td>
+            <td>${s.data_entrada_sociedade || '—'}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+    }
+
+    document.getElementById('rf-content').innerHTML = html;
+    document.getElementById('rf-card').style.display = '';
+  }
+
+  /* ── Decisão do analista ─────────────────────────────── */
+  function decide(newStatus) {
+    const limite  = document.getElementById('dec-limite').value.trim();
+    const prazo   = document.getElementById('dec-prazo').value;
+    const obs     = document.getElementById('dec-obs').value.trim();
+    const parecer = document.getElementById('dec-parecer').value.trim();
+    const histId  = sol.hist_id;
+
+    DB.solicitacoes.update(sol.id, {
+      status: newStatus,
+      limiteAprovado: limite || '',
+      prazoAprovado: prazo,
+      analistaObs: obs,
+      parecerTecnico: parecer || '',
+      decisao_at: new Date().toISOString(),
+      decisaoAnalista: session ? session.name : 'Analista',
+    });
+    sol = DB.solicitacoes.getById(sol.id);
+
+    // Atualiza badge hero
+    document.getElementById('hero-badge').innerHTML =
+      `<span class="badge ${DB.utils.statusBadge[sol.status] || 'pendente'}">${DB.utils.statusLabel[sol.status] || sol.status}</span>`;
+
+    // Sincroniza decisão completa com histórico backend
+    if (histId) {
+      fetch(`${API_URL}/api/historico/${histId}/decisao`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          status:          newStatus,
+          limiteAprovado:  limite || '',
+          limiteDesp:      sol.limiteDesp   || '',
+          limiteImp:       sol.limiteImp    || '',
+          prazoAprovado:   prazo,
+          analistaObs:     obs || '',
+          parecerTecnico:  parecer || '',
+          decisao_at:      new Date().toISOString(),
+          decisaoAnalista: session ? session.name : 'Analista',
+        }),
+      }).catch(() => {});
+    }
+
+    const label = newStatus === 'aprovado' ? 'Crédito aprovado!' : 'Crédito negado.';
+    sessionStorage.setItem('vd_saved', label);
+    location.href = 'index.html';
+  }
+
+  /* ── Enviar para Comitê ─────────────────────────────── */
+  function decideComite() {
+    const parecer = document.getElementById('dec-parecer').value.trim();
+    const limite  = document.getElementById('dec-limite').value.trim();
+    const prazo   = document.getElementById('dec-prazo').value;
+    const obs     = document.getElementById('dec-obs').value.trim();
+
+    DB.solicitacoes.update(sol.id, {
+      status:          'em_comite',
+      parecerTecnico:  parecer || '',
+      limiteAprovado:  limite  || '',
+      prazoAprovado:   prazo   || '',
+      analistaObs:     obs     || '',
+      decisaoAnalista: session ? session.name : 'Analista',
+      decisao_at:      new Date().toISOString(),
+    });
+    sol = DB.solicitacoes.getById(sol.id);
+
+    sessionStorage.setItem('vd_saved', 'Análise encaminhada ao Comitê de Crédito!');
+    location.href = 'index.html';
+  }
+
+  /* ── Devolver para operações / solicitar mais informações ── */
+  function decideSolicitarInfo() {
+    const obs     = document.getElementById('dec-obs').value.trim();
+    const parecer = document.getElementById('dec-parecer').value.trim();
+    const histId  = sol.hist_id;
+
+    DB.solicitacoes.update(sol.id, {
+      status:          'pendente',
+      analistaObs:     obs || '',
+      parecerTecnico:  parecer || '',
+      decisaoAnalista: session ? session.name : 'Analista',
+      decisao_at:      new Date().toISOString(),
+    });
+
+    if (histId) {
+      fetch(`${API_URL}/api/historico/${histId}/decisao`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          status:          'pendente',
+          analistaObs:     obs || '',
+          parecerTecnico:  parecer || '',
+          decisao_at:      new Date().toISOString(),
+          decisaoAnalista: session ? session.name : 'Analista',
+        }),
+      }).catch(() => {});
+    }
+
+    sessionStorage.setItem('vd_saved', `Solicitação "${sol.empresa}" devolvida ao time de operações para complemento de informações.`);
+    location.href = 'solicitacoes.html';
+  }
+
+  function renderDecisionResult() {
+    const card = document.getElementById('result-card');
+    const emoji = { aprovado: '✅', negado: '❌', em_analise: '🔄', em_comite: '⚖️' };
+
+    if (sol.status === 'em_comite') {
+      const _fmtBRL = v => DB.utils.fmtMoney(v);
+      const _dtComite = sol.decisao_at ? new Date(sol.decisao_at + (sol.decisao_at.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('pt-BR') : '';
+      card.innerHTML = `
+        <!-- Status -->
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;">
+          <div style="width:38px;height:38px;border-radius:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" width="17" height="17"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:.88rem;font-weight:800;color:#f59e0b;line-height:1.2;">Aguardando Deliberação do Comitê</div>
+            <div style="font-size:.71rem;color:var(--text-faint);">
+              ${sol.decisaoAnalista ? 'Enviado por ' + sol.decisaoAnalista : ''}
+              ${_dtComite ? ' · ' + _dtComite : ''}
+            </div>
+          </div>
+          <button onclick="devolverParaAnalise()" title="Devolver para análise"
+            style="flex-shrink:0;display:flex;align-items:center;gap:.35rem;padding:.38rem .65rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--text-muted);font-family:inherit;font-size:.7rem;font-weight:600;cursor:pointer;">
+            <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="3 3 3 8 8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Reabrir
+          </button>
+        </div>
+
+        <!-- Parecer do analista -->
+        ${(() => {
+          const _hasParecer = sol.parecerTecnico || sol.limiteAprovado || sol.prazoAprovado;
+          if (!_hasParecer) {
+            // Inline form to fill in missing analyst assessment
+            const _prazoOpts = [30,45,60,90,120,180,360].map(d =>
+              `<option value="${d}">${d} dias</option>`).join('');
+            return `
+            <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:var(--radius-sm);padding:.75rem .9rem;margin-bottom:.7rem;">
+              <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.65rem;">
+                <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="2"/><line x1="12" y1="8" x2="12" y2="12" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/></svg>
+                <span style="font-size:.72rem;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px;">Parecer do Analista Financeiro</span>
+              </div>
+              <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.6rem;">O parecer não foi salvo corretamente. Preencha os campos abaixo e salve.</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem;">
+                <div>
+                  <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Limite Sugerido</div>
+                  <div style="display:flex;align-items:center;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);overflow:hidden;">
+                    <span style="padding:.45rem .6rem;color:var(--text-faint);font-size:.78rem;border-right:1px solid var(--input-border);background:rgba(255,255,255,.03);">R$</span>
+                    <input id="ep-limite" type="text" placeholder="0,00" oninput="maskMoneyComite(this)"
+                      style="flex:1;background:none;border:none;outline:none;color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;" />
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Prazo Sugerido</div>
+                  <select id="ep-prazo" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;outline:none;">
+                    <option value="">Selecione</option>
+                    ${_prazoOpts}
+                  </select>
+                </div>
+              </div>
+              <textarea id="ep-parecer" rows="3" placeholder="Parecer técnico do analista…"
+                style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.55rem .75rem;outline:none;resize:vertical;line-height:1.5;box-sizing:border-box;margin-bottom:.4rem;"></textarea>
+              <textarea id="ep-obs" rows="2" placeholder="Condições e observações (opcional)…"
+                style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.55rem .75rem;outline:none;resize:vertical;line-height:1.5;box-sizing:border-box;margin-bottom:.55rem;"></textarea>
+              <button onclick="salvarParecerAnalista()"
+                style="width:100%;padding:.7rem;background:linear-gradient(135deg,#c97d00,#f59e0b);color:#1a0f00;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:.83rem;font-weight:700;cursor:pointer;">
+                Salvar Parecer
+              </button>
+            </div>`;
+          }
+          return `
+          <div style="font-size:.6rem;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.5rem;">Parecer do Analista Financeiro</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.65rem;">
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:.45rem .7rem;">
+              <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.1rem;">Limite Sugerido</div>
+              <div style="font-size:.86rem;font-weight:800;color:#f59e0b;">${_fmtBRL(sol.limiteAprovado)}</div>
+            </div>
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:.45rem .7rem;">
+              <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.1rem;">Prazo Sugerido</div>
+              <div style="font-size:.86rem;font-weight:800;color:var(--text-primary);">${sol.prazoAprovado ? sol.prazoAprovado + ' dias' : '—'}</div>
+            </div>
+          </div>
+          ${sol.parecerTecnico ? `
+            <div style="font-size:.79rem;color:var(--text-muted);line-height:1.65;font-style:italic;background:rgba(245,158,11,.04);border-left:2.5px solid rgba(245,158,11,.4);padding:.6rem .9rem;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-bottom:.5rem;">"${sol.parecerTecnico}"</div>` : ''}
+          ${sol.analistaObs ? `
+            <div style="font-size:.75rem;color:var(--text-muted);line-height:1.6;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius-sm);padding:.5rem .8rem;margin-bottom:.65rem;">
+              <strong style="color:var(--text-secondary);font-style:normal;">Condições e Observações:</strong> ${sol.analistaObs}
+            </div>` : ''}`;
+        })()}
+
+        <!-- Deliberação do Comitê -->
+        <div style="border-top:1px solid rgba(255,255,255,.07);padding-top:.9rem;margin-top:.2rem;">
+          <div style="font-size:.6rem;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.55rem;">Deliberação do Comitê</div>
+          <textarea id="comite-deliberacao" rows="3"
+            style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.83rem;padding:.6rem .85rem;outline:none;resize:vertical;line-height:1.55;box-sizing:border-box;margin-bottom:.55rem;"
+            placeholder="Registre a deliberação e justificativa da decisão do Comitê…"></textarea>
+          <div id="comite-limite-wrap" style="margin-bottom:.65rem;">
+            <div style="font-size:.6rem;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.35rem;">Limite Final Aprovado</div>
+            <div style="display:flex;align-items:center;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);overflow:hidden;">
+              <span style="padding:.6rem .75rem;color:var(--text-faint);font-size:.82rem;border-right:1px solid var(--input-border);background:rgba(255,255,255,.03);">R$</span>
+              <input id="comite-limite" type="text"
+                style="flex:1;background:none;border:none;outline:none;color:var(--text-primary);font-family:inherit;font-size:.85rem;padding:.6rem .8rem;"
+                placeholder="0,00" oninput="maskMoneyComite(this)"
+                value="${sol.limiteAprovado || ''}" />
+            </div>
+          </div>
+          <div style="display:flex;gap:.55rem;">
+            <button onclick="deliberarComite('negado')"
+              style="flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.76rem;border-radius:var(--radius-sm);background:var(--red-bg);color:var(--red);border:1.5px solid rgba(239,68,68,.3);font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;">
+              <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+              Negar Crédito
+            </button>
+            <button onclick="deliberarComite('aprovado')"
+              style="flex:1.6;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.76rem;border-radius:var(--radius-sm);background:linear-gradient(135deg,#c97d00,#f59e0b);color:#1a0f00;border:none;font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 18px rgba(245,158,11,.3);">
+              <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Aprovar Crédito
+            </button>
+          </div>
+        </div>`;
+    } else {
+      card.innerHTML = `<div class="decision-result">
+        <div class="big-emoji">${emoji[sol.status] || '—'}</div>
+        <span class="badge ${DB.utils.statusBadge[sol.status] || 'pendente'}" style="font-size:.82rem;padding:.3rem .9rem;">${DB.utils.statusLabel[sol.status] || sol.status}</span>
+        ${sol.limiteAprovado ? `<div style="margin-top:.7rem;font-size:.84rem;color:var(--text-muted);">Limite: <strong style="color:var(--brand-neon-green);">${DB.utils.fmtMoney(sol.limiteAprovado)}</strong></div>` : ''}
+        ${sol.prazoAprovado  ? `<div style="font-size:.78rem;color:var(--text-muted);">Prazo: ${sol.prazoAprovado} dias</div>` : ''}
+        ${sol.decisaoAnalista ? `<div style="font-size:.73rem;color:var(--text-faint);margin-top:.4rem;">por ${sol.decisaoAnalista}</div>` : ''}
+        ${sol.deliberacaoComite ? `<div style="font-size:.73rem;color:var(--text-faint);margin-top:.15rem;">Comitê: ${sol.decisaoComite || ''}</div>` : ''}
+        ${sol.parecerTecnico ? `<div class="dec-obs-box" style="margin-top:.8rem;font-style:italic;">"${sol.parecerTecnico}"</div>` : ''}
+        ${sol.analistaObs ? `<div class="dec-obs-box">${sol.analistaObs}</div>` : ''}
+      </div>
+      <div style="margin-top:1.1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.07);">
+        <a href="relatorio.html?id=${sol.id}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.82rem;background:linear-gradient(135deg,#5b21b6,#7c3aed);border:none;border-radius:var(--radius-sm);color:#fff;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;text-decoration:none;box-shadow:0 4px 18px rgba(124,58,237,.35);transition:transform .15s;">
+          <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Gerar Relatório PDF
+        </a>
+      </div>`;
+    }
+
+    card.style.display = '';
+    document.getElementById('trigger-card').style.display = 'none';
+    document.getElementById('decision-card').style.display = 'none';
+  }
+
+  /* ── Deliberação inline do Comitê (a partir da tela de análise) ── */
+  function deliberarComite(decision) {
+    const deliberacao = (document.getElementById('comite-deliberacao')?.value || '').trim();
+    if (!deliberacao) {
+      const el = document.getElementById('comite-deliberacao');
+      if (el) { el.style.borderColor = 'var(--red)'; el.focus(); setTimeout(() => el.style.borderColor = '', 2000); }
+      showToast('Preencha a deliberação do Comitê antes de confirmar.', 'error');
+      return;
+    }
+    const limite = document.getElementById('comite-limite')?.value.trim() || '';
+    DB.solicitacoes.update(sol.id, {
+      status:            decision,
+      deliberacaoComite: deliberacao,
+      decisaoComite:     session?.name || 'Comitê',
+      comite_at:         new Date().toISOString(),
+      ...(decision === 'aprovado' && limite ? { limiteAprovado: limite } : {}),
+    });
+    sol = DB.solicitacoes.getById(sol.id);
+    document.getElementById('hero-badge').innerHTML =
+      `<span class="badge ${DB.utils.statusBadge[sol.status]}">${DB.utils.statusLabel[sol.status]}</span>`;
+    document.getElementById('result-card').style.display = 'none';
+    renderDecisionResult();
+    App.refreshNav();
+    showToast(decision === 'aprovado' ? 'Crédito aprovado pelo Comitê!' : 'Crédito negado pelo Comitê.', decision === 'aprovado' ? 'success' : 'error');
+  }
+
+  function maskMoneyComite(el) {
+    let v = el.value.replace(/\D/g,'');
+    if (!v) { el.value = ''; return; }
+    el.value = (parseInt(v,10)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  function maskDecLimite(el) {
+    let v = el.value.replace(/\D/g,'');
+    if (!v) { el.value = ''; return; }
+    el.value = (parseInt(v,10)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  /* ── Devolver processo para Em Análise (reabrir) ── */
+  function devolverParaAnalise() {
+    showConfirm({
+      title:    'Reabrir para análise?',
+      sub:      sol.empresa || '',
+      body:     'O parecer técnico, limite e prazo sugeridos serão apagados. Você poderá refazer a análise e reenviar ao Comitê.',
+      variant:  'warn',
+      okLabel:  'Sim, reabrir',
+      onConfirm: _executarDevolverAnalise,
+    });
+  }
+  function _executarDevolverAnalise() {
+    DB.solicitacoes.update(sol.id, {
+      status:          'em_analise',
+      parecerTecnico:  '',
+      limiteAprovado:  '',
+      prazoAprovado:   '',
+      analistaObs:     '',
+      decisaoAnalista: '',
+      decisao_at:      '',
+    });
+    showToast('Processo reaberto para análise.', 'success');
+    setTimeout(() => location.reload(), 900);
+  }
+
+  /* ── Salvar/corrigir parecer do analista em registro em_comite ── */
+  function salvarParecerAnalista() {
+    const limite  = (document.getElementById('ep-limite')?.value || '').trim();
+    const prazo   = document.getElementById('ep-prazo')?.value || '';
+    const parecer = (document.getElementById('ep-parecer')?.value || '').trim();
+    const obs     = (document.getElementById('ep-obs')?.value || '').trim();
+
+    if (!parecer) {
+      const el = document.getElementById('ep-parecer');
+      if (el) { el.style.borderColor = 'var(--red)'; el.focus(); setTimeout(() => el.style.borderColor = '', 2000); }
+      showToast('Preencha o parecer técnico antes de salvar.', 'error');
+      return;
+    }
+
+    DB.solicitacoes.update(sol.id, {
+      limiteAprovado: limite,
+      prazoAprovado:  prazo,
+      parecerTecnico: parecer,
+      analistaObs:    obs,
+      decisaoAnalista: sol.decisaoAnalista || (session ? session.name : 'Analista'),
+    });
+    sol = DB.solicitacoes.getById(sol.id);
+    renderDecisionResult();
+    showToast('Parecer atualizado com sucesso!', 'success');
+  }
+
+  /* ══════════════════════════════════════════════════════
+     ANÁLISE FINANCEIRA — Indicadores
+     ══════════════════════════════════════════════════════ */
+
+  const FIN_GROUPS = [
+    {
+      id: 'resultado', label: 'RESULTADO',
+      ico: `<svg viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      rows: [
+        { key:'receitaBruta',   lbl:'Receita Bruta',    src:'dre', dir: 1 },
+        { key:'receitaLiquida', lbl:'Receita Líquida',  src:'dre', dir: 1 },
+        { key:'lucroBruto',     lbl:'Lucro Bruto',      src:'dre', dir: 1 },
+        { key:'margemBruta',    lbl:'Margem Bruta',     src:'calc',dir: 1, derived:true },
+        { key:'lucroLiquido',   lbl:'Lucro Líquido',    src:'dre', dir: 1 },
+        { key:'margemLiquida',  lbl:'Margem Líquida',   src:'calc',dir: 1, derived:true },
+        { key:'ebitda',         lbl:'EBITDA',           src:'dre', dir: 1 },
+        { key:'margemEbitda',   lbl:'Margem EBITDA',    src:'calc',dir: 1, derived:true },
+      ],
+    },
+    {
+      id: 'patrimoniais', label: 'PATRIMONIAIS',
+      ico: `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18M9 21V9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+      rows: [
+        { key:'ativoCirculante',   lbl:'Ativo Circulante',   src:'bp',  dir: 0 },
+        { key:'realizavelLP',      lbl:'Realizável a LP',    src:'bp',  dir: 0 },
+        { key:'ativoTotal',        lbl:'Ativo Total',        src:'bp',  dir: 1 },
+        { key:'passivoCirculante', lbl:'Passivo Circulante', src:'bp',  dir:-1 },
+        { key:'exigivelLP',        lbl:'Exigível a LP',      src:'bp',  dir:-1 },
+        { key:'passivoTotal',      lbl:'Passivo Total',      src:'bp',  dir:-1 },
+        { key:'patrimonioLiquido', lbl:'Patrimônio Líquido', src:'bp',  dir: 1 },
+        { key:'dividaFinanceira',  lbl:'Dívida Financeira',  src:'bp',  dir:-1 },
+        { sep:true },
+        { key:'roe',             lbl:'ROE — Ret. s/ Patrimônio', src:'calc',dir: 1, derived:true },
+        { key:'roa',             lbl:'ROA — Ret. s/ Ativos',     src:'calc',dir: 1, derived:true },
+        { key:'liquidezCorrente',lbl:'Liquidez Corrente',        src:'calc',dir: 1, derived:true },
+        { key:'liquidezGeral',   lbl:'Liquidez Geral',           src:'calc',dir: 1, derived:true },
+      ],
+    },
+    {
+      id: 'financeiros', label: 'FINANCEIROS',
+      ico: `<svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+      rows: [
+        { key:'endividamentoGeral',   lbl:'Endividamento Geral',     src:'calc',dir:-1, derived:true },
+        { key:'endividamentoOneroso', lbl:'Dívida Financ. / EBITDA', src:'calc',dir:-1, derived:true },
+        { key:'alavancagem',          lbl:'Alavancagem Financeira',  src:'calc',dir:-1, derived:true },
+        { sep:true },
+        { key:'fco', lbl:'FCO — Caixa Operacional',    src:'dfc', dir: 1 },
+        { key:'fce', lbl:'FCE — Caixa do Exercício',   src:'dfc', dir: 0 },
+        { key:'fci', lbl:'FCI — Caixa de Investimento',src:'dfc', dir: 0 },
+        { key:'fcf', lbl:'FCF — Caixa Livre',          src:'dfc', dir: 1 },
+      ],
+    },
+  ];
+
+  const KEY_TIP = {
+    receitaBruta:'money',receitaLiquida:'money',lucroBruto:'money',lucroLiquido:'money',ebitda:'money',
+    ativoCirculante:'money',realizavelLP:'money',ativoTotal:'money',passivoCirculante:'money',
+    exigivelLP:'money',passivoTotal:'money',patrimonioLiquido:'money',dividaFinanceira:'money',
+    fco:'money',fce:'money',fci:'money',fcf:'money',
+    margemBruta:'pct',margemLiquida:'pct',margemEbitda:'pct',roe:'pct',roa:'pct',endividamentoGeral:'pct',
+    liquidezCorrente:'x',liquidezGeral:'x',endividamentoOneroso:'x',alavancagem:'x',
+  };
+
+  function initFin() {
+    return { receitaBruta:'',receitaLiquida:'',lucroBruto:'',lucroLiquido:'',ebitda:'',
+      ativoCirculante:'',realizavelLP:'',ativoTotal:'',passivoCirculante:'',exigivelLP:'',
+      passivoTotal:'',patrimonioLiquido:'',dividaFinanceira:'',
+      fco:'',fce:'',fci:'',fcf:'',
+      margemBruta:'',margemLiquida:'',margemEbitda:'',roe:'',roa:'',
+      liquidezCorrente:'',liquidezGeral:'',endividamentoGeral:'',endividamentoOneroso:'',alavancagem:'' };
+  }
+  // finData e finYears já inicializados no topo do script
+
+  function parseFin(v) {
+    if (v === '' || v == null) return NaN;
+    if (typeof v === 'number') return v;
+    const n = parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'));
+    return isNaN(n) ? NaN : n;
+  }
+  function fmtMoney(n) {
+    if (isNaN(n)) return '—';
+    const s = n < 0 ? '-' : '', a = Math.abs(n);
+    if (a >= 1e9) return s+(a/1e9).toFixed(2).replace('.',',')+' B';
+    if (a >= 1e6) return s+(a/1e6).toFixed(2).replace('.',',')+' M';
+    if (a >= 1e3) return s+(a/1e3).toFixed(1).replace('.',',')+' K';
+    return s+a.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  }
+  function fmtPct(n) { return isNaN(n)?'—':n.toFixed(1).replace('.',',')+' %'; }
+  function fmtX(n)   { return isNaN(n)?'—':n.toFixed(2).replace('.',',')+' x'; }
+  function fmtByTip(n,tip) { return tip==='pct'?fmtPct(n):tip==='x'?fmtX(n):fmtMoney(n); }
+
+  function calcDerived(d) {
+    const n = k => parseFin(d[k]);
+    return {
+      margemBruta:         n('receitaLiquida')   ? n('lucroBruto')    /n('receitaLiquida')  *100 : NaN,
+      margemLiquida:       n('receitaLiquida')   ? n('lucroLiquido')  /n('receitaLiquida')  *100 : NaN,
+      margemEbitda:        n('receitaLiquida')   ? n('ebitda')        /n('receitaLiquida')  *100 : NaN,
+      roe:                 n('patrimonioLiquido') ? n('lucroLiquido') /n('patrimonioLiquido')*100 : NaN,
+      roa:                 n('ativoTotal')        ? n('lucroLiquido') /n('ativoTotal')       *100 : NaN,
+      liquidezCorrente:    n('passivoCirculante') ? n('ativoCirculante')/n('passivoCirculante')  : NaN,
+      liquidezGeral:       (n('passivoCirculante')+n('exigivelLP'))
+                           ? (n('ativoCirculante')+n('realizavelLP'))/(n('passivoCirculante')+n('exigivelLP')) : NaN,
+      endividamentoGeral:  n('ativoTotal')        ? n('passivoTotal') /n('ativoTotal')       *100 : NaN,
+      endividamentoOneroso:n('ebitda')            ? n('dividaFinanceira')/n('ebitda')             : NaN,
+      alavancagem:         n('patrimonioLiquido') ? n('ativoTotal')   /n('patrimonioLiquido')     : NaN,
+    };
+  }
+
+  function getEffVal(key, yi) {
+    const raw = finData[yi][key];
+    if (raw !== '' && raw != null) { const n = parseFin(raw); if (!isNaN(n)) return n; }
+    const c = calcDerived(finData[yi]);
+    return key in c ? c[key] : NaN;
+  }
+
+  function calcVar(key) {
+    const v0 = getEffVal(key,0), v1 = getEffVal(key,1);
+    const tip = KEY_TIP[key]||'money';
+    let dir = 0;
+    for (const g of FIN_GROUPS) for (const r of g.rows) if (!r.sep && r.key===key) { dir=r.dir??0; break; }
+    if (isNaN(v0)||isNaN(v1)) return {cls:'neu',txt:'—'};
+    let diff, txt;
+    if (tip==='money') {
+      if (v0===0) return {cls:'neu',txt:'—'};
+      diff=(v1-v0)/Math.abs(v0)*100; txt=(diff>=0?'+':'')+diff.toFixed(1).replace('.',',')+'%';
+    } else if (tip==='pct') {
+      diff=v1-v0; txt=(diff>=0?'+':'')+diff.toFixed(1).replace('.',',')+'pp';
+    } else {
+      diff=v1-v0; txt=(diff>=0?'+':'')+diff.toFixed(2).replace('.',',')+'x';
+    }
+    const cls = dir===0?'neu':(dir*diff>0?'pos':(Math.abs(diff)<0.001?'neu':'neg'));
+    return {cls,txt};
+  }
+
+  function renderFinTable() {
+    let html='';
+    FIN_GROUPS.forEach(g => {
+      html += `<div class="fin-group-hd">${g.ico}<span>${g.label}</span></div>`;
+      g.rows.forEach(row => {
+        if (row.sep) { html+=`<div class="fin-sep"></div>`; return; }
+        const tip=KEY_TIP[row.key]||'money';
+        const c0=calcDerived(finData[0]), c1=calcDerived(finData[1]);
+        const ph0=row.derived&&!isNaN(c0[row.key])?`≈ ${fmtByTip(c0[row.key],tip)}`:'';
+        const ph1=row.derived&&!isNaN(c1[row.key])?`≈ ${fmtByTip(c1[row.key],tip)}`:'';
+        const v=calcVar(row.key);
+        html += `
+          <div class="fin-row${row.derived?' is-derived':''}">
+            <div class="fin-row-lbl">${row.lbl}<span class="src-bd ${row.src}">${row.src.toUpperCase()}</span></div>
+            <input type="text" class="fin-inp${row.derived?' derived-inp':''}" id="fi-${row.key}-0"
+              value="${finData[0][row.key]}" placeholder="${ph0||'—'}"
+              oninput="onFinInput('${row.key}',0,this.value)">
+            <input type="text" class="fin-inp${row.derived?' derived-inp':''}" id="fi-${row.key}-1"
+              value="${finData[1][row.key]}" placeholder="${ph1||'—'}"
+              oninput="onFinInput('${row.key}',1,this.value)">
+            <div class="fin-var ${v.cls}" id="fvar-${row.key}">${v.txt}</div>
+          </div>`;
+      });
+    });
+    document.getElementById('fin-body').innerHTML = html;
+  }
+
+  function onFinInput(key, yi, val) {
+    finData[yi][key] = val;
+    recompute();
+  }
+
+  function recompute() {
+    for (let yi=0;yi<2;yi++) {
+      const c=calcDerived(finData[yi]);
+      Object.keys(c).forEach(k => {
+        const el=document.getElementById(`fi-${k}-${yi}`);
+        if (!el) return;
+        const fmt=fmtByTip(c[k],KEY_TIP[k]||'money');
+        el.placeholder=fmt&&fmt!=='—'?`≈ ${fmt}`:'—';
+      });
+    }
+    FIN_GROUPS.forEach(g=>g.rows.forEach(row=>{
+      if(row.sep) return;
+      const el=document.getElementById(`fvar-${row.key}`);
+      if(el){const v=calcVar(row.key);el.textContent=v.txt;el.className=`fin-var ${v.cls}`;}
+    }));
+  }
+
+  function updateYearHeaders() {
+    const y0=document.getElementById('fin-y0').value||'20XX';
+    const y1=document.getElementById('fin-y1').value||'20X1';
+    const h0=document.getElementById('fth-0'), h1=document.getElementById('fth-1');
+    if(h0)h0.textContent=y0; if(h1)h1.textContent=y1;
+    finYears=[y0,y1];
+  }
+
+  function saveFinancials() {
+    finYears=[
+      document.getElementById('fin-y0').value.trim()||'20XX',
+      document.getElementById('fin-y1').value.trim()||'20X1',
+    ];
+    DB.solicitacoes.update(sol.id, {
+      analiseFinanceira:{years:finYears,data:finData,salvo_at:new Date().toISOString()}
+    });
+    sol=DB.solicitacoes.getById(sol.id);
+    const tag=document.getElementById('fin-saved-tag');
+    tag.style.display='inline-flex';
+    setTimeout(()=>tag.style.display='none',2500);
+    showToast('Análise financeira salva!','success');
+  }
+
+  function loadFinancials() {
+    if(sol.analiseFinanceira){
+      finData  = sol.analiseFinanceira.data  || [initFin(),initFin()];
+      finYears = sol.analiseFinanceira.years || ['2023','2024'];
+      const y0el=document.getElementById('fin-y0'), y1el=document.getElementById('fin-y1');
+      if(y0el)y0el.value=finYears[0]; if(y1el)y1el.value=finYears[1];
+      updateYearHeaders();
+    }
+    renderFinTable();
+    recompute();
+  }
+
+  async function triggerFinExtract() {
+    if (sol && sol.id) {
+      // Try server-stored documents first (uploaded during form submission)
+      const btn = document.getElementById('btn-fin-extract');
+      const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="12" height="12"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+      btn.disabled = true; btn.innerHTML = spin + ' Extraindo…';
+      try {
+        const form = new FormData();
+        form.append('sol_id', sol.id);
+        form.append('empresa', sol.empresa || '');
+        form.append('cnpj', sol.cnpj || '');
+        const res = await fetch(`${API_URL}/api/extract-financials`, { method: 'POST', credentials: 'include', body: form });
+        if (res.status === 404) {
+          // Docs não estão no servidor — mostra banner e botão de upload manual
+          btn.disabled = false;
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair via IA`;
+          const banner = document.getElementById('docs-missing-banner');
+          const manualBtn = document.getElementById('btn-fin-upload-manual');
+          if (banner)    { banner.style.display = 'flex'; }
+          if (manualBtn) { manualBtn.style.display = 'inline-flex'; }
+          showToast('Selecione os arquivos de Balanço/DRE para continuar.', 'warning');
+          return;
+        }
+        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
+        const ex = await res.json();
+        await _applyExtraction(ex);
+      } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+      finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair via IA`;
+      }
+    } else {
+      document.getElementById('fin-file-input').click();
+    }
+  }
+
+  async function handleFinFiles(files) {
+    if (!files || files.length === 0) return;
+    const btn = document.getElementById('btn-fin-extract');
+    const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="12" height="12"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    btn.disabled = true; btn.innerHTML = spin + ' Extraindo…';
+    try {
+      const form = new FormData();
+      form.append('empresa', sol.empresa || ''); form.append('cnpj', sol.cnpj || '');
+      Array.from(files).forEach(f => form.append('files', f));
+      const res = await fetch(`${API_URL}/api/extract-financials`, { method: 'POST', credentials: 'include', body: form });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
+      const ex = await res.json();
+      await _applyExtraction(ex);
+      // Esconde banner e botão manual após extração bem-sucedida
+      const banner = document.getElementById('docs-missing-banner');
+      const manualBtn = document.getElementById('btn-fin-upload-manual');
+      if (banner)    banner.style.display = 'none';
+      if (manualBtn) manualBtn.style.display = 'none';
+      // Salva os arquivos no servidor para reutilização futura
+      if (sol?.id) {
+        try {
+          const upForm = new FormData();
+          Array.from(files).forEach(f => {
+            const name = (f.name || '').toLowerCase();
+            const tipo = name.includes('dre') || name.includes('dfc') || name.includes('resultado') ? 'dre' : 'balanco';
+            upForm.append(tipo, f);
+          });
+          await fetch(`${API_URL}/api/docs/${sol.id}/upload`, { method: 'POST', credentials: 'include', body: upForm });
+        } catch(_) { /* não bloqueia */ }
+      }
+    } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+    finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair via IA`;
+      document.getElementById('fin-file-input').value = '';
+    }
+  }
+
+  function _applyExtraction(ex) {
+    if (ex.anos && ex.anos.length >= 2) {
+      finYears = [String(ex.anos[0]), String(ex.anos[1])];
+      document.getElementById('fin-y0').value = finYears[0];
+      document.getElementById('fin-y1').value = finYears[1];
+      updateYearHeaders();
+    }
+    if (ex.dados && ex.dados.length >= 2) {
+      [0, 1].forEach(yi => {
+        const d = ex.dados[yi] || {};
+        Object.keys(d).forEach(k => {
+          if (k in finData[yi] && d[k] !== null && d[k] !== undefined) {
+            const v = d[k];
+            if (v === 0) {
+              finData[yi][k] = '';
+            } else if (typeof v === 'number' && KEY_TIP[k] === 'money') {
+              // Formata inteiros monetários com separador de milhar pt-BR: 120.973.500
+              finData[yi][k] = Math.round(v).toLocaleString('pt-BR');
+            } else {
+              finData[yi][k] = String(v);
+            }
+          }
+        });
+      });
+      renderFinTable(); recompute();
+      showToast('Dados extraídos! Revise e salve.', 'success');
+    } else {
+      showToast('Extração incompleta — preencha os campos faltantes.', 'error');
+    }
+  }
+
+  /* ── Toast ───────────────────────────────────────────── */
+  /* ── Modo somente leitura para processos finalizados ── */
+  function lockReadOnly(status) {
+    document.body.classList.add('view-only');
+
+    // Banner informativo no topo da coluna principal
+    const main = document.querySelector('.analysis-main');
+    if (main) {
+      const isAprovado = status === 'aprovado';
+      const banner = document.createElement('div');
+      banner.className = 'page-readonly-banner' + (isAprovado ? '' : ' negado');
+      banner.innerHTML = isAprovado
+        ? `<svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/><polyline points="9 12 11 14 15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Processo aprovado — visualização somente leitura`
+        : `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Processo negado — visualização somente leitura`;
+      main.insertBefore(banner, main.firstChild);
+    }
+
+    // Bloquear abertura do modal Serasa
+    window.openSerasaModal = () => {};
+
+    // Garantir que trigger-card e decision-card estão ocultos
+    const tc = document.getElementById('trigger-card');
+    const dc = document.getElementById('decision-card');
+    if (tc) tc.style.display = 'none';
+    if (dc) dc.style.display = 'none';
+  }
+
+  let _toastTimer;
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    clearTimeout(_toastTimer);
+    document.getElementById('toast-msg').textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    _toastTimer = setTimeout(() => t.classList.remove('show'), type === 'error' ? 7000 : 3500);
+  }
+
+  /* ── Confirm dialog ── */
+  let _confirmCallback = null;
+  function showConfirm({ title, sub = '', body = '', variant = 'warn', okLabel = 'Confirmar', iconSvg = '', onConfirm }) {
+    _confirmCallback = onConfirm;
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-sub').textContent   = sub;
+    document.getElementById('confirm-body').innerHTML    = body;
+    const icon = document.getElementById('confirm-icon');
+    icon.className = 'confirm-icon ' + variant;
+    icon.innerHTML = iconSvg || (variant === 'warn'
+      ? `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`);
+    const btn = document.getElementById('confirm-btn-ok');
+    btn.textContent = okLabel;
+    btn.className = 'confirm-btn-ok ' + variant;
+    document.getElementById('confirm-overlay').classList.add('open');
+  }
+  function _confirmClose() { document.getElementById('confirm-overlay').classList.remove('open'); _confirmCallback = null; }
+  function _confirmOk()    { const cb = _confirmCallback; _confirmClose(); if (cb) cb(); }
+
+  /* ── Inicialização — após todas as declarações ───────── */
+  if (sol) boot();
+</script>
+
+<!-- pdf.js para leitura de PDF no browser -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<!-- ── Modal Serasa ───────────────────────────────────── -->
+<div class="serasa-overlay" id="serasa-overlay" onclick="if(event.target===this)closeSerasaModal()">
+  <div class="serasa-modal">
+    <div class="serasa-modal-hd">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7"/></svg>
+        Importar Consulta Serasa Experian
+      </h3>
+      <button class="btn-modal-close" onclick="closeSerasaModal()">×</button>
+    </div>
+    <div class="serasa-modal-body">
+
+      <div class="serasa-drop-area" id="serasa-drop"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="event.preventDefault();this.classList.remove('drag-over');handleSerasaFile(event.dataTransfer.files[0])">
+        <input type="file" accept=".pdf" onchange="handleSerasaFile(this.files[0])">
+        <svg class="serasa-drop-icon" viewBox="0 0 24 24" fill="none">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/>
+          <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/>
+          <line x1="12" y1="18" x2="12" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <polyline points="9 15 12 12 15 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="serasa-drop-title">Arraste o PDF do Serasa aqui</div>
+        <div class="serasa-drop-sub">ou clique para selecionar — o sistema lê e extrai os dados automaticamente</div>
+        <div class="serasa-file-name" id="serasa-file-name"></div>
+      </div>
+
+      <div class="serasa-status" id="serasa-status"></div>
+
+      <div class="serasa-preview" id="serasa-preview">
+        <div class="serasa-preview-title">Dados extraídos — revise e salve</div>
+        <div class="serasa-preview-grid" id="serasa-preview-grid"></div>
+        <div style="margin-top:.7rem;">
+          <div class="serasa-preview-title" style="margin-bottom:.4rem;">Anotações Negativas</div>
+          <div class="serasa-anot-preview" id="serasa-anot-preview"></div>
+        </div>
+      </div>
+
+
+    </div>
+    <div class="serasa-modal-ft">
+      <button class="btn btn-secondary btn-sm" onclick="closeSerasaModal()">Cancelar</button>
+      <button class="btn btn-sm" id="btn-serasa-save"
+              style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border:none;display:none;"
+              onclick="saveSerasaFromParsed()">
+        <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
+        Salvar Consulta
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Serasa — Upload & Parse automático ────────────────── */
+(function () {
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+})();
+
+let _serasaParsed = null;
+
+function openSerasaModal() {
+  _serasaParsed = null;
+  document.getElementById('serasa-status').className = 'serasa-status';
+  document.getElementById('serasa-preview').classList.remove('visible');
+  document.getElementById('btn-serasa-save').style.display = 'none';
+  const fnEl = document.getElementById('serasa-file-name');
+  if (fnEl) { fnEl.textContent = ''; fnEl.style.display = 'none'; }
+  document.getElementById('serasa-overlay').classList.add('open');
+}
+
+function closeSerasaModal() {
+  document.getElementById('serasa-overlay').classList.remove('open');
+}
+
+/* ── Leitura e parsing do PDF ─────────────────────────── */
+async function handleSerasaFile(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    _serasaStatus('err', 'Selecione um arquivo PDF exportado do Serasa.');
+    return;
+  }
+  const fnEl = document.getElementById('serasa-file-name');
+  if (fnEl) { fnEl.textContent = '📄 ' + file.name; fnEl.style.display = 'block'; }
+  _serasaStatus('loading', 'Lendo e interpretando o PDF…');
+  document.getElementById('serasa-preview').classList.remove('visible');
+  document.getElementById('btn-serasa-save').style.display = 'none';
+  _serasaParsed = null;
+  try {
+    const text = await _extractPDFText(file);
+    const data = _parseSerasaText(text);
+    data.arquivoNome = file.name;
+    if (!data.consultadaEm) data.consultadaEm = new Date().toISOString().slice(0, 10);
+    _serasaParsed = data;
+    if (!data.score) throw new Error('Score não identificado. Verifique se o arquivo é um relatório Serasa Score Empresas.');
+    _serasaStatus('ok', 'PDF interpretado com sucesso — revise os dados abaixo e salve.');
+    _renderSerasaPreview(data);
+    document.getElementById('btn-serasa-save').style.display = '';
+  } catch (e) {
+    _serasaStatus('err', e.message || 'Erro ao processar o arquivo.');
+    console.error('[Serasa parse]', e);
+  }
+}
+
+function _serasaStatus(type, msg) {
+  const icons = {
+    loading: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+    ok:      `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    err:     `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`,
+  };
+  const el = document.getElementById('serasa-status');
+  el.className = 'serasa-status ' + type;
+  el.innerHTML = (icons[type] || '') + '<span>' + msg + '</span>';
+}
+
+async function _extractPDFText(file) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('Biblioteca pdf.js não carregada. Verifique a conexão.');
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let out = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page    = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    out += content.items.map(it => it.str).join(' ') + '\n';
+  }
+  return out;
+}
+
+function _parseSerasaText(raw) {
+  const t  = raw.replace(/\s{2,}/g, ' ').trim();
+  // Normalize: strip accents for robust section matching
+  const nt = t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  const grab = (...pats) => {
+    for (const p of pats) { const m = t.match(p); if (m && m[1] != null) return m[1].trim(); }
+    return null;
+  };
+  const toNum  = s => s != null ? parseFloat(s.replace(/\./g, '').replace(',', '.')) : null;
+  const toInt  = s => s != null ? parseInt(s.replace(/[.\s]/g, ''), 10) : null;
+  const toMoney = (s, suf) => {
+    if (s == null) return null;
+    let v = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+    if (!isFinite(v)) return null;
+    if (suf) { const sl = suf.toLowerCase(); if (/milh/.test(sl)) v *= 1e6; else if (/mil/.test(sl)) v *= 1e3; }
+    return v;
+  };
+  // Uses accent-stripped normalized text; "sem registros" etc. also stripped
+  const isClean = pat => {
+    const idx = nt.search(new RegExp(pat, 'i'));
+    if (idx < 0) return true;
+    return /sem\s+registros?|sem\s+ocorrencia|nenhum\s+registro/.test(nt.substring(idx, idx + 300));
+  };
+
+  /* ── Score principal: "620 Risco baixo" — NOT "634 de 1000" (fraude) */
+  const scoreM = t.match(/(\d{3})\s+[Rr]isco\s+(Muito\s+Alto|Alto|M[eé]dio|Baixo)\b/i);
+  const score  = scoreM ? toInt(scoreM[1]) : null;
+  let risco = 'baixo';
+  if (scoreM) {
+    const r = scoreM[2].toLowerCase();
+    if      (r.includes('muito')) risco = 'muito_alto';
+    else if (r.includes('alto'))  risco = 'alto';
+    else if (r.includes('dio') || r.includes('deo')) risco = 'medio';
+  }
+
+  /* ── Probabilidade de inadimplência: "1,48% Probabilidade de inadimplência" */
+  const inadStr = grab(
+    /(\d+[,.]?\d*)\s*%\s*[Pp]robabilidade\s+de\s+inadimpl/i,
+    /inadimpl[eê]ncia[^0-9]{0,30}(\d+[,.]?\d*)\s*%/i
+  );
+  const inadimplencia = toNum(inadStr);
+
+  /* ── Honram compromissos: "honrar os compromissos assumidos em 96,42%" */
+  const honraStr = grab(
+    /compromissos?\s+assumidos?\s+em\s+(\d+[,.]?\d*)\s*%/i,
+    /honr[ae][mr][^0-9]{0,40}(\d+[,.]?\d*)\s*%/i
+  );
+  const honraCompromisos = toNum(honraStr);
+
+  /* ── Pontualidade: "Pontualidade de Pagamento 100%" */
+  const pontStr = grab(/[Pp]ontualidade[^0-9]{0,40}(\d+[,.]?\d*)\s*%/i);
+  const pontualidade = toNum(pontStr);
+
+  /* ── Limite PJ: "Limite de Crédito PJ R$ 414 mil" */
+  const limPJM = t.match(/[Ll]imite[^0-9\n]{0,40}PJ[^0-9\n]{0,10}R\$\s*([\d.,]+)\s*(milh[oõ]es?|mil\b)?/i)
+               || t.match(/PJ[^0-9\n]{0,15}R\$\s*([\d.,]+)\s*(milh[oõ]es?|mil\b)?/i);
+  const limitePJ = limPJM ? toMoney(limPJM[1], limPJM[2]) : null;
+
+  /* ── Limite Mensal: "R$ 25.000,00 Limite mensal sugerido" */
+  const limMenM = t.match(/R\$\s*([\d.,]+)\s*[Ll]imite\s+mensal/i)
+                || t.match(/[Ll]imite\s+mensal[^0-9\n]{0,10}R\$\s*([\d.,]+)/i);
+  const limiteMensal = limMenM ? toMoney(limMenM[1], null) : null;
+
+  /* ── Faturamento: "R$ 5,76 milhões ao ano Faturamento Estimado" */
+  const fatM = t.match(/R\$\s*([\d.,]+)\s*(milh[oõ]es?|mil\b)\s+(?:ao\s+ano\s+)?[Ff]aturamento/i)
+             || t.match(/[Ff]aturamento[^0-9\n]{0,20}R\$\s*([\d.,]+)\s*(milh[oõ]es?|mil\b)?/i);
+  const faturamentoEstimado = fatM ? toMoney(fatM[1], fatM[2]) : null;
+
+  /* ── Score Fraude: "Score 634 de 1000 Baixo" */
+  const fraudeM = t.match(/[Ss]core\s+(\d{3})\s+de\s+1\.?000\b/i);
+  const scoreFraude = fraudeM ? toInt(fraudeM[1]) : null;
+
+  /* ── Recomendação de venda */
+  let recomendacaoVenda = 'prazo';
+  const recStr = grab(/[Rr]ecomenda[çc][aã]o[^a-zA-Z\n]{0,10}([^\n.]{5,60})/i);
+  if (recStr) {
+    const r = recStr.toLowerCase();
+    if      (r.includes('negar') || r.includes('não conceder')) recomendacaoVenda = 'negar';
+    else if (r.includes('garantia'))                            recomendacaoVenda = 'garantias';
+  }
+
+  /* ── Consultas: section-scoped, bidirectional ─────────────── */
+  const _cIdx = t.search(/[Cc]onsultas?\s+ao\s+CNPJ/i);
+  const _cBlk = _cIdx >= 0 ? t.substring(_cIdx, _cIdx + 400) : t;
+  const _mesM = _cBlk.match(/(\d+)\s+consultas?\s+(?:[Cc]onsultas?\s+)?neste\s+m[eê]s/i)
+              || _cBlk.match(/neste\s+m[eê]s[^0-9]{0,20}(\d+)/i);
+  const _anoM = _cBlk.match(/(\d+)\s+consultas?\s+(?:[Cc]onsultas?\s+)?(?:nos?\s+)?[úu]ltimos?\s+13\s+meses?/i)
+              || _cBlk.match(/[úu]ltimos?\s+13\s+meses?[^0-9]{0,20}(\d+)/i)
+              || _cBlk.match(/13\s+meses?[^0-9]{0,20}(\d+)/i);
+  const consultasMes = _mesM ? toInt(_mesM[1]) : null;
+  const consultasAno = _anoM ? toInt(_anoM[1]) : null;
+
+  /* ── Score Setorial: order-aware (works for both row and column PDF layouts) ── */
+  // In row layout: SP_name SP_score Sudeste_name Sudeste_score Brasil_name Brasil_score
+  // In col layout: SP_name Sudeste_name Brasil_name SP_score Sudeste_score Brasil_score
+  // In BOTH layouts the geo names and scores appear in the same relative order → map by position rank
+  const _setIdx  = t.search(/[Ss]core\s+[Ss]etorial/i);
+  const _setBlk  = _setIdx >= 0 ? t.substring(_setIdx, _setIdx + 800) : t;
+  const _spI     = _setBlk.search(/S[aã]o\s+Paulo/i);
+  const _regI    = _setBlk.search(/(Sudeste|Nordeste|Norte\b|Sul\b|Centro.?Oeste)/i);
+  const _brI     = _setBlk.search(/Brasil\b/i);
+  const _firstI  = Math.min(_spI >= 0 ? _spI : 9999, _regI >= 0 ? _regI : 9999, _brI >= 0 ? _brI : 9999);
+  const _sScores = [..._setBlk.matchAll(/\b(\d{3})\b/g)]
+    .filter(m => m.index >= _firstI)
+    .map(m => parseInt(m[1]))
+    .filter(n => n >= 200 && n <= 999);
+  const _geoOrder = [
+    { pos: _spI,  key: 'sp'  },
+    { pos: _regI, key: 'reg' },
+    { pos: _brI,  key: 'br'  },
+  ].filter(g => g.pos >= 0).sort((a, b) => a.pos - b.pos);
+  const _sMap = {};
+  _geoOrder.forEach((g, i) => { _sMap[g.key] = _sScores[i] ?? null; });
+  const spVal    = _sMap['sp']  ?? null;
+  const regNomeM = _setBlk.match(/(Sudeste|Nordeste|Norte\b|Sul\b|Centro.?Oeste)/i);
+  const regNome  = regNomeM ? regNomeM[1] : null;
+  const regVal   = _sMap['reg'] ?? null;
+  const paisVal  = _sMap['br']  ?? null;
+
+  /* ── Data da consulta */
+  let consultadaEm = null;
+  const dtM = t.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+  if (dtM) consultadaEm = `${dtM[3]}-${dtM[2]}-${dtM[1]}`;
+
+  /* ── Administradores */
+  const admStr = grab(/(\d+)\s+[Aa]dministrador[ae]?s?\b/i);
+  const numAdministradores = toInt(admStr);
+
+  return {
+    consultadaEm, score, risco, inadimplencia, honraCompromisos,
+    pontualidade, scoreFraude, limitePJ, limiteMensal, faturamentoEstimado,
+    recomendacaoVenda, numAdministradores, consultasMes, consultasAno,
+    scoreEstadoNome: 'São Paulo', scoreEstado: spVal,
+    scoreRegiaoNome: regNome || 'Sudeste', scoreRegiao: regVal,
+    scorePais: paisVal,
+    // Use "dividas vencidas" (section title) to avoid false positive from "Total de dívidas: R$ 0,00"
+    pefin:           !isClean('pefin'),
+    refin:           !isClean('refin'),
+    dividasVencidas: !isClean('dividas\\s+vencidas'),
+    falencia:        !isClean('falencia|recuperacao\\s+judicial'),
+    acoesJudiciais:  !isClean('acoes?\\s+judiciais?'),
+    protestos:       !isClean('protesto'),
+    cheque:          !isClean('cheque'),
+    sociosAnotacoes: !isClean('quadro\\s+societario'),
+    adminAnotacoes:  !isClean('administradores?\\s+com\\s+anota'),
+    arquivoNome: '',
+  };
+}
+
+function _renderSerasaPreview(d) {
+  const fmtPct = v => v != null ? v.toFixed(2) + '%' : '—';
+  const fmtBRL = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR') : '—';
+  const riskLabel = { baixo:'Baixo', medio:'Médio', alto:'Alto', muito_alto:'Muito Alto' };
+  const riskCls   = { baixo:'green', medio:'yellow', alto:'red', muito_alto:'red' };
+  const items = [
+    { label:'Score',               val: d.score ? `${d.score} — ${riskLabel[d.risco]||''}` : '—',  cls: riskCls[d.risco]||'' },
+    { label:'Prob. Inadimplência', val: fmtPct(d.inadimplencia),       cls: (d.inadimplencia??99) < 3 ? 'green':'yellow' },
+    { label:'Honram Compromissos', val: fmtPct(d.honraCompromisos),    cls: 'green' },
+    { label:'Limite PJ',           val: fmtBRL(d.limitePJ),            cls: '' },
+    { label:'Limite Mensal',       val: fmtBRL(d.limiteMensal),        cls: '' },
+    { label:'Fat. Estimado/ano',   val: fmtBRL(d.faturamentoEstimado), cls: '' },
+    { label:'Pontualidade',        val: fmtPct(d.pontualidade),        cls: 'green' },
+    { label:'Score Fraude',        val: d.scoreFraude ? `${d.scoreFraude}/1000` : '—', cls: '' },
+    { label:'Data da Consulta',    val: d.consultadaEm ? new Date(d.consultadaEm + 'T12:00:00').toLocaleDateString('pt-BR') : '—', cls: '' },
+  ];
+  document.getElementById('serasa-preview-grid').innerHTML = items.map(i =>
+    `<div class="sp-item"><div class="sp-label">${i.label}</div><div class="sp-val ${i.cls}">${i.val}</div></div>`
+  ).join('');
+
+  const anotDefsPrev = [
+    { key:'pefin', label:'PEFIN' }, { key:'refin', label:'REFIN' },
+    { key:'dividasVencidas', label:'Dívidas Vencidas' }, { key:'falencia', label:'Falência' },
+    { key:'acoesJudiciais',  label:'Ações Jud.' }, { key:'protestos', label:'Protestos' },
+    { key:'cheque', label:'Cheque' }, { key:'sociosAnotacoes', label:'Sócios' },
+    { key:'adminAnotacoes', label:'Adm.' },
+  ];
+  const _xSvgP  = `<svg viewBox="0 0 24 24" fill="none" width="9" height="9"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+  const _okSvgP = `<svg viewBox="0 0 24 24" fill="none" width="9" height="9"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const badPrev = anotDefsPrev.filter(a => !!d[a.key]);
+  const okPrev  = anotDefsPrev.filter(a => !d[a.key]);
+  let anotPrevHtml = '';
+  if (badPrev.length === 0) {
+    anotPrevHtml = `<span style="color:#4ade80;font-size:.72rem;display:inline-flex;align-items:center;gap:.3rem;">${_okSvgP} Sem anotações negativas (${anotDefsPrev.length} tipos limpos)</span>`;
+  } else {
+    anotPrevHtml  = badPrev.map(a => `<span class="anot-chip bad">${_xSvgP} ${a.label}</span>`).join('');
+    anotPrevHtml += `<span style="color:var(--text-faint);font-size:.68rem;margin-left:.4rem;">${okPrev.length} limpos</span>`;
+  }
+  document.getElementById('serasa-anot-preview').innerHTML = anotPrevHtml;
+
+  document.getElementById('serasa-preview').classList.add('visible');
+}
+
+function saveSerasaFromParsed() {
+  if (!_serasaParsed) return;
+  sol.serasa = _serasaParsed;
+  DB.solicitacoes.update(sol.id, { serasa: sol.serasa });
+  closeSerasaModal();
+  renderSerasaCard();
+  _updateSerasaBureau();
+  showToast('Consulta Serasa registrada com sucesso!', 'success');
+}
+
+function _updateSerasaBureau() {
+  if (!sol.serasa) return;
+  const el   = document.getElementById('serasa-bureau-sub');
+  const icon = document.getElementById('serasa-icon');
+  const risco = sol.serasa.risco || 'baixo';
+  const label = { baixo:'Risco Baixo', medio:'Risco Médio', alto:'Risco Alto', muito_alto:'Risco Muito Alto' }[risco] || '';
+  const color = { baixo:'#4ade80', medio:'#facc15', alto:'#f97316', muito_alto:'#f87171' }[risco];
+  el.textContent = 'Score ' + sol.serasa.score + ' · ' + label;
+  el.style.color = color;
+  if (icon) icon.className = 'bureau-icon ok';
+  const btnUpload = document.querySelector('.btn-serasa-upload');
+  if (btnUpload) btnUpload.style.display = 'none';
+}
+
+function renderSerasaCard() {
+  if (!sol || !sol.serasa) return;
+  const s    = sol.serasa;
+  const card = document.getElementById('serasa-card');
+  card.classList.add('visible');
+
+  const dt = s.consultadaEm ? new Date(s.consultadaEm + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+  document.getElementById('serasa-consulta-date').textContent = dt ? '— ' + dt : '';
+
+  // Score gauge
+  const pct = Math.min((s.score || 0) / 1000, 1);
+  const riskColor = { baixo:'#4ade80', medio:'#facc15', alto:'#f97316', muito_alto:'#f87171' }[s.risco] || '#4ade80';
+  const R = 58, CX = 70, CY = 70;
+  function polarXY(deg, r) {
+    const rad = (deg - 90) * Math.PI / 180;
+    return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)];
+  }
+  function arc(a1, a2, r) {
+    const [sx, sy] = polarXY(a1, r);
+    const [ex, ey] = polarXY(a2, r);
+    const large = ((a2 - a1 + 360) % 360) > 180 ? 1 : 0;
+    return `M${sx} ${sy} A${r} ${r} 0 ${large} 1 ${ex} ${ey}`;
+  }
+  const bgPath   = arc(-210, 30, R);
+  const fillEnd  = -210 + 240 * pct;
+  const fillPath = pct > 0 ? arc(-210, fillEnd, R) : '';
+  const gaugeSvg = `<svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;">
+    <path d="${bgPath}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12" stroke-linecap="round"/>
+    ${fillPath ? `<path d="${fillPath}" fill="none" stroke="${riskColor}" stroke-width="12" stroke-linecap="round" style="filter:drop-shadow(0 0 6px ${riskColor}80)"/>` : ''}
+  </svg>`;
+  const circEl = document.getElementById('serasa-score-circle');
+  const oldSvg = circEl.querySelector('svg');
+  if (oldSvg) oldSvg.remove();
+  circEl.insertAdjacentHTML('afterbegin', gaugeSvg);
+
+  document.getElementById('serasa-score-val').textContent = s.score || '—';
+  const labelEl = document.getElementById('serasa-score-label');
+  const labelMap = { baixo:'Risco Baixo', medio:'Risco Médio', alto:'Risco Alto', muito_alto:'Risco Muito Alto' };
+  labelEl.textContent = labelMap[s.risco] || '—';
+  labelEl.className   = 'serasa-score-label ' + (s.risco || 'baixo');
+
+  // KPIs
+  const fmtPct = v => (v != null) ? v.toFixed(2) + '%' : '—';
+  const fmtBRL = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR') : '—';
+  const inadEl = document.getElementById('sk-inadimp');
+  inadEl.textContent = fmtPct(s.inadimplencia);
+  inadEl.className   = 'serasa-kpi-val ' + (s.inadimplencia < 3 ? 'green' : s.inadimplencia < 8 ? 'yellow' : 'red');
+  document.getElementById('sk-honra').textContent        = fmtPct(s.honraCompromisos);
+  document.getElementById('sk-limite-pj').textContent    = fmtBRL(s.limitePJ);
+  document.getElementById('sk-limite-mensal').textContent = fmtBRL(s.limiteMensal);
+
+  // Metrics
+  document.getElementById('sk-pont').textContent  = fmtPct(s.pontualidade);
+  document.getElementById('sk-fat').textContent   = fmtBRL(s.faturamentoEstimado);
+  document.getElementById('sk-fraude').textContent = (s.scoreFraude || '—') + '/1000';
+  const recEl  = document.getElementById('sk-rec');
+  const recMap = { prazo:'✓ Conceder a prazo', garantias:'! Exigir garantias', negar:'✗ Não conceder' };
+  recEl.textContent = recMap[s.recomendacaoVenda] || s.recomendacaoVenda || '—';
+  recEl.style.color = { prazo:'#4ade80', garantias:'#facc15', negar:'#f87171' }[s.recomendacaoVenda] || '';
+
+  // Anotações
+  const anotDefs = [
+    { key:'pefin',          label:'PEFIN' },
+    { key:'refin',          label:'REFIN' },
+    { key:'dividasVencidas',label:'Dívidas Vencidas' },
+    { key:'falencia',       label:'Falência/Recuperação' },
+    { key:'acoesJudiciais', label:'Ações Judiciais' },
+    { key:'protestos',      label:'Protestos' },
+    { key:'cheque',         label:'Cheque sem Fundo' },
+    { key:'sociosAnotacoes',label:'Sócios c/ Anotações' },
+    { key:'adminAnotacoes', label:'Adm. c/ Anotações' },
+  ];
+  const _xSvg  = `<svg viewBox="0 0 24 24" fill="none" width="11" height="11"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+  const _okSvg = `<svg viewBox="0 0 24 24" fill="none" width="9" height="9"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const badItems = anotDefs.filter(a => !!s[a.key]);
+  const okItems  = anotDefs.filter(a => !s[a.key]);
+  let anotHtml = '';
+  if (badItems.length === 0) {
+    anotHtml += `<div class="anot-summary all-ok">${_okSvg} Nenhuma anotação negativa detectada — todos os ${anotDefs.length} tipos consultados estão limpos</div>`;
+  } else {
+    anotHtml += `<div class="anot-summary has-bad">${_xSvg} ${badItems.length} ocorrência${badItems.length > 1 ? 's' : ''} detectada${badItems.length > 1 ? 's' : ''}</div>`;
+    anotHtml += `<div class="anot-bad-list">` + badItems.map(a => `<span class="anot-bad-chip">${_xSvg} ${a.label}</span>`).join('') + `</div>`;
+  }
+  if (okItems.length > 0) {
+    anotHtml += `<div class="anot-ok-row">Limpos: ` + okItems.map(a => `<span class="anot-ok-tag">${_okSvg} ${a.label}</span>`).join('') + `</div>`;
+  }
+  document.getElementById('serasa-anot-grid').innerHTML = anotHtml;
+
+  // Score Setorial
+  document.getElementById('sk-sp-nome').textContent  = s.scoreEstadoNome  || 'Estado';
+  document.getElementById('sk-sp-val').textContent   = s.scoreEstado      || '—';
+  document.getElementById('sk-reg-nome').textContent = s.scoreRegiaoNome  || 'Região';
+  document.getElementById('sk-reg-val').textContent  = s.scoreRegiao      || '—';
+  document.getElementById('sk-pais-val').textContent = s.scorePais        || '—';
+
+  // Consultas
+  document.getElementById('sk-cons-mes').textContent = s.consultasMes ?? '—';
+  document.getElementById('sk-cons-ano').textContent = s.consultasAno ?? '—';
+
+  _updateSerasaBureau();
+}
+
+// Inicializa o card Serasa se já houver dados salvos.
+// Executado aqui (2º bloco) porque renderSerasaCard e _updateSerasaBureau só ficam
+// disponíveis depois que este script é parseado — boot() roda no 1º bloco, antes disso.
+if (typeof sol !== 'undefined' && sol && sol.serasa) {
+  renderSerasaCard();
+  _updateSerasaBureau();
+}
+</script>
+</body>
+</html>

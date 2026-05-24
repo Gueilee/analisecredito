@@ -1,0 +1,10 @@
+[
+  {
+    "id": "u1",
+    "name": "Seu Nome Completo",
+    "email": "voce@vendemmia.com.br",
+    "hashed_password": "gere_com_create_user.py",
+    "role": "Operações · Admin",
+    "avatar": "SN"
+  }
+]

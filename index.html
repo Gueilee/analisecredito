@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Análise de Crédito | Vendemmia</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="db.js"></script>
+  <script src="components.js"></script>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── Layout grid ──────────────────────────────────── */
+    .content-grid { display: grid; grid-template-columns: 1fr 300px; gap: 1.2rem; }
+    .content-left  { display: flex; flex-direction: column; gap: 1.2rem; min-width: 0; }
+    .content-right { display: flex; flex-direction: column; gap: 1.2rem; }
+
+    /* ── KPI cards ───────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .kpi-card {
+      background: var(--purple-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 1.35rem 1.4rem 1.2rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+
+    .kpi-card:hover {
+      border-color: var(--purple-accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.25);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: 2px 2px 0 0;
+    }
+
+    .kpi-card.purple::before { background: linear-gradient(90deg, var(--brand-deep-purple), var(--brand-pink)); }
+    .kpi-card.green::before  { background: linear-gradient(90deg, #019960, var(--brand-neon-green)); }
+    .kpi-card.red::before    { background: linear-gradient(90deg, #c0182a, var(--red)); }
+    .kpi-card.yellow::before { background: linear-gradient(90deg, #c97d00, var(--yellow)); }
+    .kpi-card.blue::before   { background: linear-gradient(90deg, #1a4ecf, var(--blue)); }
+
+    .kpi-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: .9rem;
+    }
+
+    .kpi-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .kpi-icon svg { width: 18px; height: 18px; }
+    .kpi-icon.purple { background: rgba(66,44,118,.3);  color: var(--purple-light); }
+    .kpi-icon.green  { background: rgba(1,225,142,.12); color: var(--brand-neon-green); }
+    .kpi-icon.red    { background: var(--red-bg);       color: var(--red); }
+    .kpi-icon.yellow { background: var(--yellow-bg);    color: var(--yellow); }
+    .kpi-icon.blue   { background: var(--blue-bg);      color: var(--blue); }
+
+    .kpi-trend {
+      font-size: .67rem;
+      font-weight: 600;
+      padding: .2rem .5rem;
+      border-radius: 99px;
+    }
+    .kpi-trend.up   { background: rgba(1,225,142,.1); color: var(--brand-neon-green); }
+    .kpi-trend.neutral { background: rgba(255,255,255,.06); color: var(--text-muted); }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1;
+      letter-spacing: -1.5px;
+      margin-bottom: .3rem;
+    }
+
+    .kpi-label {
+      font-size: .74rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .kpi-sub {
+      font-size: .68rem;
+      color: var(--text-faint);
+      margin-top: .4rem;
+      font-weight: 500;
+    }
+
+    /* ── Table ───────────────────────────────────────── */
+    .company-cell {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    .company-avatar {
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--brand-deep-purple), var(--brand-pink));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .68rem;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+      letter-spacing: .3px;
+    }
+
+    .company-name { font-weight: 600; color: var(--text-primary); font-size: .84rem; }
+    .company-ramo { font-size: .7rem; color: var(--text-muted); margin-top: .1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+
+    /* ── Filter tabs ─────────────────────────────────── */
+    .filter-tabs { display: flex; gap: .35rem; flex-wrap: wrap; }
+    .filter-tab {
+      padding: .28rem .75rem;
+      border-radius: 99px;
+      font-size: .74rem;
+      font-weight: 500;
+      border: 1px solid var(--glass-border);
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .filter-tab:hover { border-color: var(--purple-accent); color: var(--text-primary); }
+    .filter-tab.active {
+      background: rgba(66,44,118,.25);
+      border-color: var(--purple-accent);
+      color: var(--text-primary);
+    }
+
+    /* ── Activity ────────────────────────────────────── */
+    .activity-list { display: flex; flex-direction: column; }
+    .activity-item { display: flex; gap: .85rem; padding: .75rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot-wrap { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+    .activity-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .activity-dot svg { width: 12px; height: 12px; }
+    .activity-dot.green  { background: rgba(1,225,142,.12); color: var(--brand-neon-green); }
+    .activity-dot.red    { background: var(--red-bg); color: var(--red); }
+    .activity-dot.yellow { background: var(--yellow-bg); color: var(--yellow); }
+    .activity-dot.purple { background: rgba(66,44,118,.28); color: var(--purple-light); }
+    .activity-dot.blue   { background: var(--blue-bg); color: var(--blue); }
+    .activity-line { width: 1px; flex: 1; background: rgba(255,255,255,.05); margin-top: .3rem; }
+    .activity-content { flex: 1; min-width: 0; }
+    .activity-text { font-size: .81rem; color: var(--text-secondary); line-height: 1.45; }
+    .activity-text strong { color: var(--text-primary); font-weight: 600; }
+    .activity-time { font-size: .68rem; color: var(--text-faint); margin-top: .18rem; }
+
+    /* ── Quick actions ───────────────────────────────── */
+    .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+    .quick-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: .35rem;
+      padding: .9rem;
+      background: var(--input-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition);
+      text-align: left;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .quick-btn:hover {
+      border-color: var(--purple-accent);
+      background: rgba(66,44,118,.14);
+      transform: translateY(-1px);
+    }
+    .quick-btn svg { width: 18px; height: 18px; }
+    .q-label { font-size: .78rem; font-weight: 600; color: var(--text-primary); }
+    .q-desc  { font-size: .68rem; color: var(--text-muted); }
+
+    /* ── Client mini list ────────────────────────────── */
+    .client-row { display: flex; align-items: center; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .client-row:last-child { border-bottom: none; }
+    .client-avatar { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, var(--brand-deep-purple), var(--brand-pink)); display: flex; align-items: center; justify-content: center; font-size: .65rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .client-info { flex: 1; min-width: 0; }
+    .client-name { font-size: .8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .client-cnpj { font-size: .66rem; color: var(--text-muted); }
+    .client-right { text-align: right; flex-shrink: 0; }
+    .client-value { font-size: .8rem; font-weight: 700; color: var(--text-primary); }
+    .client-date  { font-size: .65rem; color: var(--text-muted); }
+
+    /* ── Donut ───────────────────────────────────────── */
+    .donut-center-pct { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); }
+    .donut-center-lbl { font-size: .6rem; color: var(--text-muted); }
+
+    /* ── Bar chart ───────────────────────────────────── */
+    .bar-chart { display: flex; align-items: flex-end; gap: .4rem; height: 72px; }
+    .bar-chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: .3rem; height: 100%; justify-content: flex-end; }
+    .bar-fill { width: 100%; border-radius: 5px 5px 0 0; background: linear-gradient(to top, var(--brand-deep-purple), var(--brand-pink)); min-height: 4px; transition: opacity .2s; }
+    .bar-fill:hover { opacity: .8; }
+    .bar-fill.dim { background: linear-gradient(to top, #1e1440, #2d1f55); opacity: .7; }
+
+    /* ── Table column widths ─────────────────────────── */
+    #main-table thead th:nth-child(1) { width: 40%; }
+    #main-table thead th:nth-child(2) { min-width: 90px;  white-space: nowrap; }
+    #main-table thead th:nth-child(3) { min-width: 130px; white-space: nowrap; }
+    #main-table thead th:nth-child(4) { min-width: 90px;  white-space: nowrap; }
+    #main-table tbody td:nth-child(n+2) { white-space: nowrap; }
+
+    /* ── Row actions ─────────────────────────────────── */
+    .row-actions { display: flex; gap: .2rem; justify-content: flex-end; }
+
+    /* ── Modal ───────────────────────────────────────── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); backdrop-filter: blur(6px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; animation: fadeIn .18s ease; }
+    .modal-box { background: var(--purple-card); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 2rem; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,.6); animation: slideUp .22s ease; }
+    .modal-icon { width: 52px; height: 52px; background: var(--red-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.1rem; }
+    .modal-icon svg { width: 24px; height: 24px; color: var(--red); }
+    .modal-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: .45rem; }
+    .modal-sub   { font-size: .83rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.4rem; }
+    .modal-actions { display: flex; gap: .75rem; justify-content: center; }
+
+    /* ── Toast ───────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius); padding: .85rem 1.2rem;
+      font-size: .83rem; color: var(--text-primary);
+      box-shadow: 0 8px 32px rgba(0,0,0,.45); z-index: 2000;
+      display: flex; align-items: center; gap: .65rem;
+      animation: none;
+      pointer-events: none;
+      opacity: 0; transform: translateY(100px);
+      transition: opacity .3s ease, transform .35s cubic-bezier(.22,.68,0,1.2);
+    }
+    .toast.show {
+      pointer-events: auto;
+      opacity: 1; transform: translateY(0);
+    }
+    .toast svg { width: 17px; height: 17px; flex-shrink: 0; }
+    .toast.success { border-left: 3px solid var(--brand-neon-green); }
+    .toast.success svg { color: var(--brand-neon-green); }
+    .toast.error { border-left: 3px solid var(--red); }
+    .toast.error svg { color: var(--red); }
+
+    /* ── Topbar customização ─────────────────────────── */
+    .topbar-greeting { font-size: .78rem; color: var(--brand-neon-green); font-weight: 500; margin-bottom: .12rem; }
+    .topbar-title h1 { font-size: 1.05rem; }
+
+    @media (max-width: 1300px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 1100px) {
+      .content-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 720px) { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+<script>const session = DB.auth.requireAuth();</script>
+
+<div class="app-shell">
+
+  <!-- sidebar montado por components.js -->
+  <aside class="sidebar"></aside>
+
+  <!-- ══ MAIN ═════════════════════════════════════════════ -->
+  <div class="main-area">
+
+    <header class="topbar">
+      <div class="topbar-title">
+        <div class="topbar-greeting" id="topbar-greeting">Bom dia</div>
+        <h1>Dashboard</h1>
+      </div>
+      <div class="topbar-actions">
+        <div class="topbar-search">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.7"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <input type="text" id="search-input" placeholder="Buscar empresa ou CNPJ…" oninput="filterTable()" />
+        </div>
+        <a href="nova-solicitacao.html" class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Nova Análise
+        </a>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <!-- KPIs -->
+      <div class="kpi-grid" id="kpi-grid">
+
+        <div class="kpi-card purple animate-in delay-1">
+          <div class="kpi-top">
+            <div class="kpi-icon purple">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/></svg>
+            </div>
+            <span class="kpi-trend neutral">Total</span>
+          </div>
+          <div class="kpi-value" id="kpi-total">—</div>
+          <div class="kpi-label">Análises</div>
+          <div class="kpi-sub" id="kpi-taxa">— % de aprovação</div>
+        </div>
+
+        <div class="kpi-card green animate-in delay-2">
+          <div class="kpi-top">
+            <div class="kpi-icon green">
+              <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <span class="kpi-trend up">Crédito</span>
+          </div>
+          <div class="kpi-value" id="kpi-aprovado">—</div>
+          <div class="kpi-label">Aprovadas</div>
+          <div class="kpi-sub">Crédito liberado</div>
+        </div>
+
+        <div class="kpi-card red animate-in delay-3">
+          <div class="kpi-top">
+            <div class="kpi-icon red">
+              <svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <span class="kpi-trend neutral">Risco</span>
+          </div>
+          <div class="kpi-value" id="kpi-negado">—</div>
+          <div class="kpi-label">Negadas</div>
+          <div class="kpi-sub">Risco reprovado</div>
+        </div>
+
+        <div class="kpi-card yellow animate-in delay-4">
+          <div class="kpi-top">
+            <div class="kpi-icon yellow">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </div>
+            <span class="kpi-trend neutral">Fila</span>
+          </div>
+          <div class="kpi-value" id="kpi-analise">—</div>
+          <div class="kpi-label">Aguardando</div>
+          <div class="kpi-sub">Em análise · Pendente</div>
+        </div>
+
+        <div class="kpi-card blue animate-in delay-5">
+          <div class="kpi-top">
+            <div class="kpi-icon blue">
+              <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </div>
+            <span class="kpi-trend up">Ativo</span>
+          </div>
+          <div class="kpi-value" id="kpi-volume">—</div>
+          <div class="kpi-label">Vol. Aprovado</div>
+          <div class="kpi-sub">Limite total ativo</div>
+        </div>
+
+      </div>
+
+      <!-- Content grid -->
+      <div class="content-grid">
+        <div class="content-left">
+
+          <!-- Tabela principal -->
+          <div class="card animate-in">
+            <div class="card-header" style="flex-wrap:wrap;gap:.8rem;">
+              <div>
+                <div class="card-title">Solicitações de Análise</div>
+                <div class="card-sub">Gerencie e acompanhe as análises de crédito</div>
+              </div>
+              <div class="flex gap-sm items-center" style="flex-wrap:wrap;">
+                <div class="filter-tabs" id="filter-tabs">
+                  <button class="filter-tab active" data-status="all"        onclick="setFilter(this,'all')">Todas</button>
+                  <button class="filter-tab" data-status="pendente"          onclick="setFilter(this,'pendente')">Pendente</button>
+                  <button class="filter-tab" data-status="em_analise"        onclick="setFilter(this,'em_analise')">Em Análise</button>
+                  <button class="filter-tab" data-status="em_comite"         onclick="setFilter(this,'em_comite')">Comitê</button>
+                  <button class="filter-tab" data-status="aprovado"          onclick="setFilter(this,'aprovado')">Aprovadas</button>
+                  <button class="filter-tab" data-status="negado"            onclick="setFilter(this,'negado')">Negadas</button>
+                </div>
+                <a href="nova-solicitacao.html" class="btn btn-primary btn-sm">+ Nova</a>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="main-table">
+                <thead>
+                  <tr>
+                    <th>Empresa</th>
+                    <th>Data</th>
+                    <th>Solicitante</th>
+                    <th>Status</th>
+                    <th style="width:100px;text-align:right;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="table-body">
+                  <tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:2.5rem;">Carregando…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="table-empty" style="display:none;">
+              <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/></svg>
+                <h3>Nenhuma solicitação encontrada</h3>
+                <p>Tente outro filtro ou <a href="nova-solicitacao.html" style="color:var(--purple-light);">crie uma nova análise</a>.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráfico mensal -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Análises por Mês</div>
+                <div class="card-sub">Evolução em 2026</div>
+              </div>
+            </div>
+            <div class="bar-chart" id="monthly-chart"></div>
+            <div style="display:flex;gap:.4rem;margin-top:.5rem;" id="monthly-labels"></div>
+          </div>
+
+          <!-- Mini charts: Modal + Produto -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Por Modal</div>
+                  <div class="card-sub">Volume por tipo de transporte</div>
+                </div>
+              </div>
+              <div id="chart-modal"></div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Por Produto</div>
+                  <div class="card-sub">Distribuição por operação</div>
+                </div>
+              </div>
+              <div id="chart-produto"></div>
+            </div>
+          </div>
+
+          <!-- Funil de decisão -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Funil de Decisão</div>
+                <div class="card-sub">Distribuição de status em tempo real</div>
+              </div>
+            </div>
+            <div id="chart-funnel"></div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT -->
+        <div class="content-right">
+
+          <!-- Taxa de resultado -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Taxa de Resultado</div></div>
+            <div style="display:flex;justify-content:center;padding:.4rem 0 .9rem;">
+              <div style="position:relative;width:116px;height:116px;">
+                <svg width="116" height="116" style="transform:rotate(-90deg);">
+                  <circle cx="58" cy="58" r="48" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="11"/>
+                  <circle cx="58" cy="58" r="48" fill="none" stroke-width="11"
+                    stroke="url(#grad-result)"
+                    stroke-dasharray="301"
+                    id="donut-arc"
+                    stroke-dashoffset="301"
+                    stroke-linecap="round"/>
+                  <defs>
+                    <linearGradient id="grad-result" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#019960"/>
+                      <stop offset="100%" stop-color="#01E18E"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+                  <div class="donut-center-pct" id="donut-pct">—</div>
+                  <div class="donut-center-lbl">Aprovação</div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.5rem;">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--brand-neon-green)"></div>Aprovadas<span class="legend-pct" id="leg-aprov">—</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Negadas<span class="legend-pct" id="leg-neg">—</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>Em Análise<span class="legend-pct" id="leg-anal">—</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--purple-light)"></div>Em Comitê<span class="legend-pct" id="leg-comite">—</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Pendentes<span class="legend-pct" id="leg-pend">—</span></div>
+            </div>
+          </div>
+
+          <!-- Ações rápidas -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Ações Rápidas</div></div>
+            <div class="quick-actions">
+              <a href="nova-solicitacao.html" class="quick-btn">
+                <svg viewBox="0 0 24 24" fill="none" style="color:var(--purple-light)"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <span class="q-label">Nova Análise</span>
+                <span class="q-desc">Abrir solicitação</span>
+              </a>
+              <button class="quick-btn" onclick="setFilter(document.querySelector('[data-status=em_analise]'),'em_analise')">
+                <svg viewBox="0 0 24 24" fill="none" style="color:var(--yellow)"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <span class="q-label">Em Análise</span>
+                <span class="q-desc" id="qa-em-analise">— aguardando</span>
+              </button>
+              <a href="comite-credito.html" class="quick-btn">
+                <svg viewBox="0 0 24 24" fill="none" style="color:#f59e0b"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="q-label">Comitê de Crédito</span>
+                <span class="q-desc" id="qa-comite">— aguardando</span>
+              </a>
+              <button class="quick-btn" onclick="DB.auth.logout(); window.location.href='login.html'">
+                <svg viewBox="0 0 24 24" fill="none" style="color:var(--red)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <span class="q-label">Sair</span>
+                <span class="q-desc">Encerrar sessão</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Maiores créditos -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Maiores Créditos</div></div>
+            <div id="top-clients"></div>
+          </div>
+
+          <!-- Atividade recente -->
+          <div class="card">
+            <div class="card-header"><div class="card-title">Atividade Recente</div></div>
+            <div class="activity-list" id="activity-list"></div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Modal exclusão -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal-box">
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="modal-title">Excluir Solicitação</div>
+    <div class="modal-sub" id="delete-modal-sub">Tem certeza? Esta ação não pode ser desfeita.</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+  /* ── Sidebar + Sessão ───────────────────────────────── */
+  App.mount('dashboard');
+
+  const h = new Date().getHours();
+  const greetTxt = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  document.getElementById('topbar-greeting').textContent =
+    greetTxt + (session ? ', ' + session.name.split(' ')[0] : '') + ' 👋';
+
+  /* ── Estado ─────────────────────────────────────────── */
+  let currentFilter  = 'all';
+  let deleteTargetId = null;
+  let allData        = [];
+
+  /* ── Carregar ───────────────────────────────────────── */
+  function load() {
+    allData = DB.solicitacoes.getAll();
+    renderKPIs();
+    renderTable(allData);
+    renderDonut();
+    renderActivity();
+    renderTopClients();
+    renderChart();
+    renderModalChart();
+    renderProdutoChart();
+    renderFunnel();
+  }
+
+  /* ── KPIs ───────────────────────────────────────────── */
+  function renderKPIs() {
+    const s = DB.solicitacoes.getStats();
+    document.getElementById('kpi-total').textContent    = s.total;
+    document.getElementById('kpi-aprovado').textContent = s.aprovado;
+    document.getElementById('kpi-negado').textContent   = s.negado;
+    document.getElementById('kpi-analise').textContent  = s.em_analise + s.pendente + (s.em_comite || 0);
+    const vol = s.volumeTotal >= 1e6
+      ? 'R$ ' + (s.volumeTotal/1e6).toFixed(1).replace('.',',') + 'M'
+      : DB.utils.fmtMoney(s.volumeTotal.toFixed(2).replace('.',','));
+    document.getElementById('kpi-volume').textContent = vol || '—';
+    document.getElementById('kpi-taxa').textContent = s.taxaAprovacao + '% de aprovação';
+    document.getElementById('qa-em-analise').textContent = (s.em_analise + s.pendente) + ' aguardando';
+    const emComite = s.em_comite || 0;
+    document.getElementById('qa-comite').textContent = emComite > 0 ? emComite + ' para deliberar' : 'Nenhum pendente';
+  }
+
+  /* ── Tabela ─────────────────────────────────────────── */
+  function renderTable(data) {
+    const tbody  = document.getElementById('table-body');
+    const empty  = document.getElementById('table-empty');
+    const search = document.getElementById('search-input').value.toLowerCase();
+
+    let filtered = data;
+    if (currentFilter !== 'all') filtered = filtered.filter(s => s.status === currentFilter);
+    if (search) filtered = filtered.filter(s =>
+      s.empresa.toLowerCase().includes(search) || s.cnpj.includes(search)
+    );
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = filtered.map(s => {
+      const initials = s.empresa.split(' ').filter(w => w.length > 2).slice(0,2).map(w => w[0].toUpperCase()).join('') || s.empresa.slice(0,2).toUpperCase();
+      return `
+      <tr>
+        <td>
+          <div class="company-cell">
+            <div class="company-avatar">${initials}</div>
+            <div>
+              <div class="company-name" style="display:flex;align-items:center;gap:.4rem;">
+                <a href="consultar.html?id=${s.id}" style="color:inherit;text-decoration:none;"
+                  onmouseover="this.style.color='var(--purple-light)'"
+                  onmouseout="this.style.color='inherit'">${s.empresa}</a>
+                ${s.tipoOp === 'encomenda' ? `<span style="display:inline-flex;align-items:center;font-size:.58rem;font-weight:700;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#f59e0b;padding:.1rem .45rem;border-radius:99px;letter-spacing:.3px;white-space:nowrap;">ENCOMENDA</span>` : ''}
+              </div>
+              <div class="company-ramo">${s.ramo || s.produto || '—'}</div>
+            </div>
+          </div>
+        </td>
+        <td class="text-muted" style="font-size:.78rem;">${DB.utils.fmtDate(s.createdAt)}</td>
+        <td class="text-muted" style="font-size:.78rem;">${s.solicitanteNome || '—'}</td>
+        <td><span class="badge ${DB.utils.statusBadge[s.status] || 'pendente'}">${DB.utils.statusLabel[s.status] || s.status}</span></td>
+        <td>
+          <div class="row-actions">
+            <a href="consultar.html?id=${s.id}" class="btn btn-ghost btn-sm" title="Consultar" style="color:var(--purple-light);">
+              <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
+            </a>
+            <a href="nova-solicitacao.html?id=${s.id}" class="btn btn-ghost btn-sm" title="Editar">
+              <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </a>
+            <button class="btn btn-ghost btn-sm" title="Excluir" style="color:var(--red);"
+              onclick="openDeleteModal('${s.id}','${s.empresa.replace(/'/g,"\\'")}')">
+              <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function filterTable() { renderTable(allData); }
+
+  function setFilter(btn, status) {
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    currentFilter = status;
+    renderTable(allData);
+  }
+
+  /* ── Donut ──────────────────────────────────────────── */
+  function renderDonut() {
+    const s   = DB.solicitacoes.getStats();
+    const pct = s.taxaAprovacao;
+    const circumference = 301;
+    document.getElementById('donut-arc').style.strokeDashoffset = circumference - (pct / 100) * circumference;
+    document.getElementById('donut-pct').textContent = pct + '%';
+    document.getElementById('leg-aprov').textContent  = s.aprovado;
+    document.getElementById('leg-neg').textContent    = s.negado;
+    document.getElementById('leg-anal').textContent   = s.em_analise;
+    document.getElementById('leg-comite').textContent = s.em_comite || 0;
+    document.getElementById('leg-pend').textContent   = s.pendente;
+  }
+
+  /* ── Top clients ─────────────────────────────────────── */
+  function renderTopClients() {
+    const top = DB.solicitacoes.getAll()
+      .filter(s => s.status === 'aprovado' && s.limiteAprovado)
+      .sort((a,b) => {
+        const va = parseFloat(a.limiteAprovado.replace(/\./g,'').replace(',','.')) || 0;
+        const vb = parseFloat(b.limiteAprovado.replace(/\./g,'').replace(',','.')) || 0;
+        return vb - va;
+      }).slice(0, 4);
+
+    const el = document.getElementById('top-clients');
+    if (top.length === 0) {
+      el.innerHTML = '<div style="font-size:.75rem;color:var(--text-faint);text-align:center;padding:.8rem;">Nenhum crédito aprovado ainda</div>';
+      return;
+    }
+    el.innerHTML = top.map(c => {
+      const initials = c.empresa.split(' ').filter(w => w.length > 2).slice(0,2).map(w => w[0]).join('');
+      return `<div class="client-row">
+        <div class="client-avatar">${initials}</div>
+        <div class="client-info"><div class="client-name">${c.empresa}</div><div class="client-cnpj">${c.cnpj}</div></div>
+        <div class="client-right"><div class="client-value">${DB.utils.fmtMoney(c.limiteAprovado)}</div><div class="client-date">${DB.utils.fmtDate(c.createdAt)}</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Activity ────────────────────────────────────────── */
+  function renderActivity() {
+    const recent = DB.solicitacoes.getAll().slice(0, 5);
+    const icons = {
+      aprovado:   { cls:'green',  svg:'<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' },
+      negado:     { cls:'red',    svg:'<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' },
+      em_analise: { cls:'yellow', svg:'<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' },
+      pendente:   { cls:'purple', svg:'<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' },
+      em_comite:  { cls:'yellow', svg:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>' },
+    };
+    const el = document.getElementById('activity-list');
+    if (recent.length === 0) {
+      el.innerHTML = '<div style="font-size:.75rem;color:var(--text-faint);text-align:center;padding:.8rem;">Nenhuma atividade recente</div>';
+      return;
+    }
+    const actionLabel = { aprovado:'crédito aprovado', negado:'crédito negado', em_analise:'em análise', pendente:'solicitação enviada' };
+    el.innerHTML = recent.map((s, i) => {
+      const ic = icons[s.status] || icons.pendente;
+      return `<div class="activity-item">
+        <div class="activity-dot-wrap">
+          <div class="activity-dot ${ic.cls}"><svg viewBox="0 0 24 24" fill="none">${ic.svg}</svg></div>
+          ${i < recent.length - 1 ? '<div class="activity-line"></div>' : ''}
+        </div>
+        <div class="activity-content">
+          <div class="activity-text"><strong>${s.empresa}</strong> — ${actionLabel[s.status] || 'atualizado'}</div>
+          <div class="activity-time">${DB.utils.fmt(s.updatedAt)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Horizontal bars helper ──────────────────────────── */
+  function renderHorizBars(elId, items, total) {
+    const palette = [
+      'linear-gradient(90deg,var(--brand-deep-purple),var(--brand-pink))',
+      'linear-gradient(90deg,#019960,var(--brand-neon-green))',
+      'linear-gradient(90deg,#1a4ecf,var(--blue))',
+      'linear-gradient(90deg,#c97d00,var(--yellow))',
+      'linear-gradient(90deg,#6b21a8,#a855f7)',
+    ];
+    const el = document.getElementById(elId);
+    if (!items.length) {
+      el.innerHTML = '<div style="font-size:.75rem;color:var(--text-faint);text-align:center;padding:.8rem 0;">Sem dados ainda</div>';
+      return;
+    }
+    el.innerHTML = items.slice(0, 5).map(([label, v], i) => {
+      const pct = Math.round((v / total) * 100);
+      return `<div style="margin-bottom:.7rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.28rem;">
+          <span style="font-size:.77rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%;">${label}</span>
+          <span style="font-size:.71rem;color:var(--text-faint);">${v} &nbsp;·&nbsp; ${pct}%</span>
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${palette[i % palette.length]};border-radius:99px;transition:width .9s ease;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Modal chart ─────────────────────────────────────── */
+  function renderModalChart() {
+    const mLabel = DB.utils.modalLabel || {};
+    const counts = {};
+    allData.forEach(s => {
+      const k = mLabel[s.modal] || s.modal || 'Não informado';
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    renderHorizBars('chart-modal', Object.entries(counts).sort((a,b)=>b[1]-a[1]), allData.length || 1);
+  }
+
+  /* ── Produto chart ───────────────────────────────────── */
+  function renderProdutoChart() {
+    const counts = {};
+    allData.forEach(s => {
+      const k = s.produto || 'Não informado';
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    renderHorizBars('chart-produto', Object.entries(counts).sort((a,b)=>b[1]-a[1]), allData.length || 1);
+  }
+
+  /* ── Funil de decisão ────────────────────────────────── */
+  function renderFunnel() {
+    const s = DB.solicitacoes.getStats();
+    const t = s.total || 1;
+    const steps = [
+      { label: 'Total Recebido', value: s.total,                      pct: 100,                                              color: 'linear-gradient(90deg,var(--brand-deep-purple),var(--brand-pink))', txt: 'var(--purple-light)' },
+      { label: 'Em Andamento',   value: s.em_analise + s.pendente,    pct: Math.round(((s.em_analise+s.pendente)/t)*100),    color: 'linear-gradient(90deg,#c97d00,var(--yellow))',                       txt: 'var(--yellow)' },
+      { label: 'Aprovadas',      value: s.aprovado,                   pct: Math.round((s.aprovado/t)*100),                   color: 'linear-gradient(90deg,#019960,var(--brand-neon-green))',              txt: 'var(--brand-neon-green)' },
+      { label: 'Negadas',        value: s.negado,                     pct: Math.round((s.negado/t)*100),                     color: 'linear-gradient(90deg,#c0182a,var(--red))',                           txt: 'var(--red)' },
+    ];
+    document.getElementById('chart-funnel').innerHTML =
+      `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem;padding:.25rem 0 .1rem;">` +
+      steps.map(step => `
+        <div>
+          <div style="display:flex;align-items:flex-end;gap:.3rem;margin-bottom:.3rem;">
+            <span style="font-size:1.65rem;font-weight:800;color:var(--text-primary);line-height:1;">${step.value}</span>
+            <span style="font-size:.68rem;color:var(--text-faint);padding-bottom:.18rem;">${step.pct}%</span>
+          </div>
+          <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:.55rem;">${step.label}</div>
+          <div style="height:5px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;">
+            <div style="height:100%;width:${step.pct}%;background:${step.color};border-radius:99px;transition:width 1.1s ease;"></div>
+          </div>
+        </div>`).join('') +
+      `</div>`;
+  }
+
+  /* ── Bar chart ───────────────────────────────────────── */
+  function renderChart() {
+    const months = ['Jan','Fev','Mar','Abr','Mai'];
+    const base   = [0, 0, 0, 0, DB.solicitacoes.getAll().length];
+    const max    = Math.max(...base, 1);
+    const chartEl  = document.getElementById('monthly-chart');
+    const labelsEl = document.getElementById('monthly-labels');
+    chartEl.innerHTML = ''; labelsEl.innerHTML = '';
+    months.forEach((m, i) => {
+      const pct = (base[i] / max) * 100 || 8;
+      const isDim = i < months.length - 1;
+      const col = document.createElement('div');
+      col.className = 'bar-chart-col';
+      col.innerHTML = `<div style="font-size:.68rem;color:var(--text-muted);margin-bottom:.2rem;">${base[i]}</div><div class="bar-fill${isDim?' dim':''}" style="height:${pct}%"></div>`;
+      chartEl.appendChild(col);
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'flex:1;text-align:center;font-size:.62rem;color:var(--text-faint)';
+      lbl.textContent = m;
+      labelsEl.appendChild(lbl);
+    });
+  }
+
+  /* ── Delete modal ────────────────────────────────────── */
+  function openDeleteModal(id, empresa) {
+    deleteTargetId = id;
+    document.getElementById('delete-modal-sub').textContent = `Excluir "${empresa}"? Esta ação não pode ser desfeita.`;
+    document.getElementById('delete-modal').classList.add('open');
+  }
+  function closeDeleteModal() {
+    deleteTargetId = null;
+    document.getElementById('delete-modal').classList.remove('open');
+  }
+  function confirmDelete() {
+    if (!deleteTargetId) return;
+    DB.solicitacoes.delete(deleteTargetId);
+    closeDeleteModal();
+    load();
+    showToast('Solicitação excluída com sucesso.', 'success');
+  }
+
+  /* ── Toast ───────────────────────────────────────────── */
+  let _toastTimer;
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    if (!t) return;
+    clearTimeout(_toastTimer);
+    document.getElementById('toast-msg').textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    _toastTimer = setTimeout(() => {
+      t.classList.remove('show');
+    }, 3500);
+  }
+
+  /* ── Export CSV ──────────────────────────────────────── */
+  function exportCSV() {
+    const rows = [['ID','Empresa','CNPJ','Status','Limite Solicitado','Limite Aprovado','Data','Solicitante']];
+    DB.solicitacoes.getAll().forEach(s => {
+      rows.push([s.id, s.empresa, s.cnpj, DB.utils.statusLabel[s.status]||s.status,
+        s.limiteExportador||'', s.limiteAprovado||'', DB.utils.fmtDate(s.createdAt), s.solicitanteNome||'']);
+    });
+    const csv  = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'analise-credito.csv'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV exportado com sucesso!');
+  }
+
+  if (sessionStorage.getItem('vd_saved')) {
+    const _msg = sessionStorage.getItem('vd_saved');
+    sessionStorage.removeItem('vd_saved');
+    setTimeout(() => showToast(_msg, 'success'), 120);
+  }
+
+  load();
+</script>
+</body>
+</html>

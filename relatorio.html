@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relatório de Análise de Crédito — Vendemmia</title>
+  <script src="db.js"></script>
+  <style>
+    /* ═══════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.55;
+      color: #111827;
+      background: #f0eef8;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SCREEN TOOLBAR (not printed)
+    ═══════════════════════════════════════════════════ */
+    .toolbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #1e1b4b;
+      padding: 10px 24px;
+      display: flex; align-items: center; gap: 10px;
+      z-index: 100;
+      box-shadow: 0 2px 16px rgba(0,0,0,.4);
+    }
+    .toolbar-title {
+      font-size: 13px; font-weight: 700; color: #e0d9ff; margin-right: auto;
+    }
+    .btn-print {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg,#7c3aed,#a855f7);
+      color: #fff; border: none; border-radius: 7px;
+      padding: 7px 18px; font-size: 12px; font-weight: 700; cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-print:hover { filter: brightness(1.1); }
+    .btn-back {
+      display: inline-flex; align-items: center; gap: 5px;
+      color: #a5b4fc; font-size: 11.5px; text-decoration: none; font-weight: 600;
+    }
+    .btn-back:hover { color: #c4b5fd; }
+    .toolbar-badge {
+      padding: 3px 12px; border-radius: 99px;
+      font-size: 10.5px; font-weight: 800; letter-spacing: .3px;
+    }
+    .toolbar-badge.aprovado  { background:#d1fae5; color:#065f46; }
+    .toolbar-badge.negado    { background:#fee2e2; color:#991b1b; }
+    .toolbar-badge.pendente  { background:#fef3c7; color:#78350f; }
+    .toolbar-badge.em_analise{ background:#dbeafe; color:#1e40af; }
+    .toolbar-badge.em_comite { background:#fef9c3; color:#92400e; }
+
+    /* ═══════════════════════════════════════════════════
+       DOCUMENT WRAPPER
+    ═══════════════════════════════════════════════════ */
+    .doc-wrap {
+      max-width: 800px;
+      margin: 72px auto 48px;
+      background: white;
+      box-shadow: 0 4px 40px rgba(90,30,237,.15);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .doc-inner { padding: 28px 32px 36px; }
+
+    /* ═══════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════ */
+    .doc-header {
+      padding: 22px 32px 0;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    }
+    .doc-header-logo { height: 40px; max-width: 160px; object-fit: contain; }
+    .doc-header-right { text-align: right; }
+    .doc-header-title { font-size: 20px; font-weight: 900; color: #5b21b6; letter-spacing: -.5px; line-height: 1.1; }
+    .doc-header-sub   { font-size: 9px; color: #9ca3af; margin-top: 3px; }
+    .doc-divider {
+      height: 4px;
+      background: linear-gradient(90deg, #5b21b6 0%, #7c3aed 50%, #ff2f69 100%);
+      margin: 14px 0 0;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       HERO STRIP
+    ═══════════════════════════════════════════════════ */
+    .hero-strip {
+      background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%);
+      padding: 18px 32px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .hero-company { color: white; }
+    .hero-name { font-size: 15px; font-weight: 900; line-height: 1.2; }
+    .hero-cnpj { font-size: 9.5px; color: rgba(255,255,255,.55); margin-top: 3px; }
+    .hero-meta { font-size: 9px; color: rgba(255,255,255,.4); margin-top: 5px; }
+    .hero-right { text-align: right; flex-shrink: 0; }
+    .doc-num    { font-size: 8.5px; color: rgba(255,255,255,.4); margin-bottom: 5px; }
+
+    /* Status badges */
+    .status-badge {
+      display: inline-block; padding: 5px 16px; border-radius: 99px;
+      font-size: 11.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .status-badge.aprovado  { background: #d1fae5; color: #065f46; }
+    .status-badge.negado    { background: #fee2e2; color: #991b1b; }
+    .status-badge.pendente  { background: #fef3c7; color: #78350f; }
+    .status-badge.em_analise{ background: #dbeafe; color: #1e40af; }
+    .status-badge.em_comite { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+    /* ═══════════════════════════════════════════════════
+       SECTION HEADERS
+    ═══════════════════════════════════════════════════ */
+    .sec-head {
+      background: linear-gradient(135deg, #5b21b6, #7c3aed);
+      color: white; padding: 7px 12px; border-radius: 4px;
+      font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .7px;
+      margin: 20px 0 12px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .sec-head svg { width: 12px; height: 12px; flex-shrink: 0; }
+    .sec-head-teal {
+      background: linear-gradient(135deg, #0f766e, #0d9488);
+      color: white; padding: 7px 12px; border-radius: 4px;
+      font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .7px;
+      margin: 20px 0 12px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .sec-head-teal svg { width: 12px; height: 12px; flex-shrink: 0; }
+    .sec-head-blue {
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: white; padding: 7px 12px; border-radius: 4px;
+      font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .7px;
+      margin: 20px 0 12px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .sec-head-blue svg { width: 12px; height: 12px; flex-shrink: 0; }
+    .sec-head-emerald {
+      background: linear-gradient(135deg, #065f46, #059669);
+      color: white; padding: 7px 12px; border-radius: 4px;
+      font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .7px;
+      margin: 20px 0 12px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .sec-head-emerald svg { width: 12px; height: 12px; flex-shrink: 0; }
+    .sec-head-alt {
+      border-left: 3px solid #7c3aed;
+      padding: 4px 0 4px 10px;
+      font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px;
+      color: #5b21b6; margin: 14px 0 8px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       DATA GRIDS
+    ═══════════════════════════════════════════════════ */
+    .data-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px;
+      margin-bottom: 12px;
+    }
+    .data-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .data-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .d-item { padding: 4px 0; }
+    .d-key {
+      font-size: 7.5px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .4px; color: #9ca3af; margin-bottom: 2px;
+    }
+    .d-val { font-size: 10.5px; color: #111827; font-weight: 500; }
+    .d-val.green  { color: #059669; font-weight: 700; }
+    .d-val.red    { color: #dc2626; font-weight: 700; }
+    .d-val.purple { color: #6d28d9; font-weight: 700; }
+    .d-val.empty  { color: #d1d5db; font-style: italic; }
+
+    /* ═══════════════════════════════════════════════════
+       TABLES
+    ═══════════════════════════════════════════════════ */
+    .data-table {
+      width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 14px;
+    }
+    .data-table th {
+      background: #f3f4f6; color: #374151; font-weight: 700;
+      padding: 7px 10px; text-align: left;
+      border: 1px solid #e5e7eb; font-size: 8.5px;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
+    .data-table td { padding: 7px 10px; border: 1px solid #e5e7eb; color: #374151; }
+    .data-table tr:nth-child(even) td { background: #f9fafb; }
+    .data-table .total-row td {
+      background: #ede9fe; color: #5b21b6; font-weight: 700; font-size: 10.5px;
+    }
+    .data-table .approved-row td { background: #d1fae5; color: #065f46; font-weight: 700; }
+    .data-table .group-hd td {
+      background: #1e1b4b; color: white; font-size: 8.5px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .5px; padding: 5px 10px;
+      border-color: #1e1b4b;
+    }
+    .td-money { color: #059669 !important; font-weight: 700 !important; }
+    .td-num   { text-align: right; font-variant-numeric: tabular-nums; }
+    .td-pos   { color: #059669 !important; font-weight: 700; }
+    .td-neg   { color: #dc2626 !important; font-weight: 700; }
+    .td-neu   { color: #9ca3af !important; }
+
+    /* ═══════════════════════════════════════════════════
+       PRAZOS TIMELINE (PDF)
+    ═══════════════════════════════════════════════════ */
+    .prazos-pdf { margin-bottom: 14px; }
+    .prazo-pdf-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 0; border-bottom: 1px solid #f3f4f6;
+    }
+    .prazo-pdf-row:last-child { border-bottom: none; }
+    .prazo-pdf-num {
+      width: 20px; height: 20px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 800; color: white; flex-shrink: 0;
+    }
+    .prazo-pdf-lbl { flex: 1; font-size: 9.5px; color: #6b7280; }
+    .prazo-pdf-val { font-size: 10.5px; font-weight: 700; color: #111827; min-width: 120px; text-align: right; }
+    .prazo-pdf-cum { font-size: 8.5px; color: #9ca3af; min-width: 80px; text-align: right; }
+
+    /* ═══════════════════════════════════════════════════
+       FINANCIAL INDICATORS TABLE
+    ═══════════════════════════════════════════════════ */
+    .fin-table {
+      width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 14px;
+    }
+    .fin-table th {
+      background: #1e1b4b; color: white; font-weight: 700;
+      padding: 7px 10px; text-align: left;
+      border: 1px solid #312e81; font-size: 8.5px;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
+    .fin-table th:not(:first-child) { text-align: right; }
+    .fin-table td { padding: 6px 10px; border: 1px solid #e5e7eb; color: #374151; }
+    .fin-table td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .fin-table tr:nth-child(even) td { background: #f9fafb; }
+    .fin-table .fin-group-row td {
+      background: linear-gradient(135deg, #4c1d95, #5b21b6);
+      color: white; font-size: 8px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .6px; padding: 4px 10px;
+      border-color: #4c1d95;
+    }
+    .fin-table .fin-derived td { font-style: italic; color: #6b7280; background: #fafafa; }
+    .fin-table .fin-derived td:not(:first-child) { color: #6b7280; }
+    .fin-var-pos { color: #059669 !important; font-weight: 700; }
+    .fin-var-neg { color: #dc2626 !important; font-weight: 700; }
+    .fin-var-neu { color: #9ca3af !important; }
+    .fin-empty   { color: #d1d5db !important; font-style: italic; }
+    .src-badge {
+      display: inline-block; font-size: 7px; font-weight: 700; padding: 1px 4px;
+      border-radius: 3px; margin-left: 5px; vertical-align: middle; text-transform: uppercase;
+    }
+    .src-dre { background: #dbeafe; color: #1d4ed8; }
+    .src-bp  { background: #d1fae5; color: #065f46; }
+    .src-calc{ background: #ede9fe; color: #5b21b6; }
+    .src-dfc { background: #fef3c7; color: #92400e; }
+
+    /* ═══════════════════════════════════════════════════
+       EXPOSURE CHART
+    ═══════════════════════════════════════════════════ */
+    .exp-chart-wrap {
+      background: #1e1b4b; border-radius: 6px;
+      padding: 18px 20px; margin-bottom: 14px;
+    }
+    .exp-chart-title {
+      font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px;
+      color: rgba(255,255,255,.5); margin-bottom: 14px;
+    }
+    .exp-chart-body { display: flex; gap: 12px; align-items: flex-end; justify-content: center; }
+    .exp-bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+    .exp-bar-stack {
+      width: 100%; border-radius: 4px 4px 0 0; overflow: hidden;
+      display: flex; flex-direction: column; min-height: 10px;
+    }
+    .exp-bar-seg { width: 100%; transition: none; }
+    .exp-bar-lbl { font-size: 7.5px; font-weight: 700; color: rgba(255,255,255,.6); white-space: nowrap; }
+    .exp-bar-val { font-size: 9px; font-weight: 900; color: white; white-space: nowrap; }
+    .exp-legend { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+    .exp-legend-item { display: flex; align-items: center; gap: 5px; font-size: 8.5px; color: rgba(255,255,255,.7); }
+    .exp-legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+    /* ═══════════════════════════════════════════════════
+       SERASA SECTION
+    ═══════════════════════════════════════════════════ */
+    .serasa-placeholder {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1.5px dashed #f59e0b;
+      border-radius: 6px; padding: 18px 20px; margin-bottom: 14px;
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .serasa-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(245,158,11,.15); display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: #d97706;
+    }
+    .serasa-icon svg { width: 18px; height: 18px; }
+    .serasa-content {}
+    .serasa-title { font-size: 11px; font-weight: 800; color: #78350f; margin-bottom: 3px; }
+    .serasa-desc  { font-size: 9.5px; color: #92400e; line-height: 1.55; }
+    .serasa-badge {
+      display: inline-block; margin-top: 7px;
+      background: rgba(245,158,11,.2); color: #92400e;
+      font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px;
+      padding: 2px 9px; border-radius: 99px; border: 1px solid rgba(245,158,11,.4);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       AI ANALYSIS
+    ═══════════════════════════════════════════════════ */
+    .score-row { display: flex; align-items: center; gap: 22px; margin-bottom: 14px; }
+    .score-gauge-wrap { flex-shrink: 0; }
+    .score-meta { flex: 1; }
+    .score-meta-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .cls-badge {
+      display: inline-block; padding: 3px 11px; border-radius: 99px;
+      font-size: 12px; font-weight: 900; letter-spacing: .5px;
+    }
+    .cls-aaa { background:#d1fae5; color:#065f46; }
+    .cls-aa  { background:#a7f3d0; color:#064e3b; }
+    .cls-a   { background:#dbeafe; color:#1e40af; }
+    .cls-bb  { background:#e0f2fe; color:#0c4a6e; }
+    .cls-b   { background:#fef3c7; color:#78350f; }
+    .cls-cc  { background:#fed7aa; color:#7c2d12; }
+    .cls-c   { background:#fde8d5; color:#9a3412; }
+    .cls-d   { background:#fee2e2; color:#991b1b; }
+    .rec-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 6px; font-size: 10.5px; font-weight: 800;
+    }
+    .rec-aprovar { background:#d1fae5; color:#065f46; }
+    .rec-negar   { background:#fee2e2; color:#991b1b; }
+    .rec-revisar { background:#fef3c7; color:#78350f; }
+    .resumo-text { font-size: 10.5px; color: #374151; line-height: 1.65; }
+
+    /* Points grid */
+    .pts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+    .pts-col-hd { font-size: 7.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #9ca3af; margin-bottom: 5px; }
+    .pt-item { display: flex; align-items: flex-start; gap: 5px; font-size: 10px; color: #374151; line-height: 1.45; margin-bottom: 3px; }
+    .pt-dot { width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .pt-dot.pos { background: #d1fae5; color: #059669; }
+    .pt-dot.att { background: #fef3c7; color: #d97706; }
+    .pt-dot.crit{ background: #fee2e2; color: #dc2626; }
+    .pt-dot svg { width: 8px; height: 8px; }
+    .alert-strip {
+      background: #fff7f7; border: 1px solid #fca5a5; border-left: 4px solid #dc2626;
+      padding: 7px 10px; border-radius: 4px; font-size: 10px; color: #991b1b;
+      display: flex; align-items: flex-start; gap: 7px; margin-bottom: 6px; line-height: 1.4;
+    }
+    .analysis-block { margin-bottom: 14px; page-break-inside: avoid; }
+    .analysis-block-title {
+      font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+      color: #6d28d9; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;
+    }
+    .analysis-block-title::before {
+      content: ''; display: inline-block; width: 3px; height: 12px;
+      background: #7c3aed; border-radius: 2px; flex-shrink: 0;
+    }
+    .analysis-block-text { font-size: 10.5px; color: #374151; line-height: 1.7; }
+
+    /* ═══════════════════════════════════════════════════
+       PARECER DO ANALISTA
+    ═══════════════════════════════════════════════════ */
+    .parecer-box {
+      background: #f5f3ff; border: 1px solid #ddd6fe;
+      border-left: 4px solid #6d28d9;
+      border-radius: 6px; padding: 14px 16px; margin-bottom: 16px;
+    }
+    .parecer-label {
+      font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+      color: #7c3aed; margin-bottom: 6px;
+    }
+    .parecer-text { font-size: 11px; color: #1f2937; line-height: 1.7; font-style: italic; }
+
+    .decision-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+      padding: 12px 14px; border-radius: 6px; border: 1px solid;
+    }
+    .decision-header.aprovado  { background: #f0fdf4; border-color: #bbf7d0; }
+    .decision-header.negado    { background: #fff5f5; border-color: #fecaca; }
+    .decision-header.pendente  { background: #fffbeb; border-color: #fde68a; }
+    .decision-header.em_analise{ background: #eff6ff; border-color: #bfdbfe; }
+    .decision-header.em_comite { background: #fffbeb; border-color: #fcd34d; }
+    .dec-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .dec-icon.aprovado   { background: #d1fae5; color: #065f46; }
+    .dec-icon.negado     { background: #fee2e2; color: #991b1b; }
+    .dec-icon.pendente   { background: #fef3c7; color: #78350f; }
+    .dec-icon.em_analise { background: #dbeafe; color: #1e40af; }
+    .dec-icon.em_comite  { background: #fef3c7; color: #92400e; }
+    .dec-icon svg { width: 18px; height: 18px; }
+    .dec-status-label { font-size: 8px; color: #9ca3af; text-transform: uppercase; letter-spacing: .4px; }
+    .dec-status-val   { font-size: 14px; font-weight: 900; }
+    .dec-status-val.aprovado   { color: #065f46; }
+    .dec-status-val.negado     { color: #991b1b; }
+    .dec-status-val.pendente   { color: #78350f; }
+    .dec-status-val.em_analise { color: #1e40af; }
+    .dec-status-val.em_comite  { color: #92400e; }
+
+    /* ═══════════════════════════════════════════════════
+       COMITÊ DE CRÉDITO
+    ═══════════════════════════════════════════════════ */
+    .sec-head-gold {
+      background: linear-gradient(135deg, #92400e, #d97706);
+      color: white; padding: 7px 12px; border-radius: 4px;
+      font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .7px;
+      margin: 20px 0 12px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .sec-head-gold svg { width: 12px; height: 12px; flex-shrink: 0; }
+    .comite-box {
+      background: #fffbeb; border: 1.5px solid #fcd34d; border-left: 4px solid #d97706;
+      border-radius: 6px; padding: 14px 16px; margin-bottom: 16px;
+    }
+    .comite-label {
+      font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+      color: #d97706; margin-bottom: 6px;
+    }
+    .comite-text { font-size: 11px; color: #1f2937; line-height: 1.7; }
+    .comite-pending {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px;
+      padding: 10px 14px; font-size: 10px; color: #78350f;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .comite-decision-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+      padding: 12px 14px; border-radius: 6px; border: 1.5px solid;
+    }
+    .comite-decision-header.aprovado { background: #f0fdf4; border-color: #86efac; }
+    .comite-decision-header.negado   { background: #fff5f5; border-color: #fca5a5; }
+
+    /* ═══════════════════════════════════════════════════
+       QSA TABLE
+    ═══════════════════════════════════════════════════ */
+    .qsa-table { font-size: 10px; }
+    .qsa-table th { font-size: 8px; }
+
+    /* ═══════════════════════════════════════════════════
+       SIGNATURE BLOCK
+    ═══════════════════════════════════════════════════ */
+    .sig-section {
+      margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    }
+    .sig-box { padding-top: 10px; }
+    .sig-line { border-top: 1px solid #d1d5db; margin-top: 44px; padding-top: 6px; }
+    .sig-name { font-size: 10.5px; font-weight: 700; color: #111827; }
+    .sig-role { font-size: 9px; color: #6b7280; }
+    .sig-date { font-size: 9px; color: #6b7280; margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════════════
+       RF STATUS BADGE
+    ═══════════════════════════════════════════════════ */
+    .rf-status-ok   { color: #059669; font-weight: 700; }
+    .rf-status-bad  { color: #dc2626; font-weight: 700; }
+    .rf-status-warn { color: #d97706; font-weight: 700; }
+
+    /* ═══════════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════════ */
+    .doc-footer {
+      background: #f9fafb; border-top: 1px solid #e5e7eb;
+      padding: 10px 32px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .doc-footer-left  { font-size: 8px; color: #9ca3af; }
+    .doc-footer-right { font-size: 8px; color: #9ca3af; text-align: right; }
+    .confidential {
+      display: inline-block; background: #fef3c7; color: #78350f;
+      font-size: 7.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+      padding: 2px 8px; border-radius: 3px; border: 1px solid #fde68a;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SEPARATOR
+    ═══════════════════════════════════════════════════ */
+    .separator { height: 1px; background: #e5e7eb; margin: 16px 0; }
+
+    /* ═══════════════════════════════════════════════════
+       PAGE BREAKS
+    ═══════════════════════════════════════════════════ */
+    .page-break { break-before: page; }
+    .avoid-break { page-break-inside: avoid; }
+
+    /* ═══════════════════════════════════════════════════
+       PRINT RULES
+    ═══════════════════════════════════════════════════ */
+    @page { size: A4; margin: 14mm 16mm 18mm 16mm; }
+
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { background: white; }
+      .toolbar { display: none !important; }
+      .doc-wrap { max-width: none; margin: 0; box-shadow: none; border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+<script>DB.auth.requireAuth();</script>
+
+<!-- ── Screen toolbar ─────────────────────────────────── -->
+<div class="toolbar">
+  <a id="back-link" href="solicitacoes.html" class="btn-back">
+    <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    Voltar à Análise
+  </a>
+  <div class="toolbar-title">Relatório de Análise de Crédito</div>
+  <span class="toolbar-badge" id="tb-badge"></span>
+  <button class="btn-print" onclick="printWithFreshData()">
+    <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><polyline points="6 9 6 2 18 2 18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke="currentColor" stroke-width="2"/><rect x="6" y="14" width="12" height="8" stroke="currentColor" stroke-width="2"/></svg>
+    Imprimir / Salvar PDF
+  </button>
+</div>
+
+<!-- ── Document ───────────────────────────────────────── -->
+<div class="doc-wrap">
+  <div id="document-root"><!-- generated by JS --></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════ */
+const urlP  = new URLSearchParams(location.search);
+const solId = urlP.get('id');
+if (!solId) location.href = 'solicitacoes.html';
+
+let sol = DB.solicitacoes.getById(solId);
+if (!sol) location.href = 'solicitacoes.html';
+
+document.getElementById('back-link').href = 'analise-financeira.html?id=' + solId;
+
+const an  = (sol.analise || {}).analysis  || {};
+let rf  = (sol.analise || {}).cnpj_data || {};
+let rfd = rf.data || {};
+
+/* ── Financial Indicators Data ──────────────────── */
+const afin   = sol.analiseFinanceira || {};
+const finRaw = afin.data  || [{}, {}];
+const finYrs = afin.years || ['Ano 1', 'Ano 2'];
+
+/* ── Utilities ──────────────────────────────────── */
+function esc(v) {
+  return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function iv(k, v, cls = '') {
+  const s = (v !== null && v !== undefined && String(v).trim() !== '') ? esc(v) : '—';
+  return `<div class="d-item"><div class="d-key">${esc(k)}</div><div class="d-val ${s==='—'?'empty':cls}">${s}</div></div>`;
+}
+function fmtMoney(v) {
+  if (!v || v === '0') return '—';
+  const n = parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+  if (isNaN(n)) return v;
+  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('pt-BR'); } catch { return iso; }
+}
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return iso; }
+}
+const STATUS_LABEL = { aprovado:'Aprovado', negado:'Negado', em_analise:'Em Análise', pendente:'Pendente', em_comite:'Em Comitê' };
+const MODAL_LABEL  = { maritimo:'Marítimo', aereo:'Aéreo', rodoviario:'Rodoviário', ferroviario:'Ferroviário' };
+const TIPO_OP_LABEL= { encomenda:'Encomenda', 'conta-ordem':'Conta e Ordem', conta_ordem:'Conta e Ordem', gestao:'Gestão' };
+
+/* ── Doc metadata ───────────────────────────────── */
+const docNum  = 'AC-' + new Date().getFullYear() + '-' + (sol.id || '').slice(-8).toUpperCase();
+const genDate = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'});
+
+/* ── Toolbar badge ──────────────────────────────── */
+const tbBadge = document.getElementById('tb-badge');
+const st = sol.status || 'pendente';
+tbBadge.textContent = STATUS_LABEL[st] || st;
+tbBadge.className = `toolbar-badge ${st}`;
+
+/* ── Score gauge SVG ────────────────────────────── */
+function scoreGaugeSVG(score) {
+  const s = Math.max(0, Math.min(100, score || 0));
+  const r = 30, cx = 36, cy = 36, sw = 7;
+  const circ = 2 * Math.PI * r;
+  const filled = (s / 100) * circ;
+  const color = s >= 60 ? '#059669' : s >= 35 ? '#d97706' : '#dc2626';
+  return `<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${sw}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}"
+      stroke-dasharray="${filled.toFixed(2)},${circ.toFixed(2)}"
+      stroke-linecap="round" transform="rotate(-90 ${cx} ${cy})"/>
+    <text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="19" font-weight="900" fill="${color}" font-family="inherit">${s}</text>
+    <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="7" fill="#9ca3af" font-weight="600" font-family="inherit">SCORE</text>
+  </svg>`;
+}
+
+function clsBadge(cls) {
+  if (!cls || cls==='—') return '';
+  const c = (cls||'').toLowerCase().replace(/\+/g,'p');
+  return `<span class="cls-badge cls-${c}">${esc(cls)}</span>`;
+}
+function recBadge(rec) {
+  const MAP = {aprovar:'✓ Recomendação: APROVAR', negar:'✗ Recomendação: NEGAR', revisar:'⟳ Recomendação: REVISAR'};
+  const CSS = {aprovar:'rec-aprovar', negar:'rec-negar', revisar:'rec-revisar'};
+  if (!rec || !MAP[rec]) return '';
+  return `<span class="rec-badge ${CSS[rec]}">${MAP[rec]}</span>`;
+}
+
+const POS_SVG  = `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+const WARN_SVG = `<svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.8"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+
+function mkPoints(arr, dotClass, icon) {
+  if (!arr || !arr.length) return '<div style="font-size:9.5px;color:#d1d5db;font-style:italic;">Nenhum identificado</div>';
+  return arr.map(p => `<div class="pt-item"><div class="pt-dot ${dotClass}">${icon}</div><span>${esc(p)}</span></div>`).join('');
+}
+
+/* ── RF status helpers ──────────────────────────── */
+function rfSituacaoClass(sit) {
+  const s = (sit || '').toLowerCase();
+  if (s.includes('ativa')) return 'rf-status-ok';
+  if (s.includes('inapta') || s.includes('baixada') || s.includes('suspensa')) return 'rf-status-bad';
+  return 'rf-status-warn';
+}
+function rfTempoMercado() {
+  if (!rfd.data_inicio_atividade) return '—';
+  const dt = new Date(rfd.data_inicio_atividade);
+  const anos = Math.floor((Date.now() - dt) / (365.25 * 864e5));
+  const meses = Math.floor(((Date.now() - dt) / (30.44 * 864e5)) % 12);
+  return anos + ' ano' + (anos !== 1 ? 's' : '') + (meses > 0 ? ` e ${meses} mês${meses>1?'es':''}` : '');
+}
+
+/* ── Exposure calc ──────────────────────────────── */
+function brToF(v) { return parseFloat(String(v||'0').replace(/\./g,'').replace(',','.')) || 0; }
+function fmtMoneyN(n) { return n > 0 ? 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'; }
+
+/* Mesma lógica de boot() de exposicao.html: lê limiteExportadorParsed
+   para suportar FOB em moeda estrangeira com equivalente BRL */
+function _computeFobBRL(s) {
+  const p    = s.limiteExportadorParsed || {};
+  const moeda = (p.moeda || 'BRL').toUpperCase();
+  const num   = typeof p.num === 'number' ? p.num
+              : brToF(p.valor || '') || brToF(s.limiteExportador || '') || 0;
+  if (moeda === 'BRL') return num;
+  const hasBRLequiv = p.temEquiv && (p.equivMoeda || '').toUpperCase() === 'BRL' && p.equivNum > 0;
+  const cambio = (hasBRLequiv && num > 0) ? p.equivNum / num : 5.80;
+  return num * cambio;
+}
+
+let expFob  = _computeFobBRL(sol);
+let expDesp = brToF(sol.limiteDesp);
+let expImp  = brToF(sol.limiteImp);
+let expTot  = expFob + expDesp + expImp;
+
+/* ── Gantt chart helpers (mirrored from exposicao.html) ─────── */
+function _addDays(date, n) { const d = new Date(date); d.setDate(d.getDate() + n); return d; }
+function _diffDays(a, b)   { return Math.round((b.getTime() - a.getTime()) / 86400000); }
+function _fmtBRL(v, short) {
+  const abs = Math.abs(v);
+  if (short && abs >= 1e6) return 'R$ ' + (v/1e6).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + ' M';
+  if (short && abs >= 1e3) return 'R$ ' + Math.round(v/1e3).toLocaleString('pt-BR') + ' k';
+  return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+}
+function _fmtD(d) { return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
+function _parcCondToDate(tipo, dm) {
+  if (tipo === 'embarque') return new Date(dm.dBL);
+  if (tipo === 'registro') return new Date(dm.dReg);
+  if (tipo === 'entrega')  return new Date(dm.dRec);
+  return new Date(dm.d0);
+}
+
+function _buildGanttParams() {
+  const fobBRL  = expFob;
+  const despBRL = expDesp;
+  const impBRL  = expImp;
+
+  const productionDays = Math.max(0, parseInt(sol.prazoPrepEmbarque) || 10);
+  const embarqueDays   = Math.max(0, parseInt(sol.prazoEmbarque)     || 0);
+  const _pt = parseInt(sol.prazoTransit);
+  const transitDays = (!isNaN(_pt) && String(_pt) === String(sol.prazoTransit||'').trim())
+    ? Math.max(1, _pt)
+    : (sol.modal === 'aereo' || sol.modal === 'aéreo') ? 5 : 45;
+  const desembarDays   = Math.max(0, parseInt(sol.prazoDesembaraco) || 2);
+  const fatDays        = Math.max(0, parseInt(sol.prazoFaturamento) || 3);
+  const creditTerms    = Math.max(1, parseInt(sol.prazoPagtoVendemmia) || parseInt(sol.prazoDesp) || parseInt(sol.prazoImp) || 60);
+  const paymentTermsExp = 60;
+  const pagExpDays     = Math.max(0, parseInt(sol.prazoPagtoExportador) || 83);
+  const volMes         = brToF(sol.volMes) || 0;
+
+  let cdi = 13.75, spread = 0.18;
+  if (sol.custoFin) {
+    const mM = sol.custoFin.match(/([0-9]+[,.]?[0-9]*)\s*%\s*(ao\s+m[eê]s|\/m(?:\s|$)|a\.m\.)/i);
+    if (mM) spread = parseFloat(mM[1].replace(',','.')) || 0.18;
+    const mA = sol.custoFin.match(/([0-9]+[,.]?[0-9]*)\s*%\s*(a\.a\.|ao\s+ano|\/a(?:\s|$))/i);
+    if (mA) cdi = parseFloat(mA[1].replace(',','.')) || 13.75;
+  }
+  const rentabilidade = parseFloat(sol.rentabilidade) / 100 || 0.02;
+
+  let c1 = new Date(); c1.setHours(0,0,0,0);
+  if (sol.prazoInvoiceData) {
+    // Parse como data local (não UTC) para evitar off-by-one em fuso UTC-3
+    const _s = String(sol.prazoInvoiceData), _p = _s.split('-');
+    const _d = _p.length === 3 ? new Date(+_p[0], +_p[1]-1, +_p[2]) : new Date(_s);
+    if (!isNaN(_d.getTime()) && _d.getFullYear() > 2000) c1 = _d;
+  }
+
+  let fobParcelas = [];
+  if (Array.isArray(sol.simPagParcelas) && sol.simPagParcelas.length > 0)
+    fobParcelas = sol.simPagParcelas.filter(p => (p.pct || 0) > 0);
+  else if (Array.isArray(sol.pagtoExportadorParcelas) && sol.pagtoExportadorParcelas.length > 0)
+    fobParcelas = sol.pagtoExportadorParcelas.filter(p => (p.pct || 0) > 0);
+
+  let recParcelas = [];
+  if (Array.isArray(sol.simRecParcelas) && sol.simRecParcelas.length > 0)
+    recParcelas = sol.simRecParcelas.filter(p => (p.pct || 0) > 0);
+
+  return { dates: [c1, _addDays(c1,30), _addDays(c1,60)],
+    productionDays, embarqueDays, transitDays, desembarDays, fatDays,
+    paymentTermsExp, pagExpDays, creditTerms,
+    cdiAnnual: cdi/100, spreadMonthly: spread/100, rentabilidade,
+    fobBRL, despBRL, impBRL, volMes, fobParcelas, recParcelas };
+}
+
+function _calcCycle(startDate, P) {
+  const d0       = new Date(startDate); d0.setHours(0,0,0,0);
+  const dPrepDone = _addDays(d0, P.productionDays);
+  const dBL      = _addDays(dPrepDone, P.embarqueDays);
+  const dReg     = _addDays(dBL, P.transitDays);
+  const dDesemb  = _addDays(dReg, P.desembarDays);
+  const dFat     = _addDays(dDesemb, P.fatDays);
+  const dRec     = _addDays(dFat, P.creditTerms);
+  const dPagExp  = _addDays(d0, P.pagExpDays);
+  const rateDaily = (P.cdiAnnual / 365) + (P.spreadMonthly / 30);
+  const dm = { d0, dPrepDone, dBL, dReg, dDesemb, dFat, dRec, dPagExp };
+  let fobPayments = [];
+  if (P.fobParcelas && P.fobParcelas.length > 0) {
+    P.fobParcelas.forEach(p => {
+      const dPmt = _parcCondToDate(p.tipo || p.cond || '', dm);
+      const amount = P.fobBRL * ((p.pct||0)/100);
+      const days = Math.max(0, _diffDays(dPmt, dRec));
+      fobPayments.push({ pct:(p.pct||0)/100, amount, date:dPmt, days,
+        cost: amount * (Math.pow(1+rateDaily, days)-1) });
+    });
+  } else {
+    const dPag = _addDays(dBL, P.paymentTermsExp);
+    const days = Math.max(0, _diffDays(dPag, dRec));
+    fobPayments.push({ pct:1.0, amount:P.fobBRL, date:dPag, days,
+      cost: P.fobBRL * (Math.pow(1+rateDaily, days)-1) });
+  }
+  const daysDesp = _diffDays(dReg, dRec);
+  return { d0, dPrepDone, dBL, dReg, dDesemb, dFat, dRec, dPagExp, fobPayments,
+    fob:P.fobBRL, desp:P.despBRL, imp:P.impBRL, daysDesp,
+    costDesp: P.despBRL*(Math.pow(1+rateDaily,daysDesp)-1),
+    costImp:  P.impBRL *(Math.pow(1+rateDaily,daysDesp)-1),
+    costFOB:  fobPayments.reduce((s,p)=>s+p.cost,0),
+    revenue: (P.fobBRL+P.despBRL+P.impBRL)*P.rentabilidade };
+}
+
+function _buildCurve(cycles) {
+  const evts = [];
+  cycles.forEach((c,i) => {
+    evts.push({ t:c.dReg.getTime(),  i, delta:c.desp+c.imp });
+    c.fobPayments.forEach(fp => evts.push({ t:fp.date.getTime(), i, delta:fp.amount }));
+    evts.push({ t:c.dRec.getTime(),  i, delta:-(c.fob+c.desp+c.imp) });
+  });
+  evts.sort((a,b) => a.t-b.t);
+  const minT = Math.min(...cycles.map(c=>c.d0.getTime())) - 5*86400000;
+  const maxT = Math.max(...cycles.map(c=>c.dRec.getTime())) + 5*86400000;
+  if (!evts.length) return { maxExposure:0, minT, maxT };
+  const perCycle = cycles.map(()=>0);
+  let maxExposure = 0;
+  evts.forEach(e => {
+    perCycle[e.i] = Math.max(0, perCycle[e.i] + e.delta);
+    const t = perCycle.reduce((s,v)=>s+v,0);
+    if (t > maxExposure) maxExposure = t;
+  });
+  return { maxExposure, minT, maxT };
+}
+
+function buildGanttSVG(P, cycles, curve) {
+  if (!P) P = _buildGanttParams();
+  if (!cycles) cycles = P.dates.map(d => _calcCycle(d, P));
+  if (expTot <= 0 || !cycles.length || cycles.some(c => isNaN(c.d0.getTime()))) return '';
+  if (!curve) curve = _buildCurve(cycles);
+
+  const hasSplitFOB = cycles.some(c => c.fobPayments && c.fobPayments.length > 1);
+  const ROW_H = hasSplitFOB ? 198 : 178;
+  const W = 1060, PAD_L = 122, PAD_T = 14, PAD_R = 18, PAD_B = 32;
+  const H = PAD_T + ROW_H * cycles.length + PAD_B;
+  const CW = W - PAD_L - PAD_R;
+  const minT = curve.minT, maxT = curve.maxT, span = maxT - minT;
+  const totalDays = Math.ceil(span / 86400000);
+  function tx(date) { return PAD_L + (date.getTime()-minT)/span*CW; }
+  const CY_CLR = ['#c084fc','#60a5fa','#22d3ee'];
+
+  const defs = `<defs>
+    <linearGradient id="vgPrep"   x1="0%"y1="0%"x2="100%"y2="0%"><stop offset="0%"stop-color="#1e293b"/><stop offset="100%"stop-color="#475569"/></linearGradient>
+    <linearGradient id="vgEmb"    x1="0%"y1="0%"x2="100%"y2="0%"><stop offset="0%"stop-color="#1e3a8a"/><stop offset="100%"stop-color="#3b82f6"/></linearGradient>
+    <linearGradient id="vgTrans"  x1="0%"y1="0%"x2="100%"y2="0%"><stop offset="0%"stop-color="#1d4ed8"/><stop offset="100%"stop-color="#93c5fd"/></linearGradient>
+    <linearGradient id="vgDesemb" x1="0%"y1="0%"x2="100%"y2="0%"><stop offset="0%"stop-color="#78350f"/><stop offset="100%"stop-color="#f59e0b"/></linearGradient>
+    <linearGradient id="vgFat"    x1="0%"y1="0%"x2="100%"y2="0%"><stop offset="0%"stop-color="#052e16"/><stop offset="100%"stop-color="#10b981"/></linearGradient>
+    <linearGradient id="vgFOBa"   x1="0%"y1="0%"x2="100%"y2="0%"><stop offset="0%"stop-color="#7f1d1d"/><stop offset="100%"stop-color="#dc2626"/></linearGradient>
+    <linearGradient id="vgFOBb"   x1="0%"y1="0%"x2="100%"y2="0%"><stop offset="0%"stop-color="#991b1b"/><stop offset="100%"stop-color="#f87171"/></linearGradient>
+    <linearGradient id="vgDI"     x1="0%"y1="0%"x2="100%"y2="0%"><stop offset="0%"stop-color="#3b0764"/><stop offset="100%"stop-color="#8b5cf6"/></linearGradient>
+  </defs>`;
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;font-family:inherit;">${defs}`;
+  s += `<rect x="${PAD_L}"y="${PAD_T}"width="${CW}"height="${H-PAD_T-PAD_B}"fill="rgba(255,255,255,0.008)"rx="6"/>`;
+
+  // Grid + date axis
+  const gi = totalDays<=90?10:totalDays<=150?15:totalDays<=240?20:totalDays<=360?30:45;
+  for (let day=0; day<=totalDays; day+=gi) {
+    const gx = PAD_L + (day/totalDays)*CW;
+    const gd = new Date(minT + day*86400000);
+    const isM = gd.getDate()===1;
+    s += `<line x1="${gx.toFixed(1)}"y1="${PAD_T}"x2="${gx.toFixed(1)}"y2="${H-PAD_B}"stroke="${isM?'rgba(255,255,255,.09)':'rgba(255,255,255,.04)'}"stroke-width="${isM?1.5:1}"/>`;
+    s += `<text x="${gx.toFixed(1)}"y="${H-10}"text-anchor="middle"fill="rgba(255,255,255,.28)"font-size="8.5"font-weight="${isM?700:400}">${_fmtD(gd)}</text>`;
+  }
+
+  cycles.forEach((c,idx) => {
+    const y0 = PAD_T + idx*ROW_H;
+    const clr = CY_CLR[idx];
+    if (idx>0) s += `<line x1="0"y1="${y0}"x2="${W}"y2="${y0}"stroke="rgba(255,255,255,.05)"stroke-width="1"/>`;
+
+    // Label column
+    const lcY = y0 + ROW_H/2 - 14;
+    s += `<circle cx="14"cy="${lcY}"r="13"fill="${clr}"opacity=".1"/>`;
+    s += `<circle cx="14"cy="${lcY}"r="11"fill="${clr}"opacity=".88"/>`;
+    s += `<text x="14"y="${lcY+4}"text-anchor="middle"fill="white"font-size="10"font-weight="900">${idx+1}</text>`;
+    s += `<text x="30"y="${lcY-5}"text-anchor="start"fill="${clr}"font-size="8.5"font-weight="800"letter-spacing=".6">CICLO ${idx+1}</text>`;
+    s += `<text x="30"y="${lcY+6}"text-anchor="start"fill="rgba(255,255,255,.5)"font-size="8">${_fmtD(c.d0)}</text>`;
+    s += `<text x="30"y="${lcY+17}"text-anchor="start"fill="rgba(255,255,255,.28)"font-size="7.5">${_diffDays(c.d0,c.dRec)} dias</text>`;
+
+    const x0=tx(c.d0), xPrep=tx(c.dPrepDone), xBL=tx(c.dBL), xChegada=tx(c.dReg),
+          xDesemb=tx(c.dDesemb), xFat=tx(c.dFat), xVDM=tx(c.dRec), xPagExp=tx(c.dPagExp);
+
+    // Process bar — 6 segmentos (igual ao sistema)
+    const tY=y0+8, tH=15;
+    [
+      {x1:x0,      x2:xPrep,    fill:'url(#vgPrep)',     lbl:'Prontidão'},
+      {x1:xPrep,   x2:xBL,      fill:'url(#vgEmb)',      lbl:'BL'},
+      {x1:xBL,     x2:xChegada, fill:'url(#vgTrans)',    lbl:'Transit Time'},
+      {x1:xChegada,x2:xDesemb,  fill:'url(#vgDesemb)',   lbl:'Desemb.'},
+      {x1:xDesemb, x2:xFat,     fill:'url(#vgFat)',      lbl:'Faturamento'},
+      {x1:xFat,    x2:xVDM,     fill:'rgba(1,225,142,.2)',lbl:'Receb. VDM'},
+    ].forEach(seg => {
+      const sw=Math.max(1.5,seg.x2-seg.x1);
+      s += `<rect x="${seg.x1.toFixed(1)}"y="${tY}"width="${sw.toFixed(1)}"height="${tH}"fill="${seg.fill}"rx="2"opacity=".95"/>`;
+      if (sw>34) s += `<text x="${((seg.x1+seg.x2)/2).toFixed(1)}"y="${tY+tH-3}"text-anchor="middle"fill="rgba(255,255,255,.8)"font-size="7.5"font-weight="700">${seg.lbl}</text>`;
+    });
+
+    // Milestones: inclui Pagto.Exp (f43f5e) igual ao sistema
+    const mBottom = tY + (hasSplitFOB?158:138);
+    [{x:x0,       clr:'rgba(255,255,255,.65)',r:4},
+     {x:xBL,      clr:'#60a5fa',             r:4},
+     {x:xChegada, clr:'#f59e0b',             r:4},
+     {x:xDesemb,  clr:'#fb923c',             r:3.5},
+     {x:xFat,     clr:'#10b981',             r:3.5},
+     {x:xVDM,     clr:'#01E18E',             r:5},
+     {x:xPagExp,  clr:'#f43f5e',             r:4},
+    ].forEach(m => {
+      const lim=Math.min(mBottom,y0+ROW_H-5);
+      s += `<line x1="${m.x.toFixed(1)}"y1="${tY}"x2="${m.x.toFixed(1)}"y2="${lim}"stroke="${m.clr}"stroke-width=".7"stroke-opacity=".3"stroke-dasharray="3,3"/>`;
+      s += `<circle cx="${m.x.toFixed(1)}"cy="${tY}"r="${m.r}"fill="${m.clr}"opacity=".95"/>`;
+    });
+    if (xPagExp>=PAD_L && xPagExp<=PAD_L+CW) {
+      s += `<line x1="${xPagExp.toFixed(1)}"y1="${tY-4}"x2="${xPagExp.toFixed(1)}"y2="${tY+tH+2}"stroke="#f43f5e"stroke-width="1.2"stroke-opacity=".55"stroke-dasharray="3,2"/>`;
+    }
+
+    // Date labels com tier-based collision avoidance — igual ao sistema
+    const dlY=tY+tH+10, TIER_H=24, MIN_GAP=46;
+    const dms=[
+      {x:x0,       lbl:_fmtD(c.d0),      tag:'Pedido',    clr:'rgba(255,255,255,.75)',r:4,   bold:true},
+      {x:xBL,      lbl:_fmtD(c.dBL),     tag:'BL',        clr:'#60a5fa',             r:4,   bold:true},
+      {x:xChegada, lbl:_fmtD(c.dReg),    tag:'Chegada',   clr:'#f59e0b',             r:4,   bold:false},
+      {x:xDesemb,  lbl:_fmtD(c.dDesemb), tag:'Desemb.',   clr:'#fb923c',             r:3.5, bold:false},
+      {x:xFat,     lbl:_fmtD(c.dFat),    tag:'Fat.',      clr:'#10b981',             r:3.5, bold:false},
+      {x:xVDM,     lbl:_fmtD(c.dRec),    tag:'Receb.VDM', clr:'#01E18E',             r:5,   bold:true},
+      {x:xPagExp,  lbl:_fmtD(c.dPagExp), tag:'Pagto.Exp', clr:'#f43f5e',             r:4,   bold:true},
+    ];
+    const tierLastX={};
+    const labelTiers=dms.map(dm => {
+      for (let t=0;;t++) { if ((tierLastX[t]??-Infinity)+MIN_GAP<=dm.x){tierLastX[t]=dm.x;return t;} }
+    });
+    const maxTier=Math.max(...labelTiers);
+    dms.forEach((dm,i) => {
+      const tier=labelTiers[i], lY=dlY+tier*TIER_H;
+      if (tier>0) {
+        const sk0=tY+dm.r+2, sk1=lY-5;
+        if (sk1>sk0+2) {
+          s+=`<line x1="${dm.x.toFixed(1)}"y1="${sk0.toFixed(1)}"x2="${dm.x.toFixed(1)}"y2="${sk1.toFixed(1)}"stroke="${dm.clr}"stroke-width=".9"stroke-opacity=".45"stroke-dasharray="2.5,2"/>`;
+          s+=`<circle cx="${dm.x.toFixed(1)}"cy="${sk1.toFixed(1)}"r="1.8"fill="${dm.clr}"opacity=".5"/>`;
+        }
+        s+=`<rect x="${(dm.x-23).toFixed(1)}"y="${(lY-10).toFixed(1)}"width="46"height="21"rx="4"fill="rgba(8,5,20,.88)"stroke="${dm.clr}"stroke-width=".7"stroke-opacity=".4"/>`;
+      }
+      s+=`<text x="${dm.x.toFixed(1)}"y="${lY}"text-anchor="middle"fill="${dm.clr}"font-size="7"font-weight="600"opacity="${tier>0?.9:.65}">${dm.tag}</text>`;
+      s+=`<text x="${dm.x.toFixed(1)}"y="${lY+11}"text-anchor="middle"fill="${dm.clr}"font-size="8.5"font-weight="${dm.bold?700:500}">${dm.lbl}</text>`;
+    });
+
+    // FOB exposure bars
+    const fobY0=dlY+(maxTier+1)*TIER_H+6, fobH=16;
+    const numFOB=(c.fobPayments||[]).length;
+    if (numFOB>0) {
+      c.fobPayments.forEach((fp,fi) => {
+        const fxS=tx(fp.date), fxE=xVDM, fW=Math.max(2,fxE-fxS);
+        const fyS=fobY0+fi*(fobH+5);
+        const grad=(numFOB>1&&fi===0)?'url(#vgFOBa)':'url(#vgFOBb)';
+        s+=`<rect x="${fxS.toFixed(1)}"y="${fyS}"width="${fW.toFixed(1)}"height="${fobH}"fill="${grad}"rx="3"opacity=".88"/>`;
+        s+=`<circle cx="${fxS.toFixed(1)}"cy="${fyS+fobH/2}"r="4.5"fill="${numFOB>1&&fi===0?'#dc2626':'#f87171'}"stroke="rgba(255,255,255,.5)"stroke-width="1.2"/>`;
+        if (numFOB>1) s+=`<text x="${fxS.toFixed(1)}"y="${fyS-3}"text-anchor="middle"fill="#fca5a5"font-size="8"font-weight="800">${Math.round(fp.pct*100)}% FOB</text>`;
+        if (fW>55) {
+          const mx=((fxS+fxE)/2).toFixed(1);
+          const pt=numFOB>1?`${Math.round(fp.pct*100)}% · `:'';
+          s+=`<text x="${mx}"y="${fyS+fobH-3}"text-anchor="middle"fill="white"font-size="8"font-weight="700">${pt}${fp.days}d · ${_fmtBRL(fp.amount,true)}</text>`;
+        }
+      });
+      const fobMidY=fobY0+(numFOB*(fobH+5)-5)/2;
+      s+=`<text x="${PAD_L-5}"y="${fobMidY+4}"text-anchor="end"fill="rgba(248,113,113,.85)"font-size="8"font-weight="800">FOB</text>`;
+    }
+
+    // D+I bar
+    const despY0=fobY0+numFOB*(fobH+5)+3, despH=16;
+    if (c.desp+c.imp>0) {
+      const dxS=tx(c.dReg), dxE=xVDM, dW=Math.max(2,dxE-dxS);
+      s+=`<rect x="${dxS.toFixed(1)}"y="${despY0}"width="${dW.toFixed(1)}"height="${despH}"fill="url(#vgDI)"rx="3"opacity=".88"/>`;
+      s+=`<circle cx="${dxS.toFixed(1)}"cy="${despY0+despH/2}"r="4.5"fill="#8b5cf6"stroke="rgba(255,255,255,.4)"stroke-width="1.2"/>`;
+      if (dW>55) s+=`<text x="${((dxS+dxE)/2).toFixed(1)}"y="${despY0+despH-3}"text-anchor="middle"fill="white"font-size="8"font-weight="700">Desp+Imp · ${c.daysDesp}d · ${_fmtBRL(c.desp+c.imp,true)}</text>`;
+      s+=`<text x="${PAD_L-5}"y="${despY0+despH/2+4}"text-anchor="end"fill="rgba(167,139,250,.85)"font-size="8"font-weight="800">D+I</text>`;
+    }
+
+    // Financial summary row
+    const sumY=despY0+despH+12;
+    if (sumY<y0+ROW_H-3) {
+      const parts=[];
+      const totExp=c.fob+c.desp+c.imp, totCost=c.costDesp+c.costImp+c.costFOB, liq=c.revenue-totCost;
+      if (totExp>0)  parts.push(`Exposição: ${_fmtBRL(totExp,true)}`);
+      if (totCost>0) parts.push(`Custo fin.: ${_fmtBRL(totCost,true)}`);
+      if (c.revenue>0) parts.push(`Receita: ${_fmtBRL(c.revenue,true)}`);
+      if (liq!==0) parts.push(`Líq.: ${_fmtBRL(liq,true)}`);
+      if (parts.length) s+=`<text x="${PAD_L+CW/2}"y="${sumY}"text-anchor="middle"fill="rgba(255,255,255,.22)"font-size="8">${parts.join('   ·   ')}</text>`;
+    }
+  });
+
+  s += '</svg>';
+  return s;
+}
+
+/* ── Financial Indicators helpers ──────────────── */
+function parseFin(v) {
+  if (v === '' || v == null) return NaN;
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'));
+  return isNaN(n) ? NaN : n;
+}
+function calcDerived(d) {
+  const n = k => parseFin(d[k]);
+  return {
+    margemBruta:         n('receitaLiquida')    ? n('lucroBruto')    / n('receitaLiquida')   * 100 : NaN,
+    margemLiquida:       n('receitaLiquida')    ? n('lucroLiquido')  / n('receitaLiquida')   * 100 : NaN,
+    margemEbitda:        n('receitaLiquida')    ? n('ebitda')        / n('receitaLiquida')   * 100 : NaN,
+    roe:                 n('patrimonioLiquido') ? n('lucroLiquido')  / n('patrimonioLiquido')* 100 : NaN,
+    roa:                 n('ativoTotal')        ? n('lucroLiquido')  / n('ativoTotal')       * 100 : NaN,
+    liquidezCorrente:    n('passivoCirculante') ? n('ativoCirculante')/ n('passivoCirculante')    : NaN,
+    liquidezGeral:       (n('passivoCirculante')+n('exigivelLP'))
+                         ? (n('ativoCirculante')+n('realizavelLP'))/(n('passivoCirculante')+n('exigivelLP')) : NaN,
+    endividamentoGeral:  n('ativoTotal')        ? n('passivoTotal')  / n('ativoTotal')       * 100 : NaN,
+    endividamentoOneroso:n('ebitda')            ? n('dividaFinanceira')/ n('ebitda')              : NaN,
+    alavancagem:         n('patrimonioLiquido') ? n('ativoTotal')    / n('patrimonioLiquido')     : NaN,
+  };
+}
+function getFinVal(key, yi) {
+  const raw = (finRaw[yi] || {})[key];
+  if (raw !== '' && raw != null) { const n = parseFin(raw); if (!isNaN(n)) return n; }
+  const c = calcDerived(finRaw[yi] || {});
+  return key in c ? c[key] : NaN;
+}
+function fmtFinVal(n, tip) {
+  if (isNaN(n)) return '<span class="fin-empty">—</span>';
+  if (tip === 'money') {
+    const abs = Math.abs(n);
+    let s;
+    if      (abs >= 1e9) s = 'R$ ' + (n/1e9).toFixed(2).replace('.',',') + ' Bi';
+    else if (abs >= 1e6) s = 'R$ ' + (n/1e6).toFixed(2).replace('.',',') + ' Mi';
+    else if (abs >= 1e3) s = 'R$ ' + (n/1e3).toFixed(1).replace('.',',') + ' K';
+    else                 s = 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2});
+    return n < 0 ? `<span style="color:#dc2626">${s}</span>` : s;
+  }
+  if (tip === 'pct') return n.toFixed(1).replace('.',',') + '%';
+  if (tip === 'x')   return n.toFixed(2).replace('.',',') + 'x';
+  return String(n);
+}
+function fmtFinVar(v0, v1, tip, dir) {
+  if (isNaN(v0) || isNaN(v1)) return '<span class="fin-var-neu">—</span>';
+  let diff, txt, cls;
+  if (tip === 'money') {
+    if (v0 === 0) return '<span class="fin-var-neu">—</span>';
+    diff = (v1 - v0) / Math.abs(v0) * 100;
+    txt = (diff >= 0 ? '+' : '') + diff.toFixed(1).replace('.', ',') + '%';
+  } else if (tip === 'pct') {
+    diff = v1 - v0;
+    txt = (diff >= 0 ? '+' : '') + diff.toFixed(1).replace('.', ',') + 'pp';
+  } else {
+    diff = v1 - v0;
+    txt = (diff >= 0 ? '+' : '') + diff.toFixed(2).replace('.', ',') + 'x';
+  }
+  if (dir === 0) cls = 'fin-var-neu';
+  else           cls = (diff > 0 === dir > 0) ? 'fin-var-pos' : 'fin-var-neg';
+  return `<span class="${cls}">${txt}</span>`;
+}
+
+const KEY_TIP = {
+  receitaBruta:'money',receitaLiquida:'money',lucroBruto:'money',lucroLiquido:'money',ebitda:'money',
+  ativoCirculante:'money',realizavelLP:'money',ativoTotal:'money',passivoCirculante:'money',
+  exigivelLP:'money',passivoTotal:'money',patrimonioLiquido:'money',dividaFinanceira:'money',
+  fco:'money',fce:'money',fci:'money',fcf:'money',
+  margemBruta:'pct',margemLiquida:'pct',margemEbitda:'pct',roe:'pct',roa:'pct',endividamentoGeral:'pct',
+  liquidezCorrente:'x',liquidezGeral:'x',endividamentoOneroso:'x',alavancagem:'x',
+};
+
+const FIN_GROUPS = [
+  {
+    id: 'resultado', label: 'RESULTADO — DRE',
+    rows: [
+      { key:'receitaBruta',   lbl:'Receita Bruta',                   src:'dre',  dir: 1 },
+      { key:'receitaLiquida', lbl:'Receita Líquida',                 src:'dre',  dir: 1 },
+      { key:'lucroBruto',     lbl:'Lucro Bruto',                     src:'dre',  dir: 1 },
+      { key:'margemBruta',    lbl:'Margem Bruta',                    src:'calc', dir: 1, derived:true },
+      { key:'lucroLiquido',   lbl:'Lucro Líquido',                   src:'dre',  dir: 1 },
+      { key:'margemLiquida',  lbl:'Margem Líquida',                  src:'calc', dir: 1, derived:true },
+      { key:'ebitda',         lbl:'EBITDA',                          src:'dre',  dir: 1 },
+      { key:'margemEbitda',   lbl:'Margem EBITDA',                   src:'calc', dir: 1, derived:true },
+    ],
+  },
+  {
+    id: 'patrimoniais', label: 'PATRIMONIAIS — BALANÇO',
+    rows: [
+      { key:'ativoCirculante',   lbl:'Ativo Circulante',             src:'bp',   dir: 0 },
+      { key:'realizavelLP',      lbl:'Realizável a Longo Prazo',     src:'bp',   dir: 0 },
+      { key:'ativoTotal',        lbl:'Ativo Total',                  src:'bp',   dir: 1 },
+      { key:'passivoCirculante', lbl:'Passivo Circulante',           src:'bp',   dir:-1 },
+      { key:'exigivelLP',        lbl:'Exigível a Longo Prazo',       src:'bp',   dir:-1 },
+      { key:'passivoTotal',      lbl:'Passivo Total',                src:'bp',   dir:-1 },
+      { key:'patrimonioLiquido', lbl:'Patrimônio Líquido',           src:'bp',   dir: 1 },
+      { key:'dividaFinanceira',  lbl:'Dívida Financeira',            src:'bp',   dir:-1 },
+      { key:'roe',               lbl:'ROE — Retorno s/ Patrimônio',  src:'calc', dir: 1, derived:true },
+      { key:'roa',               lbl:'ROA — Retorno s/ Ativos',      src:'calc', dir: 1, derived:true },
+      { key:'liquidezCorrente',  lbl:'Liquidez Corrente',            src:'calc', dir: 1, derived:true },
+      { key:'liquidezGeral',     lbl:'Liquidez Geral',               src:'calc', dir: 1, derived:true },
+    ],
+  },
+  {
+    id: 'financeiros', label: 'ÍNDICES FINANCEIROS',
+    rows: [
+      { key:'endividamentoGeral',   lbl:'Endividamento Geral',       src:'calc', dir:-1, derived:true },
+      { key:'endividamentoOneroso', lbl:'Dívida Financ. / EBITDA',   src:'calc', dir:-1, derived:true },
+      { key:'alavancagem',          lbl:'Alavancagem Financeira',    src:'calc', dir:-1, derived:true },
+      { key:'fco', lbl:'FCO — Caixa Operacional',                    src:'dfc',  dir: 1 },
+      { key:'fce', lbl:'FCE — Caixa do Exercício',                   src:'dfc',  dir: 0 },
+      { key:'fci', lbl:'FCI — Caixa de Investimento',                src:'dfc',  dir: 0 },
+      { key:'fcf', lbl:'FCF — Caixa Livre',                          src:'dfc',  dir: 1 },
+    ],
+  },
+];
+
+/* ════════════════════════════════════════════════════
+   DETALHAMENTO POR CICLO — HTML TABLE FOR PDF
+════════════════════════════════════════════════════ */
+function buildDetailTableHTML(cycles, P) {
+  if (!cycles || cycles.length === 0 || !P) return '';
+
+  const CYC_COLORS = ['#a855f7','#60a5fa','#22d3ee'];
+  const CYC_NAMES  = ['Ciclo 1','Ciclo 2','Ciclo 3'];
+  const fatTotal   = (P.volMes > 0) ? P.volMes : (P.fobBRL + P.despBRL + P.impBRL);
+
+  const STAGES_DEF = [
+    { key:'pedido',    label:'PEDIDO',       color:'#6366f1' },
+    { key:'prontidao', label:'PRONTIDÃO',    color:'#3b82f6' },
+    { key:'bl',        label:'BL',           color:'#7c3aed' },
+    { key:'transit',   label:'TRANSIT',      color:'#f59e0b' },
+    { key:'desemb',    label:'DESEMBARAÇO',  color:'#06b6d4' },
+    { key:'fat',       label:'FATURAMENTO',  color:'#8b5cf6' },
+    { key:'recvdm',    label:'RECEB. VDM',   color:'#01E18E' },
+    { key:'pagexp',    label:'PAGTO. EXP.',  color:'#f43f5e' },
+  ];
+
+  function gsDate(c, key) {
+    return { pedido:c.d0, prontidao:c.dPrepDone, bl:c.dBL, transit:c.dReg,
+             desemb:c.dDesemb, fat:c.dFat, recvdm:c.dRec, pagexp:c.dPagExp }[key];
+  }
+
+  const sortedStages = [...STAGES_DEF].sort((a, b) =>
+    gsDate(cycles[0], a.key).getTime() - gsDate(cycles[0], b.key).getTime()
+  );
+
+  const typeToKey = {
+    pedido:'pedido', avista:'pedido', producao:'pedido',
+    bl:'bl', embarque:'bl', lc:'bl', cobranca:'bl',
+    transit:'transit', registro:'transit',
+    desemb:'desemb', fat:'fat',
+    entrega:'recvdm', recvdm:'recvdm',
+    data:'pagexp', pagexp:'pagexp',
+  };
+
+  const fobByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+  if (P.fobParcelas && P.fobParcelas.length > 0) {
+    P.fobParcelas.forEach(p => {
+      const k = typeToKey[p.tipo] ?? typeToKey[p.cond] ?? 'pagexp';
+      fobByKey[k] -= P.fobBRL * ((p.pct || 0) / 100);
+    });
+  } else {
+    fobByKey['pagexp'] -= P.fobBRL;
+  }
+
+  const diByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+  diByKey['desemb'] = -(P.despBRL + P.impBRL);
+
+  const fatByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+  fatByKey['fat'] = fatTotal;
+
+  const recByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+  if (P.recParcelas && P.recParcelas.length > 0) {
+    P.recParcelas.forEach(p => {
+      const k = typeToKey[p.tipo] ?? 'recvdm';
+      recByKey[k] = (recByKey[k] || 0) + fatTotal * ((p.pct || 0) / 100);
+    });
+  } else {
+    recByKey['recvdm'] = fatTotal;
+  }
+
+  function fmtV(v) {
+    if (!v || v === 0) return '—';
+    const abs = Math.abs(Math.round(v));
+    return (v < 0 ? '- ' : '') + 'R$ ' + abs.toLocaleString('pt-BR');
+  }
+  function fmtCF(v) {
+    if (v === 0) return 'R$ 0';
+    const abs = Math.abs(Math.round(v));
+    return (v < 0 ? '- ' : '+ ') + 'R$ ' + abs.toLocaleString('pt-BR');
+  }
+  function fmtDS(d) {
+    return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'2-digit'});
+  }
+  function fmtShort(n) {
+    const abs = Math.abs(n);
+    if (abs >= 1e6) return (n<0?'-':'')+'R$ '+(Math.abs(n)/1e6).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' M';
+    if (abs >= 1e3) return (n<0?'-':'')+'R$ '+Math.round(Math.abs(n)/1e3).toLocaleString('pt-BR')+' k';
+    return 'R$ '+Math.round(Math.abs(n)).toLocaleString('pt-BR');
+  }
+
+  const SEC_ROW = 'background:#1e1b4b;color:white;font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border:1px solid #1e1b4b;';
+  const LBL_TD  = 'padding:4px 8px;font-size:8.5px;font-weight:600;color:#4b5563;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;min-width:80px;';
+  const CELL    = 'text-align:center;padding:4px 5px;border:1px solid #e5e7eb;font-size:8px;';
+  const EMPTY   = `<td style="${CELL}color:#d1d5db;">—</td>`;
+
+  const thCols = sortedStages.map(s =>
+    `<th style="background:${s.color};color:white;padding:4px 5px;font-size:7px;font-weight:800;text-align:center;border:1px solid rgba(0,0,0,.1);white-space:nowrap;letter-spacing:.3px;">${s.label}</th>`
+  ).join('');
+
+  let html = `
+  <div class="sec-head page-break" style="background:linear-gradient(135deg,#0f172a,#1e1b4b);margin-top:4px;">
+    <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke="currentColor" stroke-width="1.5"/></svg>
+    3b. Detalhamento por Ciclo — Fluxo de Caixa
+  </div>`;
+
+  cycles.forEach((c, ci) => {
+    const rDiasEtapa = sortedStages.map((s, idx) => {
+      if (idx === 0) return EMPTY;
+      const d = _diffDays(gsDate(c, sortedStages[idx-1].key), gsDate(c, s.key));
+      return d > 0
+        ? `<td style="${CELL}color:#374151;">${d}d</td>`
+        : EMPTY;
+    }).join('');
+
+    const rDiasAcum = sortedStages.map((s, idx) => {
+      if (idx === 0) return EMPTY;
+      const d = _diffDays(c.d0, gsDate(c, s.key));
+      return `<td style="${CELL}color:#374151;">${d}d</td>`;
+    }).join('');
+
+    const rDatas = sortedStages.map(s =>
+      `<td style="${CELL}color:#374151;white-space:nowrap;">${fmtDS(gsDate(c, s.key))}</td>`
+    ).join('');
+
+    const rFOB = sortedStages.map(s => {
+      const v = fobByKey[s.key];
+      return v !== 0 ? `<td style="${CELL}color:#dc2626;font-weight:700;text-align:right;white-space:nowrap;">${fmtV(v)}</td>` : EMPTY;
+    }).join('');
+
+    const rDI = sortedStages.map(s => {
+      const v = diByKey[s.key];
+      return v !== 0 ? `<td style="${CELL}color:#d97706;font-weight:700;text-align:right;white-space:nowrap;">${fmtV(v)}</td>` : EMPTY;
+    }).join('');
+
+    const rFat = sortedStages.map(s => {
+      const v = fatByKey[s.key];
+      return v !== 0 ? `<td style="${CELL}color:#7c3aed;font-weight:700;text-align:right;white-space:nowrap;">${fmtV(v)}</td>` : EMPTY;
+    }).join('');
+
+    const rRec = sortedStages.map(s => {
+      const v = recByKey[s.key];
+      return v !== 0 ? `<td style="${CELL}color:#059669;font-weight:700;text-align:right;white-space:nowrap;">${fmtV(v)}</td>` : EMPTY;
+    }).join('');
+
+    const cfCum = sortedStages.map(s => {
+      const t = gsDate(c, s.key).getTime();
+      let cf = 0;
+      sortedStages.forEach(ss => {
+        if (gsDate(c, ss.key).getTime() <= t)
+          cf += (fobByKey[ss.key]||0) + (diByKey[ss.key]||0) + (recByKey[ss.key]||0);
+      });
+      return cf;
+    });
+    const expCred = cfCum.map(v => Math.max(0, -v));
+
+    const rCF = cfCum.map(v => {
+      const clr = v < 0 ? '#dc2626' : v > 0 ? '#059669' : '#9ca3af';
+      return `<td style="${CELL}color:${clr};font-weight:700;text-align:right;white-space:nowrap;">${fmtCF(v)}</td>`;
+    }).join('');
+
+    const rExp = expCred.map(v =>
+      v > 0
+        ? `<td style="${CELL}color:#7c3aed;font-weight:700;text-align:right;white-space:nowrap;">${fmtV(v)}</td>`
+        : EMPTY
+    ).join('');
+
+    const durTotal = _diffDays(c.d0, c.dRec);
+    const maxExp = Math.max(...expCred);
+
+    html += `
+    <div style="margin-bottom:12px;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+      <div style="background:${CYC_COLORS[ci]};padding:6px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="color:white;font-size:9px;font-weight:800;letter-spacing:.5px;">${CYC_NAMES[ci].toUpperCase()}</span>
+        <span style="color:rgba(255,255,255,.8);font-size:8px;">${fmtDS(c.d0)} → ${fmtDS(c.dRec)}</span>
+        <span style="flex:1;"></span>
+        <span style="color:rgba(255,255,255,.9);font-size:8px;font-weight:700;">${durTotal} dias</span>
+        ${maxExp>0?`<span style="background:rgba(0,0,0,.2);color:white;font-size:7.5px;padding:2px 8px;border-radius:99px;">Exp. máx. R$ ${Math.round(maxExp).toLocaleString('pt-BR')}</span>`:''}
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-family:inherit;font-size:8px;">
+          <thead>
+            <tr>
+              <th style="padding:4px 8px;font-size:7.5px;background:#f3f4f6;border:1px solid #e5e7eb;text-align:left;min-width:80px;"></th>
+              ${thCols}
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="9" style="${SEC_ROW}">Cronograma</td></tr>
+            <tr><td style="${LBL_TD}">Dias Etapa</td>${rDiasEtapa}</tr>
+            <tr><td style="${LBL_TD}">Dias Acum.</td>${rDiasAcum}</tr>
+            <tr><td style="${LBL_TD}">Data</td>${rDatas}</tr>
+            <tr><td colspan="9" style="${SEC_ROW}">Fluxo Financeiro</td></tr>
+            <tr><td style="${LBL_TD}">Pagto. FOB</td>${rFOB}</tr>
+            <tr><td style="${LBL_TD}">Desp + Imp</td>${rDI}</tr>
+            <tr><td style="${LBL_TD}">Fat. Cliente</td>${rFat}</tr>
+            <tr><td style="${LBL_TD}">Recebimento</td>${rRec}</tr>
+            <tr><td colspan="9" style="${SEC_ROW}">Posição</td></tr>
+            <tr><td style="${LBL_TD}">Flx. de Caixa</td>${rCF}</tr>
+            <tr><td style="${LBL_TD}">Exp. de Crédito</td>${rExp}</tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  });
+
+  // Resumo consolidado
+  const totFOB  = P.fobBRL * cycles.length;
+  const totDI   = (P.despBRL + P.impBRL) * cycles.length;
+  const totFat  = fatTotal * cycles.length;
+  const totalCost    = cycles.reduce((s, c) => s + c.costDesp + c.costImp + c.costFOB, 0);
+  const totalRevenue = cycles.reduce((s, c) => s + c.revenue, 0);
+  const net         = totalRevenue - totalCost;
+  const peakExpSum  = P.fobBRL + P.despBRL + P.impBRL;
+
+  const kpis = [
+    { lbl:`Total FOB (${cycles.length}×)`,         val:fmtShort(totFOB),     clr:'' },
+    { lbl:`Total Desp+Imp (${cycles.length}×)`,    val:fmtShort(totDI),      clr:'' },
+    { lbl:`Total Faturamento (${cycles.length}×)`, val:fmtShort(totFat),     clr:'' },
+    { lbl:'Exp. Máx. por Ciclo',                   val:fmtShort(peakExpSum), clr:'color:#7c3aed' },
+    { lbl:'Custo Financeiro',                      val:fmtShort(totalCost),  clr:'color:#dc2626' },
+    { lbl:'Resultado Líquido',                     val:fmtShort(net),        clr:net>=0?'color:#059669':'color:#dc2626' },
+  ];
+
+  html += `
+  <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:12px 16px;margin-top:4px;margin-bottom:14px;">
+    <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#6d28d9;margin-bottom:10px;">Resumo Consolidado — ${cycles.length} Ciclos</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      ${kpis.map(k=>`
+      <div style="background:white;border:1px solid #ddd6fe;border-radius:4px;padding:8px;">
+        <div style="font-size:7px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;">${k.lbl}</div>
+        <div style="font-size:11px;font-weight:800;${k.clr}">${k.val}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  return html;
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER
+════════════════════════════════════════════════════ */
+function render() {
+  const statusClass = st;
+  const statusLbl   = STATUS_LABEL[st] || st;
+  const solicitante = sol.solicitanteNome || '—';
+  const dataSol     = fmtDate(sol.dataSolicitacao || sol.createdAt);
+
+  /* ── Header ── */
+  let html = `
+  <div class="doc-header">
+    <img src="logo.png" class="doc-header-logo" alt="Vendemmia" onerror="this.style.display='none'"/>
+    <div class="doc-header-right">
+      <div class="doc-header-title">ANÁLISE DE CRÉDITO</div>
+      <div class="doc-header-sub">Documento nº ${esc(docNum)} &nbsp;·&nbsp; Gerado em ${esc(genDate)}</div>
+      <div class="doc-header-sub">Sistema Vendemmia — Análise de Crédito</div>
+    </div>
+  </div>
+  <div class="doc-divider"></div>
+
+  <div class="hero-strip">
+    <div class="hero-company">
+      <div class="hero-name">${esc(sol.empresa || '—')}</div>
+      <div class="hero-cnpj">CNPJ: ${esc(sol.cnpj || '—')}</div>
+      <div class="hero-meta">Solicitante: ${esc(solicitante)} &nbsp;·&nbsp; Data: ${esc(dataSol)} &nbsp;·&nbsp; Cód: ${esc((sol.id||'').slice(-12).toUpperCase())}</div>
+    </div>
+    <div class="hero-right">
+      <div class="doc-num">STATUS DA SOLICITAÇÃO</div>
+      <span class="status-badge ${statusClass}">${esc(statusLbl)}</span>
+    </div>
+  </div>
+
+  <div class="doc-inner">`;
+
+  /* ══════════════════════════════════════════════
+     1. IDENTIFICAÇÃO DO CLIENTE
+  ══════════════════════════════════════════════ */
+  const rfCap    = rfd.capital_social ? 'R$ ' + Number(rfd.capital_social).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
+  const rfSit    = rfd.descricao_situacao_cadastral || '—';
+  const rfNatJur = rfd.descricao_natureza_juridica || rfd.natureza_juridica?.descricao || '—';
+  const rfPorte  = rfd.descricao_porte              || rfd.porte?.descricao            || '—';
+  const rfSimples= rfd.opcao_pelo_simples !== undefined ? (rfd.opcao_pelo_simples ? 'Sim' : 'Não')
+                 : rfd.simples?.optante  !== undefined  ? (rfd.simples.optante   ? 'Sim' : 'Não') : '—';
+  const rfMei    = rfd.opcao_pelo_mei !== undefined ? (rfd.opcao_pelo_mei ? 'Sim' : 'Não')
+                 : rfd.simei?.optante !== undefined  ? (rfd.simei.optante  ? 'Sim' : 'Não') : '—';
+
+  html += `
+  <div class="sec-head">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/></svg>
+    1. Identificação do Cliente
+  </div>
+  <div class="data-grid avoid-break">
+    ${iv('Razão Social / Empresa', sol.empresa)}
+    ${iv('CNPJ', sol.cnpj)}
+    ${iv('Data de Fundação', sol.fundacao ? fmtDate(sol.fundacao) : (rfd.data_inicio_atividade || '—'))}
+    ${iv('Tempo de Mercado', rfTempoMercado())}
+    ${iv('Ramo de Atividade', sol.ramo || rfd.cnae_fiscal_descricao)}
+    ${iv('Segmento', sol.segmento)}
+    ${iv('Produto Importado', sol.produto)}
+    ${iv('Situação Receita Federal', rfSit, rfSituacaoClass(rfSit))}
+    ${iv('Capital Social', rfCap, 'purple')}
+    ${iv('Natureza Jurídica', rfNatJur)}
+    ${iv('Porte da Empresa', rfPorte)}
+    ${iv('Simples Nacional / MEI', rfSimples + ' / ' + rfMei)}
+    ${iv('Solicitante', solicitante)}
+    ${iv('Data da Solicitação', dataSol)}
+  </div>`;
+
+  /* ══════════════════════════════════════════════
+     2. DADOS OPERACIONAIS E COMERCIAIS
+  ══════════════════════════════════════════════ */
+  const rentText = sol.rentabilidadeObs
+    || (sol.rentabilidade ? sol.rentabilidade + '%' : '—');
+  const custoAdmText = sol.custoAdm || '—';
+
+  html += `
+  <div class="sec-head">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.58 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.51 1.12h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.06 6.06l1.17-1.17a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" stroke-width="1.8"/></svg>
+    2. Dados Operacionais e Comerciais
+  </div>
+  <div class="data-grid avoid-break">
+    ${iv('Modal Logístico', MODAL_LABEL[sol.modal] || sol.modal)}
+    ${iv('Tipo de Operação', TIPO_OP_LABEL[sol.tipoOp] || sol.tipoOp)}
+    ${iv('Incoterms', sol.incoterms)}
+    ${iv('Principais Origens', sol.origens)}
+    ${iv('Desconto Comercial', sol.desconto ? sol.desconto + '%' : 'Não')}
+    ${iv('Custo Financeiro', sol.custoFin)}
+  </div>
+  <div class="data-grid data-grid-4 avoid-break">
+    ${iv('Vol. Potencial', sol.volPotencial ? sol.volPotencial + ' ' + (sol.volPotencialMoeda||'') : '—')}
+    ${iv('Vol. 6 Meses', sol.vol6Meses ? sol.vol6Meses + ' ' + (sol.vol6MesesMoeda||'') : '—')}
+    ${iv('Vol. Mensal', sol.volMes ? sol.volMes + ' ' + (sol.volMesMoeda||'') : '—')}
+    ${iv('Embarques/Mês', [sol.qtdEmbarquesMes1,sol.qtdEmbarquesMes2,sol.qtdEmbarquesMes3,sol.qtdEmbarquesMes4].filter(Boolean).join(' / ') || '—')}
+  </div>
+  <div class="data-grid avoid-break">
+    ${iv('Rentabilidade Vendemmia', rentText)}
+    ${iv('Custo Administrativo', custoAdmText)}
+  </div>`;
+
+  /* Prazos timeline
+     Os campos reais salvos pelo formulário (nova-solicitacao.html):
+       prazoInvoiceData    → data ISO da invoice (step 1)
+       prazoPrepEmbarque   → dias de preparação antes do embarque (step 2)
+       prazoEmbarque       → dias do período de embarque (step 3)
+       prazoTransit        → dias de trânsito internacional (step 4)
+       prazoDesembaraco    → dias de desembaraço aduaneiro (step 5)
+       prazoFaturamento    → dias de faturamento (step 6)
+       prazoPagtoVendemmia → dias prazo pagto Vendemmia (step 7)
+       pagtoDesp / pagtoImp → forma de pagamento das despesas/impostos
+  */
+  (function() {
+    /* Detecta se valor é data ISO (contém '-') vs dias (número) */
+    const isISODate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
+    const asDias    = v => { const n = parseInt(v); return n > 0 ? n + ' dias' : null; };
+    const asDateOrDias = v => {
+      if (!v && v !== 0) return null;
+      if (isISODate(String(v))) return fmtDate(v);
+      return asDias(v);
+    };
+
+    const STEP_COLORS = ['#6366f1','#3b82f6','#f59e0b','#06b6d4','#8b5cf6','#01E18E'];
+
+    const rawSteps = [
+      /* 1 – Invoice
+             Novo formato: prazoInvoiceData (data ISO do formulário)
+             Formato antigo: prazoInvoice (número de dias — fallback) */
+      {
+        lbl: 'Invoice',
+        val: sol.prazoInvoiceData
+          ? fmtDate(sol.prazoInvoiceData)
+          : (sol.prazoInvoice ? asDias(sol.prazoInvoice) : null)
+      },
+      /* 2 – Preparação para Embarque */
+      { lbl: 'Preparação para Embarque', val: asDias(sol.prazoPrepEmbarque) },
+      /* 3 – Transit Time */
+      { lbl: 'Transit Time',             val: asDias(sol.prazoTransit) },
+      /* 4 – Desembaraço Aduaneiro */
+      { lbl: 'Desembaraço Aduaneiro',    val: asDias(sol.prazoDesembaraco) },
+      /* 5 – Faturamento */
+      { lbl: 'Faturamento',              val: asDias(sol.prazoFaturamento) },
+      /* 6 – Pagto. à Vendemmia */
+      { lbl: 'Pagto. à Vendemmia',       val: asDias(sol.prazoPagtoVendemmia) },
+    ].filter(s => s.val);
+
+    /* Pagamentos de despesas e impostos como linhas extras */
+    const payRows = [
+      sol.pagtoDesp ? { lbl: 'Pgto. Despesas — Cliente', val: sol.pagtoDesp + (sol.prazoDesp ? ' · ' + sol.prazoDesp + ' dias' : '') } : null,
+      sol.pagtoImp  ? { lbl: 'Pgto. Impostos — Cliente',  val: sol.pagtoImp  + (sol.prazoImp  ? ' · ' + sol.prazoImp  + ' dias' : '') } : null,
+    ].filter(Boolean);
+
+    const allSteps = [...rawSteps, ...payRows];
+    if (!allSteps.length) return;
+
+    html += `
+    <div class="sec-head-alt" style="margin-top:14px;">Cronograma de Prazos</div>
+    <div class="prazos-pdf avoid-break">`;
+
+    rawSteps.forEach((s, i) => {
+      const color = STEP_COLORS[i] || '#7c3aed';
+      html += `
+      <div class="prazo-pdf-row">
+        <div class="prazo-pdf-num" style="background:${color}">${i + 1}</div>
+        <div class="prazo-pdf-lbl">${esc(s.lbl)}</div>
+        <div class="prazo-pdf-val">${esc(s.val)}</div>
+      </div>`;
+    });
+
+    payRows.forEach((s, i) => {
+      const color = i === 0 ? '#c4b5fd' : '#a78bfa';
+      html += `
+      <div class="prazo-pdf-row" style="border-bottom:none;opacity:.85">
+        <div class="prazo-pdf-num" style="background:${color};font-size:.6rem;">R$</div>
+        <div class="prazo-pdf-lbl">${esc(s.lbl)}</div>
+        <div class="prazo-pdf-val">${esc(s.val)}</div>
+      </div>`;
+    });
+
+    html += `</div>`;
+  })();
+
+  /* Exportadores */
+  if (sol.exportadores && sol.exportadores.length) {
+    html += `
+    <div class="sec-head-alt">Exportadores Envolvidos</div>
+    <table class="data-table avoid-break">
+      <thead><tr><th>#</th><th>Exportador</th><th>Banco do Exportador</th><th>Pagamento ao Exportador</th></tr></thead>
+      <tbody>
+        ${sol.exportadores.map((exp, i) => `<tr>
+          <td>${i+1}</td>
+          <td><strong>${esc(exp)}</strong></td>
+          <td>${esc((sol.bancoExportador && !Array.isArray(sol.bancoExportador)) ? sol.bancoExportador : (sol.bancosExportadores && sol.bancosExportadores[i]) || '—')}</td>
+          <td>${esc((sol.pagtoExportadores && sol.pagtoExportadores[i]) || sol.pagtoExportador || '—')}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  /* Importador / Consignatário */
+  if (sol.importadorFatura || sol.consignatario || sol.pagtoClienteExp) {
+    html += `
+    <div class="data-grid data-grid-3 avoid-break">
+      ${iv('Importador na Fatura', sol.importadorFatura)}
+      ${iv('Consignatário', sol.consignatario)}
+      ${iv('Pagamento pelo Cliente', sol.pagtoClienteExp)}
+    </div>`;
+  }
+
+  /* Comentário do Trader */
+  if (sol.comentario) {
+    html += `
+    <div class="avoid-break" style="margin-bottom:12px;padding:10px 14px;background:#f5f3ff;border-left:3px solid #7c3aed;border-radius:4px;">
+      <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#7c3aed;margin-bottom:4px;">Comentário do Trader</div>
+      <div style="font-size:10.5px;color:#374151;line-height:1.65;">${esc(sol.comentario)}</div>
+    </div>`;
+  }
+
+  /* ══════════════════════════════════════════════
+     3. GRÁFICO DA EXPOSIÇÃO FINANCEIRA — 3 CICLOS
+  ══════════════════════════════════════════════ */
+  html += `
+  <div class="sec-head page-break" style="background:linear-gradient(135deg,#0f172a,#1e1b4b)">
+    <svg viewBox="0 0 24 24" fill="none"><polyline points="18 20 18 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="12 20 12 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="6 20 6 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    3. Gráfico da Exposição Financeira — 3 Ciclos Simultâneos
+  </div>`;
+
+  {
+    const _gP      = _buildGanttParams();
+    const _gCycles = expTot > 0 ? _gP.dates.map(d => _calcCycle(d, _gP)) : [];
+    const _ganttSvg = buildGanttSVG(_gP, _gCycles);
+    if (_ganttSvg) {
+      html += `
+      <div class="avoid-break" style="background:#150f2c;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+        <div style="font-size:9px;color:rgba(255,255,255,.6);margin-bottom:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">
+          Linha do Tempo — 3 Ciclos de Importação
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px 14px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:10px;border-radius:2px;background:#475569;"></div>Prontidão</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:10px;border-radius:2px;background:#3b82f6;"></div>BL</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:10px;border-radius:2px;background:#93c5fd;"></div>Transit Time</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:10px;border-radius:2px;background:#f59e0b;"></div>Desembaraço</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:10px;border-radius:2px;background:#10b981;"></div>Faturamento</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:10px;border-radius:2px;background:rgba(1,225,142,.3);border:1px solid #01E18E;"></div>Receb. VDM</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:3px;border-radius:1px;background:#f43f5e;margin-top:3px;"></div>Pagto. Exportador</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:10px;border-radius:2px;background:#dc2626;"></div>Exp. FOB (parcelas)</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:10px;height:10px;border-radius:2px;background:#8b5cf6;"></div>Exp. Desp+Imp</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(255,255,255,.55);"><div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.65);"></div>Marco/Evento</div>
+        </div>
+        ${_ganttSvg}
+      </div>`;
+      if (_gCycles.length > 0) html += buildDetailTableHTML(_gCycles, _gP);
+    } else {
+      html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
+        Limites de crédito não definidos — gráfico de exposição indisponível.
+      </div>`;
+    }
+  }
+
+  /* ══════════════════════════════════════════════
+     4. CONSULTA RECEITA FEDERAL
+  ══════════════════════════════════════════════ */
+  html += `
+  <div class="sec-head-blue page-break">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2"/></svg>
+    4. Consulta Receita Federal (BrasilAPI)
+  </div>`;
+
+  if (rf.status === 'ok' && rfd.razao_social) {
+    const est = rfd.estabelecimento;
+    const rfUf      = rfd.uf        || est?.estado || '—';
+    const rfMunic   = rfd.municipio || est?.cidade?.nome || est?.municipio || '—';
+    const rfLogr    = [rfd.logradouro || est?.logradouro, rfd.numero || est?.numero, rfd.bairro || est?.bairro].filter(Boolean).join(', ');
+    const rfCep     = rfd.cep || est?.cep || '—';
+
+    html += `
+    <div class="data-grid data-grid-3 avoid-break">
+      ${iv('Razão Social', rfd.razao_social)}
+      ${iv('Nome Fantasia', rfd.nome_fantasia || '—')}
+      ${iv('CNPJ', sol.cnpj)}
+      ${iv('Situação Cadastral', rfSit, rfSituacaoClass(rfSit))}
+      ${iv('Data da Situação', rfd.data_situacao_cadastral)}
+      ${iv('Data de Abertura', rfd.data_inicio_atividade)}
+      ${iv('Capital Social', rfCap, 'purple')}
+      ${iv('Natureza Jurídica', rfNatJur)}
+      ${iv('Porte', rfPorte)}
+      ${iv('CNAE Fiscal', rfd.cnae_fiscal ? rfd.cnae_fiscal + ' — ' + (rfd.cnae_fiscal_descricao||'') : (rfd.cnae_fiscal_descricao||'—'))}
+      ${iv('Simples Nacional', rfSimples)}
+      ${iv('MEI', rfMei)}
+      ${iv('UF / Município', rfUf + ' / ' + rfMunic)}
+      ${iv('Endereço', rfLogr || '—')}
+      ${iv('CEP', rfCep)}
+    </div>`;
+
+    const qsa = rfd.qsa || rfd.socios || [];
+    if (qsa.length) {
+      html += `<div class="sec-head-alt">Quadro Societário — QSA</div>
+      <table class="data-table qsa-table avoid-break">
+        <thead><tr><th>Nome do Sócio</th><th>Participação (%)</th><th>Faixa Etária</th><th>Data de Entrada</th></tr></thead>
+        <tbody>${qsa.map(s => `<tr>
+          <td><strong>${esc(s.nome_socio || s.nome || '—')}</strong></td>
+          <td class="td-num">${s.percentual_capital_social != null ? s.percentual_capital_social + '%' : '—'}</td>
+          <td>${esc(s.faixa_etaria || '—')}</td>
+          <td>${esc(s.data_entrada_sociedade || '—')}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+  } else {
+    html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
+      Consulta Receita Federal: ${esc(rf.error || rf.status || 'Não realizada — execute a análise na tela financeira')}
+    </div>`;
+  }
+
+  /* ══════════════════════════════════════════════
+     5. ANÁLISE SERASA EXPERIENCE
+  ══════════════════════════════════════════════ */
+  html += `
+  <div class="sec-head-teal page-break">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    5. Análise Serasa Experience
+  </div>`;
+
+  (function() {
+    const s = sol.serasa;
+    if (!s) {
+      html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
+        Consulta Serasa não realizada — dados indisponíveis para este processo.
+      </div>`;
+      return;
+    }
+
+    const riskLbl = { baixo:'Risco Baixo', medio:'Risco Médio', alto:'Risco Alto', muito_alto:'Risco Muito Alto' };
+    const riskClr = { baixo:'#059669', medio:'#d97706', alto:'#dc2626', muito_alto:'#dc2626' }[s.risco] || '#d97706';
+    const riskBg  = { baixo:'rgba(5,150,105,.1)', medio:'rgba(217,119,6,.1)', alto:'rgba(220,38,38,.1)', muito_alto:'rgba(220,38,38,.1)' }[s.risco] || 'rgba(217,119,6,.1)';
+    const recMap  = { prazo:'Conceder a prazo', garantias:'Exigir garantias', negar:'Não conceder' };
+    const recClr  = { prazo:'#059669', garantias:'#d97706', negar:'#dc2626' }[s.recomendacaoVenda] || '#94a3b8';
+    const recBg   = { prazo:'rgba(5,150,105,.1)', garantias:'rgba(217,119,6,.1)', negar:'rgba(220,38,38,.1)' }[s.recomendacaoVenda] || 'rgba(148,163,184,.1)';
+    const fmtPct  = v => v != null ? Number(v).toFixed(2) + '%' : null;
+    const fmtBRL  = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR') : null;
+    const dtStr   = s.consultadaEm ? new Date(s.consultadaEm).toLocaleDateString('pt-BR') : '';
+
+    /* ── Score header ─────────────────────────────────── */
+    html += `
+    <div class="avoid-break" style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;margin-bottom:12px;">
+      <div style="text-align:center;min-width:68px;padding:8px 10px;background:#fff;border-radius:8px;border:1px solid #e2e8f0;flex-shrink:0;">
+        <div style="font-size:26px;font-weight:900;color:#1e1b4b;line-height:1;">${esc(String(s.score ?? '—'))}</div>
+        <div style="font-size:7.5px;color:#94a3b8;margin-top:2px;font-weight:600;">/ 1000</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+        <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;background:${riskBg};color:${riskClr};border:1px solid ${riskClr}4d;">${esc(riskLbl[s.risco] || s.risco || '—')}</span>
+        ${s.recomendacaoVenda ? `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;background:${recBg};color:${recClr};border:1px solid ${recClr}4d;">${esc(recMap[s.recomendacaoVenda] || s.recomendacaoVenda)}</span>` : ''}
+      </div>
+      ${dtStr ? `<div style="text-align:right;font-size:8px;color:#64748b;flex-shrink:0;">Consultado em<br><strong style="color:#374151;font-size:9px;">${esc(dtStr)}</strong></div>` : ''}
+    </div>`;
+
+    /* ── KPIs ─────────────────────────────────────────── */
+    const kpis = [
+      { l:'Prob. Inadimplência', v:fmtPct(s.inadimplencia),      c: s.inadimplencia != null ? (s.inadimplencia < 3 ? '#059669' : s.inadimplencia < 8 ? '#d97706' : '#dc2626') : '' },
+      { l:'Honram Compromissos', v:fmtPct(s.honraCompromisos),   c: '' },
+      { l:'Limite PJ',           v:fmtBRL(s.limitePJ),            c: '#059669' },
+      { l:'Limite Mensal',       v:fmtBRL(s.limiteMensal),        c: '' },
+      { l:'Faturamento Est.',    v:fmtBRL(s.faturamentoEstimado), c: '' },
+      { l:'Score Fraude',        v:s.scoreFraude != null ? s.scoreFraude + '/1000' : null, c: '' },
+      { l:'Consultas/Mês',       v:s.consultasMes != null ? String(s.consultasMes) : null, c: '' },
+      { l:'Consultas/Ano',       v:s.consultasAno != null ? String(s.consultasAno) : null, c: '' },
+    ].filter(k => k.v);
+
+    if (kpis.length) {
+      html += `<div class="data-grid avoid-break" style="margin-bottom:12px;">
+        ${kpis.map(k => `<div class="d-item"><div class="d-key">${esc(k.l)}</div><div class="d-val" style="${k.c ? 'color:'+k.c+';font-weight:700;' : ''}">${esc(k.v)}</div></div>`).join('')}
+      </div>`;
+    }
+
+    /* ── Anotações Negativas ──────────────────────────── */
+    const anotDefs = [
+      { key:'pefin',          label:'PEFIN' },
+      { key:'refin',          label:'REFIN' },
+      { key:'dividasVencidas',label:'Dívidas Vencidas' },
+      { key:'falencia',       label:'Falência/Recuperação' },
+      { key:'acoesJudiciais', label:'Ações Judiciais' },
+      { key:'protestos',      label:'Protestos' },
+      { key:'cheque',         label:'Cheque sem Fundo' },
+      { key:'sociosAnotacoes',label:'Sócios c/ Anotações' },
+      { key:'adminAnotacoes', label:'Adm. c/ Anotações' },
+    ];
+    const badItems = anotDefs.filter(a => !!s[a.key]);
+    const okItems  = anotDefs.filter(a => !s[a.key]);
+
+    html += `<div class="sec-head-alt" style="margin-top:8px;">Anotações Negativas</div>`;
+
+    if (badItems.length === 0) {
+      html += `<div class="avoid-break" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:6px;font-size:9.5px;color:#059669;margin-bottom:8px;">
+        ✓ Nenhuma anotação negativa — todos os ${anotDefs.length} tipos consultados estão limpos
+      </div>`;
+    } else {
+      html += `<div class="avoid-break" style="margin-bottom:8px;">
+        <div style="padding:6px 10px;background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.18);border-radius:6px;font-size:9px;color:#dc2626;margin-bottom:6px;font-weight:600;">
+          ✗ ${badItems.length} ocorrência${badItems.length > 1 ? 's' : ''} detectada${badItems.length > 1 ? 's' : ''}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
+          ${badItems.map(a => `<span style="font-size:8.5px;font-weight:700;padding:3px 8px;background:rgba(220,38,38,.09);border:1px solid rgba(220,38,38,.22);border-radius:5px;color:#dc2626;">✗ ${esc(a.label)}</span>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    if (okItems.length) {
+      html += `<div style="font-size:8px;color:#64748b;display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px;margin-bottom:14px;">
+        <span style="font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#475569;">Limpos:</span>
+        ${okItems.map(a => `<span style="padding:2px 6px;background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.18);border-radius:4px;color:#059669;">✓ ${esc(a.label)}</span>`).join('')}
+      </div>`;
+    }
+  })();
+
+  /* ══════════════════════════════════════════════
+     6. ANÁLISE FINANCEIRA — INDICADORES
+  ══════════════════════════════════════════════ */
+  html += `
+  <div class="sec-head-emerald page-break">
+    <svg viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    6. Análise Financeira — Indicadores
+  </div>`;
+
+  const hasFinData = finRaw.some(d => d && Object.values(d).some(v => v !== '' && v != null));
+
+  if (hasFinData) {
+    html += `
+    <table class="fin-table avoid-break">
+      <thead>
+        <tr>
+          <th>Indicador</th>
+          <th>Fonte</th>
+          <th>${esc(finYrs[0] || 'Ano 1')}</th>
+          <th>${esc(finYrs[1] || 'Ano 2')}</th>
+          <th>Variação</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    FIN_GROUPS.forEach(g => {
+      html += `<tr class="fin-group-row"><td colspan="5">${esc(g.label)}</td></tr>`;
+      g.rows.forEach(row => {
+        const tip  = KEY_TIP[row.key] || 'money';
+        const v0   = getFinVal(row.key, 0);
+        const v1   = getFinVal(row.key, 1);
+        const der  = row.derived ? ' fin-derived' : '';
+        html += `<tr class="${der}">
+          <td>${esc(row.lbl)}</td>
+          <td style="text-align:center"><span class="src-badge src-${row.src}">${esc(row.src.toUpperCase())}</span></td>
+          <td>${fmtFinVal(v0, tip)}</td>
+          <td>${fmtFinVal(v1, tip)}</td>
+          <td>${fmtFinVar(v0, v1, tip, row.dir ?? 0)}</td>
+        </tr>`;
+      });
+    });
+
+    html += `</tbody></table>`;
+  } else {
+    html += `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:10px 14px;font-size:10px;color:#065f46;margin-bottom:14px;">
+      Indicadores financeiros ainda não preenchidos. Acesse a tela de Análise Financeira para inserir os dados dos demonstrativos contábeis.
+    </div>`;
+  }
+
+  /* ══════════════════════════════════════════════
+     7. LIMITES DE CRÉDITO SOLICITADOS
+  ══════════════════════════════════════════════ */
+  html += `
+  <div class="sec-head page-break">
+    <svg viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><line x1="2" y1="10" x2="22" y2="10" stroke="currentColor" stroke-width="2"/></svg>
+    7. Limites de Crédito Solicitados
+  </div>
+  <table class="data-table avoid-break">
+    <thead><tr><th>Componente</th><th>Limite Proposto</th><th>Prazo</th><th>Forma de Pagamento</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Exportador / FOB</strong></td>
+        <td class="td-money">${fmtMoney(sol.limiteExportador)}</td>
+        <td>${sol.prazoTransit ? sol.prazoTransit + ' dias' : '—'}</td>
+        <td>${esc(sol.pagtoExportador || sol.pagtoClienteExp || '—')}</td>
+        <td>Câmbio / Mercadoria</td>
+      </tr>
+      <tr>
+        <td><strong>Despesas Alfandegárias</strong></td>
+        <td class="td-money">${fmtMoney(sol.limiteDesp)}</td>
+        <td>${sol.prazoDesp ? sol.prazoDesp + ' dias' : '60 dias'}</td>
+        <td>${esc(sol.pagtoDesp || '—')}</td>
+        <td>Desembaraço / Frete Nacional</td>
+      </tr>
+      <tr>
+        <td><strong>Impostos de Importação</strong></td>
+        <td class="td-money">${fmtMoney(sol.limiteImp)}</td>
+        <td>${sol.prazoImp ? sol.prazoImp + ' dias' : '60 dias'}</td>
+        <td>${esc(sol.pagtoImp || '—')}</td>
+        <td>II, IPI, PIS, COFINS</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="2"><strong>EXPOSIÇÃO TOTAL — 1 CICLO</strong></td>
+        <td class="td-money" colspan="3"><strong>${fmtMoneyN(expTot)}</strong></td>
+      </tr>
+    </tbody>
+  </table>`;
+
+  /* ══════════════════════════════════════════════
+     8. ANÁLISE POR INTELIGÊNCIA ARTIFICIAL
+  ══════════════════════════════════════════════ */
+  html += `
+  <div class="sec-head page-break">
+    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    8. Análise gerada por IA
+  </div>`;
+
+  if (an.score !== undefined) {
+    const scoreVal = Math.max(0, Math.min(100, an.score || 0));
+    html += `
+    <div class="score-row avoid-break">
+      <div class="score-gauge-wrap">${scoreGaugeSVG(scoreVal)}</div>
+      <div class="score-meta">
+        <div class="score-meta-top">
+          ${clsBadge(an.classificacao)}
+          ${recBadge(an.recomendacao)}
+        </div>
+        ${an.resumo_executivo ? `<div class="resumo-text">${esc(an.resumo_executivo)}</div>` : ''}
+      </div>
+    </div>`;
+
+    if (an.pontos_positivos?.length || an.pontos_atencao?.length) {
+      html += `
+      <div class="pts-grid avoid-break">
+        <div>
+          <div class="pts-col-hd">✓ Pontos Positivos</div>
+          ${mkPoints(an.pontos_positivos, 'pos', POS_SVG)}
+        </div>
+        <div>
+          <div class="pts-col-hd">⚠ Pontos de Atenção</div>
+          ${mkPoints(an.pontos_atencao, 'att', WARN_SVG)}
+        </div>
+      </div>`;
+    }
+
+    if (an.alertas_criticos?.length) {
+      html += `<div class="avoid-break" style="margin-bottom:12px;">
+        <div class="pts-col-hd" style="margin-bottom:6px;">⛔ Alertas Críticos</div>
+        ${an.alertas_criticos.map(a => `<div class="alert-strip">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.8"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>${esc(a)}</span>
+        </div>`).join('')}
+      </div>`;
+    }
+
+    const blocks = [
+      { key: 'analise_cadastral',         title: 'Análise Cadastral' },
+      { key: 'analise_societaria',        title: 'Análise Societária' },
+      { key: 'analise_proporcionalidade', title: 'Proporcionalidade do Crédito' },
+      { key: 'analise_operacional',       title: 'Riscos Operacionais' },
+      { key: 'fundamentacao',             title: 'Fundamentação Técnica' },
+    ].filter(b => an[b.key]);
+
+    if (blocks.length) {
+      html += `<div class="sec-head-alt" style="margin-top:14px;">Análise Detalhada</div>`;
+      blocks.forEach(b => {
+        html += `<div class="analysis-block avoid-break">
+          <div class="analysis-block-title">${esc(b.title)}</div>
+          <div class="analysis-block-text">${esc(an[b.key])}</div>
+        </div>`;
+      });
+    }
+  } else {
+    html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
+      Análise por IA ainda não realizada para esta solicitação.
+    </div>`;
+  }
+
+  /* ══════════════════════════════════════════════
+     9. PARECER DO ANALISTA FINANCEIRO
+  ══════════════════════════════════════════════ */
+  html += `
+  <div class="sec-head page-break">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/></svg>
+    9. Parecer do Analista Financeiro
+  </div>`;
+
+  if (['aprovado','negado','em_analise','em_comite'].includes(sol.status)) {
+    const ICONS = {
+      aprovado:   `<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`,
+      negado:     `<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`,
+      em_analise: `<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`,
+      em_comite:  `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`,
+    };
+    const decLbl = st === 'em_comite' ? 'Encaminhado ao Comitê de Crédito' : (STATUS_LABEL[st] || st);
+    html += `
+    <div class="decision-header ${st} avoid-break">
+      <div class="dec-icon ${st}">
+        <svg viewBox="0 0 24 24" fill="none">${ICONS[st]||''}</svg>
+      </div>
+      <div>
+        <div class="dec-status-label">${st === 'em_comite' ? 'Encaminhamento do Analista' : 'Decisão do Analista'}</div>
+        <div class="dec-status-val ${st}">${esc(decLbl)}</div>
+      </div>
+      <div style="margin-left:auto;text-align:right;">
+        <div class="dec-status-label">Analista Responsável</div>
+        <div style="font-size:11px;font-weight:700;color:#374151;">${esc(sol.decisaoAnalista || '—')}</div>
+        <div style="font-size:9px;color:#9ca3af;">${fmtDateTime(sol.decisao_at)}</div>
+      </div>
+    </div>`;
+
+    if (sol.parecerTecnico) {
+      html += `
+      <div class="parecer-box avoid-break">
+        <div class="parecer-label">Parecer Técnico do Analista</div>
+        <div class="parecer-text">${esc(sol.parecerTecnico)}</div>
+      </div>`;
+    }
+
+    if (sol.analistaObs) {
+      html += `
+      <div class="avoid-break" style="margin-bottom:14px;">
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;margin-bottom:5px;">Condições e Observações</div>
+        <div style="font-size:10.5px;color:#374151;line-height:1.65;">${esc(sol.analistaObs)}</div>
+      </div>`;
+    }
+
+    if (sol.limiteAprovado || sol.prazoAprovado) {
+      const fobA  = brToF(sol.limiteAprovado);
+      const despA = brToF(sol.limiteDesp);
+      const impA  = brToF(sol.limiteImp);
+      const totA  = fobA + despA + impA;
+
+      html += `
+      <div class="sec-head-alt">Limites Propostos pelo Analista</div>
+      <table class="data-table avoid-break">
+        <thead><tr><th>Componente</th><th>Limite</th><th>Prazo</th><th>Forma de Pagamento</th></tr></thead>
+        <tbody>
+          <tr class="${st==='aprovado'?'approved-row':''}">
+            <td><strong>Exportador / FOB</strong></td>
+            <td class="td-money">${fmtMoney(sol.limiteAprovado)}</td>
+            <td>${sol.prazoAprovado ? sol.prazoAprovado + ' dias' : '—'}</td>
+            <td>Boleto / Câmbio</td>
+          </tr>
+          <tr class="${st==='aprovado'?'approved-row':''}">
+            <td><strong>Despesas Alfandegárias</strong></td>
+            <td class="td-money">${fmtMoney(sol.limiteDesp)}</td>
+            <td>${sol.prazoAprovado ? sol.prazoAprovado + ' dias' : sol.prazoDesp ? sol.prazoDesp + ' dias' : '60 dias'}</td>
+            <td>Boleto Bancário</td>
+          </tr>
+          <tr class="${st==='aprovado'?'approved-row':''}">
+            <td><strong>Impostos de Importação</strong></td>
+            <td class="td-money">${fmtMoney(sol.limiteImp)}</td>
+            <td>${sol.prazoAprovado ? sol.prazoAprovado + ' dias' : sol.prazoImp ? sol.prazoImp + ' dias' : '60 dias'}</td>
+            <td>Boleto Bancário</td>
+          </tr>
+          <tr class="total-row">
+            <td><strong>TOTAL APROVADO</strong></td>
+            <td class="td-money" colspan="3"><strong>${totA > 0 ? fmtMoneyN(totA) : '—'}</strong></td>
+          </tr>
+        </tbody>
+      </table>`;
+    }
+  } else {
+    html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
+      Aguardando análise e decisão do analista financeiro.
+    </div>`;
+  }
+
+  /* ══════════════════════════════════════════════
+     10. DELIBERAÇÃO DO COMITÊ DE CRÉDITO
+         (apenas para Encomenda)
+  ══════════════════════════════════════════════ */
+  if (sol.tipoOp === 'encomenda') {
+    html += `
+    <div class="sec-head-gold page-break">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      10. Deliberação do Comitê de Crédito
+    </div>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:9px 12px;font-size:9.5px;color:#78350f;margin-bottom:12px;display:flex;align-items:flex-start;gap:8px;">
+      <svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="flex-shrink:0;margin-top:1px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Operação classificada como <strong>Encomenda</strong> — exige deliberação da Diretoria e Sócios antes da concessão do crédito. O Comitê de Crédito analisa o parecer técnico do time financeiro e registra a decisão final.</span>
+    </div>`;
+
+    if (sol.deliberacaoComite) {
+      const comiteStatus = sol.status;
+      const comiteClr = comiteStatus === 'aprovado' ? '#065f46' : '#991b1b';
+      const comiteIco = comiteStatus === 'aprovado'
+        ? `<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`
+        : `<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`;
+      const comiteLbl = comiteStatus === 'aprovado' ? 'Crédito Aprovado pelo Comitê' : 'Crédito Negado pelo Comitê';
+
+      html += `
+      <div class="comite-decision-header ${comiteStatus} avoid-break">
+        <div class="dec-icon ${comiteStatus}">
+          <svg viewBox="0 0 24 24" fill="none">${comiteIco}</svg>
+        </div>
+        <div>
+          <div class="dec-status-label">Decisão do Comitê de Crédito</div>
+          <div class="dec-status-val" style="color:${comiteClr};font-size:14px;font-weight:900;">${esc(comiteLbl)}</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div class="dec-status-label">Deliberado por</div>
+          <div style="font-size:11px;font-weight:700;color:#374151;">${esc(sol.decisaoComite || '—')}</div>
+          <div style="font-size:9px;color:#9ca3af;">${fmtDateTime(sol.comite_at)}</div>
+        </div>
+      </div>
+      <div class="comite-box avoid-break">
+        <div class="comite-label">Deliberação do Comitê</div>
+        <div class="comite-text">${esc(sol.deliberacaoComite)}</div>
+      </div>`;
+
+      if (comiteStatus === 'aprovado' && sol.limiteAprovado) {
+        const fobC  = brToF(sol.limiteAprovado);
+        const despC = brToF(sol.limiteDesp);
+        const impC  = brToF(sol.limiteImp);
+        const totC  = fobC + despC + impC;
+
+        html += `
+        <div class="sec-head-alt" style="color:#d97706;border-color:#d97706;">Limites Aprovados pelo Comitê</div>
+        <table class="data-table avoid-break">
+          <thead><tr><th>Componente</th><th>Limite Aprovado</th><th>Condição</th></tr></thead>
+          <tbody>
+            <tr class="approved-row"><td><strong>Exportador / FOB</strong></td><td class="td-money">${fmtMoney(sol.limiteAprovado)}</td><td>Câmbio / Mercadoria</td></tr>
+            <tr class="approved-row"><td><strong>Despesas Alfandegárias</strong></td><td class="td-money">${fmtMoney(sol.limiteDesp)}</td><td>Desembaraço / Frete</td></tr>
+            <tr class="approved-row"><td><strong>Impostos de Importação</strong></td><td class="td-money">${fmtMoney(sol.limiteImp)}</td><td>II, IPI, PIS, COFINS</td></tr>
+            <tr class="total-row"><td><strong>TOTAL APROVADO — COMITÊ</strong></td><td class="td-money" colspan="2"><strong>${fmtMoneyN(totC)}</strong></td></tr>
+          </tbody>
+        </table>`;
+      }
+    } else if (sol.status === 'em_comite') {
+      html += `
+      <div class="comite-pending avoid-break">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" style="flex-shrink:0;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>Solicitação encaminhada ao Comitê de Crédito em <strong>${fmtDate(sol.decisao_at)}</strong>. Aguardando deliberação da Diretoria.</span>
+      </div>`;
+    } else {
+      html += `
+      <div class="comite-pending avoid-break">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14" style="flex-shrink:0;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>Análise financeira em andamento. Esta solicitação passará pelo Comitê de Crédito após o parecer do analista financeiro.</span>
+      </div>`;
+    }
+  }
+
+  /* ── Assinatura ── */
+  html += `
+  <div class="separator"></div>
+  <div class="sig-section avoid-break" style="grid-template-columns:repeat(3,1fr);">
+    <div class="sig-box">
+      <div class="sig-line">
+        <div class="sig-name">Rafael Puglia</div>
+        <div class="sig-role">Sócio Diretor</div>
+        <div class="sig-date">Data: _____ / _____ / _______</div>
+      </div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-line">
+        <div class="sig-name">Luciano Ricci</div>
+        <div class="sig-role">Sócio Diretor</div>
+        <div class="sig-date">Data: _____ / _____ / _______</div>
+      </div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-line">
+        <div class="sig-name">Paulo Chiaradia</div>
+        <div class="sig-role">Diretor Financeiro</div>
+        <div class="sig-date">Data: _____ / _____ / _______</div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- doc-inner -->
+
+  <!-- FOOTER -->
+  <div class="doc-footer">
+    <div class="doc-footer-left">
+      <strong>Vendemmia Logística Integrada</strong><br/>
+      Documento gerado automaticamente em ${esc(genDate)} · Nº ${esc(docNum)}<br/>
+      Este documento é de uso interno e contém informações confidenciais.
+    </div>
+    <div class="doc-footer-right">
+      <span class="confidential">CONFIDENCIAL</span><br/>
+      Análise de Crédito Vendemmia
+    </div>
+  </div>`;
+
+  document.getElementById('document-root').innerHTML = html;
+}
+
+function printWithFreshData() {
+  const freshSol = DB.solicitacoes.getById(solId);
+  if (freshSol) {
+    sol     = freshSol;
+    expFob  = _computeFobBRL(sol);
+    expDesp = brToF(sol.limiteDesp);
+    expImp  = brToF(sol.limiteImp);
+    expTot  = expFob + expDesp + expImp;
+  }
+  render();
+  window.print();
+}
+
+(async function init() {
+  const API_URL = window.location.protocol === 'file:'
+    ? 'http://127.0.0.1:8000'
+    : window.location.origin;
+
+  /* Se o localStorage não tiver RF válida, busca no backend */
+  if ((rf.status !== 'ok' || !rfd.razao_social) && sol.hist_id) {
+    try {
+      const resp = await fetch(`${API_URL}/api/historico/${sol.hist_id}`, { credentials: 'include' });
+      if (resp.ok) {
+        const entry = await resp.json();
+        if (entry.receita_federal?.status === 'ok') {
+          rf  = entry.receita_federal;
+          rfd = rf.data || {};
+        }
+        /* Também complementa analysis da IA se localStorage estiver vazio */
+        if (!an.score && entry.analise_ia?.score) {
+          Object.assign(an, entry.analise_ia);
+        }
+      }
+    } catch (_) { /* fallback: renderiza com o que tem */ }
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

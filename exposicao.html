@@ -1,0 +1,1358 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exposição Financeira — Vendemmia</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="db.js"></script>
+  <script src="components.js"></script>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── KPI row ─────────────────────────────────────────── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap:1rem; margin-bottom:1.4rem; }
+    .kpi-card {
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); padding: 1.1rem 1.3rem; position: relative; overflow: hidden;
+    }
+    .kpi-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    }
+    .kpi-card.k-purple::before { background: linear-gradient(90deg,#7c3aed,#a855f7); }
+    .kpi-card.k-red::before    { background: linear-gradient(90deg,#ef4444,#f87171); }
+    .kpi-card.k-blue::before   { background: linear-gradient(90deg,#2563eb,#60a5fa); }
+    .kpi-card.k-green::before  { background: linear-gradient(90deg,#059669,#01E18E); }
+    .kpi-card.k-yellow::before { background: linear-gradient(90deg,#d97706,#f59e0b); }
+    .kpi-label { font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-faint); margin-bottom:.4rem; }
+    .kpi-value { font-size:1.55rem; font-weight:900; color:var(--text-primary); line-height:1.1; }
+    .kpi-sub   { font-size:.71rem; color:var(--text-muted); margin-top:.25rem; }
+    .kpi-badge { display:inline-flex; align-items:center; gap:.3rem; font-size:.7rem; font-weight:700; padding:.18rem .6rem; border-radius:99px; margin-top:.5rem; }
+    .kpi-badge.ok  { background:rgba(1,225,142,.12); color:var(--brand-neon-green); border:1px solid rgba(1,225,142,.3); }
+    .kpi-badge.nok { background:var(--red-bg); color:var(--red); border:1px solid rgba(239,68,68,.3); }
+    .kpi-badge.warn { background:var(--yellow-bg); color:var(--yellow); border:1px solid rgba(245,158,11,.3); }
+
+    /* ── Config panel ─────────────────────────────────────── */
+    .config-toggle {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:.1rem 0 .6rem; margin-bottom:0;
+    }
+    .config-toggle-btn {
+      display:inline-flex; align-items:center; gap:.4rem;
+      background: rgba(124,58,237,.15);
+      border: 1px solid rgba(124,58,237,.3);
+      border-radius: 8px; padding: .32rem .75rem;
+      cursor: pointer; font-size: .72rem; font-weight: 700;
+      color: var(--purple-light); font-family: inherit;
+      transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .config-toggle-btn:hover {
+      background: rgba(124,58,237,.25);
+      border-color: rgba(124,58,237,.5);
+    }
+    .config-toggle-btn svg { transition: transform .25s ease; }
+    .config-toggle-btn.open svg { transform: rotate(180deg); }
+    .param-section { margin-bottom:1.2rem; }
+    .param-section-label { font-size:.63rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-faint); margin-bottom:.65rem; padding-bottom:.35rem; border-bottom:1px solid rgba(255,255,255,.06); }
+    .param-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; }
+    .param-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; }
+    .param-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:.75rem; }
+    .param-item label { display:block; font-size:.63rem; font-weight:600; color:var(--text-faint); text-transform:uppercase; letter-spacing:.4px; margin-bottom:.3rem; }
+
+    /* ── Chart wrapper ────────────────────────────────────── */
+    .chart-card {
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); padding: 1.3rem 1.5rem; margin-bottom: 1.2rem;
+    }
+    .chart-title { font-size:.8rem; font-weight:700; color:var(--text-primary); margin-bottom:.3rem; }
+    .chart-subtitle { font-size:.71rem; color:var(--text-muted); margin-bottom:1rem; }
+    .chart-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+    /* ── Legend ───────────────────────────────────────────── */
+    .legend { display:flex; flex-wrap:wrap; gap:.55rem 1.1rem; margin-top:.5rem; }
+    .leg-item { display:flex; align-items:center; gap:.4rem; font-size:.72rem; color:var(--text-muted); }
+    .leg-dot  { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+
+    /* ── Detail table ─────────────────────────────────────── */
+    .exp-table { width:100%; border-collapse:collapse; font-size:.78rem; }
+    .exp-table th { color:var(--text-faint); font-size:.63rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; padding:.45rem .7rem; text-align:left; border-bottom:1px solid var(--glass-border); white-space:nowrap; }
+    .exp-table td { padding:.55rem .7rem; color:var(--text-secondary); border-bottom:1px solid rgba(255,255,255,.03); white-space:nowrap; }
+    .exp-table tr:last-child td { border-bottom:none; }
+    .exp-table .total-row td { color:var(--text-primary); font-weight:700; border-top:1px solid rgba(255,255,255,.08); }
+    .td-money { color:var(--brand-neon-green) !important; font-weight:600; }
+    .td-red   { color:var(--red) !important; }
+    .td-yellow { color:var(--yellow) !important; }
+
+    /* ── Cycle color dots ─────────────────────────────────── */
+    .cycle-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:.35rem; flex-shrink:0; }
+    .cycle-dot.c0 { background:#a855f7; }
+    .cycle-dot.c1 { background:#60a5fa; }
+    .cycle-dot.c2 { background:#22d3ee; }
+
+    /* ── Ciclo Matrix (Detalhamento) ──────────────────── */
+    .ciclos-wrapper { display:flex; flex-direction:column; gap:1.25rem; }
+
+    .ciclo-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:12px; overflow:hidden; }
+
+    .ciclo-card-hdr { display:flex; align-items:center; gap:.7rem; padding:.8rem 1.1rem; background:rgba(255,255,255,.025); border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; row-gap:.35rem; }
+    .ciclo-hdr-badge { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+    .ciclo-hdr-title { font-size:.82rem; font-weight:700; color:var(--text-primary); }
+    .ciclo-hdr-range { font-size:.72rem; color:var(--text-muted); }
+    .ciclo-hdr-spacer { flex:1; }
+    .ciclo-hdr-dur { font-size:.68rem; color:var(--text-faint); background:rgba(255,255,255,.06); padding:.15rem .5rem; border-radius:20px; }
+    .ciclo-hdr-exp { font-size:.7rem; font-weight:700; color:#fbbf24; background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.2); padding:.15rem .65rem; border-radius:20px; }
+
+    .ciclo-scroll { overflow-x:auto; padding-bottom:.35rem; }
+
+    .mtz-table { width:100%; border-collapse:collapse; min-width:900px; font-size:.73rem; }
+
+    .mtz-table thead tr th { padding:.5rem .55rem; text-align:center; font-size:.62rem; font-weight:800; letter-spacing:.5px; white-space:nowrap; border-bottom:2px solid rgba(255,255,255,.07); }
+    .mtz-row-lbl-hdr { text-align:left !important; width:112px; min-width:112px; color:transparent !important; background:transparent !important; border-bottom-color:transparent !important; }
+    .mtz-col-stage-th { color:var(--sc); background:rgba(0,0,0,.22); border-bottom:2px solid var(--sc) !important; }
+
+    .mtz-row-lbl { padding:.38rem .65rem; color:var(--text-faint); font-size:.68rem; text-align:left; white-space:nowrap; background:rgba(0,0,0,.12); border-right:1px solid rgba(255,255,255,.04); min-width:112px; }
+
+    .mtz-cell { padding:.38rem .55rem; text-align:right; white-space:nowrap; border:1px solid rgba(255,255,255,.03); vertical-align:middle; }
+    .mtz-days  { color:var(--text-secondary); }
+    .mtz-date-cell { color:var(--text-primary); font-weight:600; }
+
+    .mtz-sec-hdr td { padding:.25rem .65rem; font-size:.58rem; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-faint); background:rgba(255,255,255,.02); border-top:1px solid rgba(255,255,255,.07); }
+
+    .mtz-neg-val  { color:#f87171 !important; font-weight:700; }
+    .mtz-pos-val  { color:var(--brand-neon-green) !important; font-weight:700; }
+    .mtz-fat-val  { color:#93c5fd !important; font-weight:600; }
+    .mtz-exp-val  { color:#fbbf24 !important; font-weight:700; }
+    .mtz-zero-val { color:var(--text-faint) !important; }
+    .mtz-cf-val   { font-weight:700; }
+    .mtz-empty-cell { color:rgba(255,255,255,.1) !important; }
+    .mtz-exp-row  { background:rgba(251,191,36,.03); }
+    .mtz-dates-sep td { border-bottom:1px solid rgba(255,255,255,.07) !important; }
+
+    /* Summary */
+    .ciclo-resumo { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:1rem 1.2rem; }
+    .ciclo-resumo-title { font-size:.7rem; font-weight:700; color:var(--text-muted); letter-spacing:.8px; text-transform:uppercase; margin-bottom:.85rem; }
+    .ciclo-resumo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.7rem 1rem; }
+    .ciclo-resumo-item { display:flex; flex-direction:column; gap:.18rem; }
+    .ciclo-resumo-lbl { font-size:.62rem; color:var(--text-faint); text-transform:uppercase; letter-spacing:.4px; }
+    .ciclo-resumo-val { font-size:.86rem; font-weight:700; }
+    @media(max-width:600px){ .ciclo-resumo-grid { grid-template-columns:repeat(2,1fr); } }
+
+    @media (max-width:900px) {
+      .kpi-grid { grid-template-columns:repeat(2,1fr); }
+      .param-grid-3, .param-grid-4 { grid-template-columns:repeat(2,1fr); }
+    }
+    @media (max-width:600px) {
+      .kpi-grid { grid-template-columns:1fr 1fr; }
+      .param-grid-3, .param-grid-4, .param-grid-2 { grid-template-columns:1fr; }
+    }
+
+    /* ── Dark modern inputs ─────────────────────────── */
+    .param-item label {
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .61rem; font-weight: 700; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: .5px; margin-bottom: .42rem;
+    }
+    .form-input {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 8px;
+      padding: .65rem .9rem;
+      font-size: .88rem; font-weight: 600;
+      color: var(--text-primary); font-family: inherit;
+      width: 100%; outline: none;
+      transition: border-color .15s, background .15s, box-shadow .15s;
+      -webkit-appearance: none; appearance: none;
+      color-scheme: dark;
+    }
+    .form-input::placeholder { color: var(--text-faint); font-weight: 400; }
+    .form-input:hover:not(:focus) {
+      border-color: rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+    }
+    .form-input:focus {
+      border-color: rgba(124,58,237,.7);
+      background: rgba(124,58,237,.07);
+      box-shadow: 0 0 0 3px rgba(124,58,237,.14);
+    }
+    /* Remove spinner arrows from number inputs */
+    .form-input[type=number]::-webkit-inner-spin-button,
+    .form-input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; }
+    .form-input[type=number] { -moz-appearance: textfield; }
+
+    /* Unit suffix wrapper */
+    .input-unit-wrap { position: relative; }
+    .input-unit-wrap .form-input { padding-right: 3rem; }
+    .input-unit-wrap .input-unit {
+      position: absolute; right: .8rem; top: 50%; transform: translateY(-50%);
+      font-size: .69rem; font-weight: 700; color: rgba(255,255,255,.28);
+      pointer-events: none; white-space: nowrap;
+    }
+
+    /* Cycle-colored left border on date inputs */
+    .param-item.c0 .form-input { border-left: 2.5px solid rgba(168,85,247,.55); }
+    .param-item.c1 .form-input { border-left: 2.5px solid rgba(96,165,250,.55); }
+    .param-item.c2 .form-input { border-left: 2.5px solid rgba(34,211,238,.55); }
+    .param-item.c0 .form-input:focus { border-color: rgba(168,85,247,.7); box-shadow: 0 0 0 3px rgba(168,85,247,.13); }
+    .param-item.c1 .form-input:focus { border-color: rgba(96,165,250,.7);  box-shadow: 0 0 0 3px rgba(96,165,250,.13); }
+    .param-item.c2 .form-input:focus { border-color: rgba(34,211,238,.7);  box-shadow: 0 0 0 3px rgba(34,211,238,.13); }
+
+    /* Section accent strips */
+    .param-section {
+      padding: .9rem 1rem;
+      background: rgba(255,255,255,.018);
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.05);
+      margin-bottom: .9rem;
+    }
+    .param-section:last-child { margin-bottom: 0; }
+    .param-section-label {
+      font-size: .6rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .7px; color: var(--text-faint);
+      margin-bottom: .75rem; padding-bottom: .5rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .param-section-label::before {
+      content: ''; display: inline-block;
+      width: 3px; height: 12px; border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .ps-dates .param-section-label::before  { background: linear-gradient(to bottom,#a855f7,#60a5fa); }
+    .ps-ops   .param-section-label::before  { background: linear-gradient(to bottom,#f59e0b,#fb923c); }
+    .ps-fin   .param-section-label::before  { background: linear-gradient(to bottom,#22d3ee,#3b82f6); }
+    .ps-lim   .param-section-label::before  { background: linear-gradient(to bottom,#01E18E,#22d3ee); }
+  </style>
+</head>
+<body>
+<script>const session = DB.auth.requireAuth();</script>
+
+<div class="app-shell">
+  <aside class="sidebar"></aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-title">
+        <div class="breadcrumb">
+          <a href="solicitacoes.html">Solicitações</a> ›
+          <a id="link-analise" href="#">Análise</a> ›
+          Exposição Financeira
+        </div>
+        <h1 id="page-title">Exposição Financeira</h1>
+      </div>
+      <div class="topbar-actions">
+        <a href="#" id="back-btn" class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Voltar à Análise
+        </a>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <!-- ── KPI Cards ──────────────────────────────────── -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card k-red">
+          <div class="kpi-label">Pico de Exposição</div>
+          <div class="kpi-value" id="kpi-peak">—</div>
+          <div class="kpi-sub">Máximo simultâneo nos 3 ciclos</div>
+        </div>
+        <div class="kpi-card k-purple">
+          <div class="kpi-label">Custo Financeiro Total</div>
+          <div class="kpi-value" id="kpi-cost">—</div>
+          <div class="kpi-sub">CDI + spread nos 3 ciclos</div>
+        </div>
+        <div class="kpi-card k-blue">
+          <div class="kpi-label">Dias Máx. em Risco</div>
+          <div class="kpi-value" id="kpi-days">—</div>
+          <div class="kpi-sub">Maior janela de exposição</div>
+        </div>
+        <div class="kpi-card k-green">
+          <div class="kpi-label">Limite por Ciclo</div>
+          <div class="kpi-value" id="kpi-limit">—</div>
+          <div id="kpi-status">—</div>
+        </div>
+      </div>
+
+      <!-- ── Parâmetros ─────────────────────────────────── -->
+      <div class="card" style="margin-bottom:1.2rem;">
+        <div class="config-toggle">
+          <div class="card-title" style="margin-bottom:0;">Parâmetros da Simulação</div>
+          <button class="config-toggle-btn" id="cfg-btn" onclick="toggleConfig()">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
+              <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Editar Parâmetros
+          </button>
+        </div>
+        <div id="config-body" style="display:none;">
+
+          <!-- Datas dos ciclos -->
+          <div class="param-section ps-dates">
+            <div class="param-section-label">Datas de Início — Invoice</div>
+            <div class="param-grid-3">
+              <div class="param-item c0">
+                <label><span class="cycle-dot c0"></span>Ciclo 1 — Data Invoice</label>
+                <input type="date" class="form-input" id="c1-date" oninput="scheduleCalc()" />
+              </div>
+              <div class="param-item c1">
+                <label><span class="cycle-dot c1"></span>Ciclo 2 — Data Invoice</label>
+                <input type="date" class="form-input" id="c2-date" oninput="scheduleCalc()" />
+              </div>
+              <div class="param-item c2">
+                <label><span class="cycle-dot c2"></span>Ciclo 3 — Data Invoice</label>
+                <input type="date" class="form-input" id="c3-date" oninput="scheduleCalc()" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Parâmetros operacionais -->
+          <div class="param-section ps-ops">
+            <div class="param-section-label">Prazos Operacionais — 8 Etapas do Ciclo</div>
+            <div class="param-grid-4" style="margin-bottom:.65rem;">
+              <div class="param-item">
+                <label>① Prontidão</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-producao" value="10" min="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">dias</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>② BL</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-embarque" value="0" min="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">dias</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>③ Transit Time</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-transito" value="45" min="1" oninput="scheduleCalc()" />
+                  <span class="input-unit">dias</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>④ Desembaraço Aduaneiro</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-desemb" value="2" min="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">dias</span>
+                </div>
+              </div>
+            </div>
+            <div class="param-grid-3">
+              <div class="param-item">
+                <label>⑤ Faturamento</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-fat" value="3" min="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">dias</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>⑧ Pagto. p/ Exportador (após VDM)</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-pagexp" value="60" min="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">dias</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>⑦ Recebimento VDM (do fat.)</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-prazo" value="90" min="1" oninput="scheduleCalc()" />
+                  <span class="input-unit">dias</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parâmetros financeiros -->
+          <div class="param-section ps-fin">
+            <div class="param-section-label">Parâmetros Financeiros</div>
+            <div class="param-grid-4">
+              <div class="param-item">
+                <label>Câmbio USD → BRL</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-cambio" value="5.80" step="0.01" min="1" oninput="scheduleCalc()" />
+                  <span class="input-unit">R$/USD</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>CDI ao ano</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-cdi" value="13.75" step="0.25" min="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">%/a</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>Spread mensal</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-spread" value="0.18" step="0.01" min="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">%/m</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>Rentabilidade Vendemmia</label>
+                <div class="input-unit-wrap">
+                  <input type="number" class="form-input" id="p-rent" value="2.0" step="0.1" min="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Limites por ciclo -->
+          <div class="param-section ps-lim">
+            <div class="param-section-label">Valores por Ciclo (R$)</div>
+            <div class="param-grid-4">
+              <div class="param-item">
+                <label>Exportador / FOB</label>
+                <div class="input-unit-wrap">
+                  <input type="text" class="form-input" id="p-fob" placeholder="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">R$</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>Desp. Desembaraço</label>
+                <div class="input-unit-wrap">
+                  <input type="text" class="form-input" id="p-desp" placeholder="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">R$</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>Impostos de Importação</label>
+                <div class="input-unit-wrap">
+                  <input type="text" class="form-input" id="p-imp" placeholder="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">R$</span>
+                </div>
+              </div>
+              <div class="param-item">
+                <label>Volume a Faturar (2.3)</label>
+                <div class="input-unit-wrap">
+                  <input type="text" class="form-input" id="p-volmes" placeholder="0" oninput="scheduleCalc()" />
+                  <span class="input-unit">R$</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Gantt: Linha do Tempo ───────────────────────── -->
+      <div class="chart-card">
+        <div class="chart-title">Linha do Tempo — 3 Ciclos de Importação</div>
+        <div class="legend" style="margin-top:.5rem;margin-bottom:.2rem;">
+          <div class="leg-item"><div class="leg-dot" style="background:#475569;"></div>① Prontidão</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#3b82f6;"></div>② BL</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#60a5fa;"></div>③ Transit Time</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#f59e0b;"></div>④ Desembaraço</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#10b981;"></div>⑤ Faturamento</div>
+          <div class="leg-item"><div class="leg-dot" style="background:rgba(1,225,142,.3);"></div>⑦ Receb. VDM</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#f43f5e;"></div>⑧ Pagto. Exportador</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#dc2626;"></div>Exp. FOB (⑥ parcelas)</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#7c3aed;"></div>Exp. Desp+Imp</div>
+          <div class="leg-item"><div class="leg-dot" style="background:rgba(1,225,142,.6);border-radius:50%;width:8px;height:8px;"></div>Marco / Evento</div>
+        </div>
+        <div class="chart-scroll">
+          <div id="gantt-container" style="min-width:800px;"></div>
+        </div>
+      </div>
+
+
+      <!-- ── Detalhamento por Ciclo ───────────────────── -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:1.1rem;">Detalhamento por Ciclo</div>
+        <div id="ciclos-container"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  /* ══════════════════════════════════════════════════════
+     INIT
+  ══════════════════════════════════════════════════════ */
+  App.mount('solicitacoes');
+
+  const urlP  = new URLSearchParams(location.search);
+  const solId = urlP.get('id');
+  let sol = null;
+
+  if (!solId) { location.href = 'solicitacoes.html'; }
+  else {
+    sol = DB.solicitacoes.getById(solId);
+    if (!sol) location.href = 'solicitacoes.html';
+    else boot();
+  }
+
+  /* ── Utilities ─────────────────────────────────────── */
+  function addDays(date, n) {
+    const d = new Date(date); d.setDate(d.getDate() + n); return d;
+  }
+  function diffDays(a, b) {
+    return Math.round((b.getTime() - a.getTime()) / 86400000);
+  }
+  function brToFloat(v) {
+    return parseFloat(String(v || '0').replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  function fmtBRL(v, short = false) {
+    const abs = Math.abs(v);
+    if (short && abs >= 1e6) return 'R$ ' + (v/1e6).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + ' M';
+    if (short && abs >= 1e3) return 'R$ ' + Math.round(v/1e3).toLocaleString('pt-BR') + ' k';
+    return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+  }
+  function fmtDateFull(d) {
+    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+  }
+  function fmtDateShort(d) {
+    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  }
+  function toInputDate(d) { return d.toISOString().slice(0, 10); }
+  function fromInputDate(s) {
+    const [y, m, day] = s.split('-').map(Number);
+    return new Date(y, m - 1, day);
+  }
+
+  /* ── Mapeia condição de parcela → data do ciclo ───── */
+  function parcCondToDate(tipo, dates) {
+    if (tipo === 'embarque')  return new Date(dates.dBL);
+    if (tipo === 'registro')  return new Date(dates.dReg);
+    if (tipo === 'entrega')   return new Date(dates.dRec);
+    // avista, remessa, producao, lc, cobranca → data da invoice (início)
+    return new Date(dates.d0);
+  }
+
+  /* ── Boot ───────────────────────────────────────────── */
+  function boot() {
+    document.getElementById('page-title').textContent = 'Exposição — ' + sol.empresa;
+    document.getElementById('back-btn').href          = 'analise-financeira.html?id=' + sol.id;
+    document.getElementById('link-analise').href      = 'analise-financeira.html?id=' + sol.id;
+
+    // FOB: limiteExportador armazena texto com unidade ("R$ X por container")
+    // Usar limiteExportadorParsed.num (já é número) + converter se moeda != BRL
+    // Câmbio: tenta ler da solicitação (limiteExportadorParsed.equivNum/equivValor) ou usa 5.80
+    const _parsed   = sol.limiteExportadorParsed || {};
+    const _fobMoeda = (_parsed.moeda || 'BRL').toUpperCase();
+    const _fobNum   = typeof _parsed.num === 'number' ? _parsed.num
+                    : brToFloat(_parsed.valor) || brToFloat(sol.limiteExportador) || 0;
+    // Se tem equivalente BRL na solicitação (campo "Equivalente em BRL"), usa direto
+    const _hasBRLequiv = _parsed.temEquiv && (_parsed.equivMoeda || '').toUpperCase() === 'BRL' && _parsed.equivNum > 0;
+    const _cambioSol = (() => {
+      if (_hasBRLequiv && _fobNum > 0) return _parsed.equivNum / _fobNum;
+      return 5.80;
+    })();
+    const fobBRL = _fobMoeda === 'BRL' ? _fobNum : _fobNum * _cambioSol;
+
+    const despBRL = brToFloat(sol.limiteDesp) || 0;
+    const impBRL  = brToFloat(sol.limiteImp)  || 0;
+    const volMes  = brToFloat(sol.volMes)     || 0;
+
+    const productionDays = Math.max(0, parseInt(sol.prazoPrepEmbarque) || 10);
+    const embarqueDays   = Math.max(0, parseInt(sol.prazoEmbarque)    || 0);
+
+    const _ptRaw  = sol.prazoTransit;
+    const _ptNum  = parseInt(_ptRaw);
+    const _ptIsInt = !isNaN(_ptNum) && String(_ptNum) === String(_ptRaw).trim();
+    const transitDays = _ptIsInt
+      ? Math.max(1, _ptNum)
+      : (sol.modal === 'aereo' || sol.modal === 'aéreo') ? 5 : 45;
+
+    const desembarDays  = Math.max(0, parseInt(sol.prazoDesembaraco) || 2);
+    const fatDays       = Math.max(0, parseInt(sol.prazoFaturamento) || 3);
+    const pagtoVendDays = Math.max(1,
+      parseInt(sol.prazoPagtoVendemmia) ||
+      parseInt(sol.prazoDesp)           ||
+      parseInt(sol.prazoImp)            || 60);
+
+    let cdi = 13.75, spread = 0.18;
+    if (sol.custoFin) {
+      const smM = sol.custoFin.match(/([0-9]+[,.]?[0-9]*)\s*%\s*(ao\s+m[eê]s|\/m(?:\s|$)|a\.m\.)/i);
+      if (smM) spread = parseFloat(smM[1].replace(',', '.')) || 0.18;
+      const cdiM = sol.custoFin.match(/([0-9]+[,.]?[0-9]*)\s*%\s*(a\.a\.|ao\s+ano|\/a(?:\s|$))/i);
+      if (cdiM) cdi = parseFloat(cdiM[1].replace(',', '.')) || 13.75;
+    }
+    const rent = parseFloat(sol.rentabilidade) || 2.0;
+
+    let c1Date = new Date(); c1Date.setHours(0,0,0,0);
+    if (sol.prazoInvoiceData && String(sol.prazoInvoiceData).length >= 8) {
+      const _d = new Date(sol.prazoInvoiceData);
+      if (!isNaN(_d.getTime()) && _d.getFullYear() > 2000) c1Date = _d;
+    }
+
+    document.getElementById('c1-date').value    = toInputDate(c1Date);
+    document.getElementById('c2-date').value    = toInputDate(addDays(c1Date, 30));
+    document.getElementById('c3-date').value    = toInputDate(addDays(c1Date, 60));
+    document.getElementById('p-producao').value = productionDays;
+    document.getElementById('p-embarque').value = embarqueDays;
+    document.getElementById('p-transito').value = transitDays;
+    document.getElementById('p-desemb').value   = desembarDays;
+    document.getElementById('p-fat').value      = fatDays;
+    const pagExpDays = Math.max(0, parseInt(sol.prazoPagtoExportador) || 83);
+    document.getElementById('p-pagexp').value   = pagExpDays;
+    document.getElementById('p-prazo').value    = pagtoVendDays;
+    document.getElementById('p-cambio').value   = _cambioSol.toFixed(2);
+    document.getElementById('p-cdi').value      = cdi;
+    document.getElementById('p-spread').value   = spread;
+    document.getElementById('p-rent').value     = rent;
+    document.getElementById('p-fob').value    = fobBRL  > 0 ? Math.round(fobBRL).toLocaleString('pt-BR')  : '';
+    document.getElementById('p-desp').value   = despBRL > 0 ? Math.round(despBRL).toLocaleString('pt-BR') : '';
+    document.getElementById('p-imp').value    = impBRL  > 0 ? Math.round(impBRL).toLocaleString('pt-BR')  : '';
+    document.getElementById('p-volmes').value = volMes  > 0 ? Math.round(volMes).toLocaleString('pt-BR')  : '';
+
+    recalculate();
+    if (urlP.get('readonly') === '1') lockReadOnly();
+  }
+
+  /* ── Read-only mode (called from clientes.html via ?readonly=1) ─── */
+  function lockReadOnly() {
+    document.querySelectorAll('.form-input').forEach(el => {
+      el.setAttribute('readonly', '');
+      el.style.pointerEvents = 'none';
+      el.style.opacity       = '.5';
+      el.style.cursor        = 'not-allowed';
+    });
+    const cfgBtn = document.getElementById('cfg-btn');
+    if (cfgBtn) {
+      cfgBtn.style.pointerEvents = 'none';
+      cfgBtn.style.opacity       = '.4';
+      cfgBtn.style.cursor        = 'not-allowed';
+    }
+
+    // Swap "Voltar à Análise" → "Voltar à Consulta" pointing back to the
+    // specific client so it reopens already selected (cnpj param).
+    const cnpjParam = sol.cnpj ? '?cnpj=' + encodeURIComponent(sol.cnpj.replace(/\D/g,'')) : '';
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+      backBtn.href = 'clientes.html' + cnpjParam;
+      backBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Voltar à Consulta`;
+    }
+
+    // Update breadcrumb to reflect the read-only context
+    const linkAnalise = document.getElementById('link-analise');
+    if (linkAnalise) {
+      linkAnalise.textContent = 'Consulta';
+      linkAnalise.href = 'clientes.html' + cnpjParam;
+    }
+
+    const main = document.querySelector('.page-content');
+    if (main) {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'display:flex;align-items:center;gap:.65rem;background:rgba(1,225,142,.06);border:1px solid rgba(1,225,142,.18);border-radius:8px;padding:.55rem 1.1rem;font-size:.77rem;color:rgba(1,225,142,.85);font-weight:600;margin-bottom:1rem;flex-shrink:0;';
+      banner.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>Simulação em modo somente leitura — processo finalizado, parâmetros bloqueados`;
+      main.insertBefore(banner, main.firstChild);
+    }
+  }
+
+  /* ── Config toggle ──────────────────────────────────── */
+  function toggleConfig() {
+    const body   = document.getElementById('config-body');
+    const btn    = document.getElementById('cfg-btn');
+    const hidden = body.style.display === 'none';
+    body.style.display = hidden ? '' : 'none';
+    btn.classList.toggle('open', hidden);
+    btn.querySelector('svg').style.transform = hidden ? 'rotate(180deg)' : '';
+  }
+
+  /* ── Debounce ───────────────────────────────────────── */
+  let calcTimer = null;
+  function scheduleCalc() {
+    clearTimeout(calcTimer);
+    calcTimer = setTimeout(recalculate, 120);
+  }
+
+  /* ── Read params ─────────────────────────────────────── */
+  function readParams() {
+    const pv = id => document.getElementById(id).value;
+
+    // FOB parcelas do sol (pagamento parcelado)
+    let fobParcelas = [];
+    if (Array.isArray(sol?.simPagParcelas) && sol.simPagParcelas.length > 0) {
+      fobParcelas = sol.simPagParcelas.filter(p => (p.pct || 0) > 0);
+    } else if (Array.isArray(sol?.pagtoExportadorParcelas) && sol.pagtoExportadorParcelas.length > 0) {
+      fobParcelas = sol.pagtoExportadorParcelas.filter(p => (p.pct || 0) > 0);
+    }
+    let recParcelas = [];
+    if (Array.isArray(sol?.simRecParcelas) && sol.simRecParcelas.length > 0) {
+      recParcelas = sol.simRecParcelas.filter(p => (p.pct || 0) > 0);
+    }
+
+    return {
+      dates: [
+        fromInputDate(pv('c1-date')),
+        fromInputDate(pv('c2-date')),
+        fromInputDate(pv('c3-date')),
+      ],
+      productionDays : parseInt(pv('p-producao')) || 10,
+      embarqueDays   : parseInt(pv('p-embarque')) || 0,
+      transitDays    : parseInt(pv('p-transito')) || 45,
+      desembarDays   : parseInt(pv('p-desemb'))   || 2,
+      fatDays        : parseInt(pv('p-fat'))       || 3,
+      pagExpDays     : parseInt(pv('p-pagexp'))    || 83,
+      creditTerms    : parseInt(pv('p-prazo'))     || 90,
+      cambio         : parseFloat(pv('p-cambio'))  || 5.80,
+      cdiAnnual      : parseFloat(pv('p-cdi'))   / 100 || 0.1375,
+      spreadMonthly  : parseFloat(pv('p-spread'))/ 100 || 0.0018,
+      rentabilidade  : parseFloat(pv('p-rent'))  / 100 || 0.02,
+      fobBRL         : brToFloat(pv('p-fob'))    || 0,
+      despBRL        : brToFloat(pv('p-desp'))   || 0,
+      impBRL         : brToFloat(pv('p-imp'))    || 0,
+      volMes         : brToFloat(pv('p-volmes')) || 0,
+      fobParcelas,
+      recParcelas,
+    };
+  }
+
+  /* ── Calc one cycle ──────────────────────────────────── */
+  function calcCycle(startDate, P) {
+    const d0        = new Date(startDate); d0.setHours(0,0,0,0);
+    const dProntidao = addDays(d0,         P.productionDays); // Prontidão concluída
+    const dBL       = addDays(dProntidao,  P.embarqueDays);   // BL emitido / navio parte
+    const dChegada  = addDays(dBL,         P.transitDays);    // chegada ao porto BR
+    const dDesemb   = addDays(dChegada,    P.desembarDays);   // desembaraço concluído
+    const dFat      = addDays(dDesemb,     P.fatDays);        // fatura emitida ao cliente
+    const dVDM      = addDays(dFat,        P.creditTerms);    // Recebimento VDM
+    const dPagExp   = addDays(d0,          P.pagExpDays);     // Pagto. para o Exportador (=C13+J10: Pedido + pagExpDays)
+
+    // Aliases de compatibilidade (usados por parcCondToDate e pelo Gantt)
+    const dPrepDone = dProntidao;
+    const dReg      = dChegada;
+    const dRec      = dVDM;
+
+    const rateDaily = (P.cdiAnnual / 365) + (P.spreadMonthly / 30);
+    const datesMap  = { d0, dPrepDone, dBL, dReg, dDesemb, dFat, dRec };
+
+    // Pagamentos FOB (parcelado ou único)
+    let fobPayments = [];
+    if (P.fobParcelas && P.fobParcelas.length > 0) {
+      P.fobParcelas.forEach(p => {
+        const dPmt   = parcCondToDate(p.tipo || p.cond || '', datesMap);
+        const amount = P.fobBRL * ((p.pct || 0) / 100);
+        const days   = Math.max(0, diffDays(dPmt, dRec));
+        fobPayments.push({ pct: (p.pct || 0) / 100, amount, date: dPmt, days,
+          label: p.label || (p.pct + '%'),
+          cost: amount * (Math.pow(1 + rateDaily, days) - 1) });
+      });
+    } else {
+      // Pagamento único FOB: BL + 60 dias (fallback fixo)
+      const dPag = addDays(dBL, 60);
+      const days = Math.max(0, diffDays(dPag, dRec));
+      fobPayments.push({ pct: 1.0, amount: P.fobBRL, date: dPag, days, label: '100%',
+        cost: P.fobBRL * (Math.pow(1 + rateDaily, days) - 1) });
+    }
+
+    const daysDesp = diffDays(dReg, dRec);
+    const costDesp = P.despBRL * (Math.pow(1 + rateDaily, daysDesp) - 1);
+    const costImp  = P.impBRL  * (Math.pow(1 + rateDaily, daysDesp) - 1);
+    const costFOB  = fobPayments.reduce((s, p) => s + p.cost, 0);
+
+    return {
+      d0, dPrepDone, dBL, dReg, dDesemb, dFat, dRec, dPagExp,
+      fobPayments,
+      fob: P.fobBRL, desp: P.despBRL, imp: P.impBRL,
+      volMes: P.volMes > 0 ? P.volMes : (P.fobBRL + P.despBRL + P.impBRL),
+      daysDesp,
+      costDesp, costImp, costFOB,
+      // Receita = volMes (faturado) - custo operacional. Fallback para margem se volMes=0
+      revenue: P.volMes > 0
+        ? P.volMes - (P.fobBRL + P.despBRL + P.impBRL)
+        : (P.fobBRL + P.despBRL + P.impBRL) * P.rentabilidade,
+    };
+  }
+
+  /* ── Build exposure curve ────────────────────────────── */
+  function buildCurve(cycles) {
+    const evts = [];
+    cycles.forEach((c, i) => {
+      evts.push({ t: c.dReg.getTime(), i, delta: c.desp + c.imp });
+      c.fobPayments.forEach(fp => evts.push({ t: fp.date.getTime(), i, delta: fp.amount }));
+      evts.push({ t: c.dRec.getTime(), i, delta: -(c.fob + c.desp + c.imp) });
+    });
+    evts.sort((a, b) => a.t - b.t);
+
+    const perCycle = cycles.map(() => 0);
+    let maxExposure = 0;
+    const pts = [];
+    if (!evts.length) return { pts, maxExposure, peakTime: Date.now(),
+      minT: Date.now() - 86400000*5, maxT: Date.now() + 86400000*200 };
+
+    const ganttMinT = Math.min(...cycles.map(c => c.d0.getTime()))  - 5 * 86400000;
+    const ganttMaxT = Math.max(...cycles.map(c => c.dRec.getTime())) + 5 * 86400000;
+    let peakTime = evts[0].t;
+
+    pts.push({ t: ganttMinT, total: 0, pc: [...perCycle] });
+    let k = 0;
+    while (k < evts.length) {
+      const t = evts[k].t;
+      pts.push({ t, total: perCycle.reduce((s,v) => s+v, 0), pc: [...perCycle] });
+      while (k < evts.length && evts[k].t === t) {
+        perCycle[evts[k].i] = Math.max(0, perCycle[evts[k].i] + evts[k].delta);
+        k++;
+      }
+      const total = perCycle.reduce((s,v) => s+v, 0);
+      pts.push({ t, total: Math.max(0, total), pc: [...perCycle] });
+      if (total > maxExposure) { maxExposure = total; peakTime = t; }
+    }
+    pts.push({ t: ganttMaxT, total: 0, pc: [0,0,0] });
+
+    return { pts, maxExposure, peakTime, minT: ganttMinT, maxT: ganttMaxT };
+  }
+
+  /* ── Main recalculate ────────────────────────────────── */
+  function recalculate() {
+    const P = readParams();
+    const cycles = P.dates.map(d => calcCycle(d, P));
+    if (cycles.some(c => isNaN(c.d0.getTime()))) return;
+
+    const curve        = buildCurve(cycles);
+    const totalCost    = cycles.reduce((s, c) => s + c.costDesp + c.costImp + c.costFOB, 0);
+    const totalRevenue = cycles.reduce((s, c) => s + c.revenue, 0);
+    const maxDays      = Math.max(...cycles.map(c => c.daysDesp));
+    const singleLimit  = P.fobBRL + P.despBRL + P.impBRL;
+
+    document.getElementById('kpi-peak').textContent  = fmtBRL(curve.maxExposure, true);
+    document.getElementById('kpi-cost').textContent  = fmtBRL(totalCost, true);
+    document.getElementById('kpi-days').textContent  = maxDays + ' dias';
+    document.getElementById('kpi-limit').textContent = fmtBRL(singleLimit, true);
+
+    const overRatio = curve.maxExposure / (singleLimit || 1);
+    const statusEl  = document.getElementById('kpi-status');
+    if (overRatio <= 1.05) {
+      statusEl.innerHTML = `<span class="kpi-badge ok">✓ Dentro do limite/ciclo</span>`;
+    } else {
+      statusEl.innerHTML = `<span class="kpi-badge nok">⚠ ${overRatio.toFixed(1)}× o limite/ciclo</span>`;
+    }
+
+    renderGantt(cycles, curve);
+    renderDetailTable(cycles, totalCost, totalRevenue, P);
+  }
+
+  /* ══════════════════════════════════════════════════════
+     GANTT — REDESENHADO (CFO VIEW)
+     7 etapas visíveis por ciclo, FOB parcelado, datas em
+     todos os ciclos, exposição financeira detalhada.
+  ══════════════════════════════════════════════════════ */
+  function renderGantt(cycles, curve) {
+    const hasSplitFOB = cycles.some(c => c.fobPayments && c.fobPayments.length > 1);
+    const ROW_H   = hasSplitFOB ? 198 : 178;
+    const W       = 1060;
+    const PAD_L   = 122;
+    const PAD_T   = 14;
+    const PAD_R   = 18;
+    const PAD_B   = 32;
+    const H       = PAD_T + ROW_H * cycles.length + PAD_B;
+    const CW      = W - PAD_L - PAD_R;
+    const minT    = curve.minT;
+    const maxT    = curve.maxT;
+    const span    = maxT - minT;
+    const totalDays = Math.ceil(span / 86400000);
+
+    function tx(date) { return PAD_L + (date.getTime() - minT) / span * CW; }
+
+    const CY_CLR = ['#c084fc', '#60a5fa', '#22d3ee'];
+
+    // ── SVG defs ────────────────────────────────────────
+    const defs = `<defs>
+      <linearGradient id="vgPrep"   x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#475569"/></linearGradient>
+      <linearGradient id="vgEmb"    x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#1e3a8a"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+      <linearGradient id="vgTrans"  x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#93c5fd"/></linearGradient>
+      <linearGradient id="vgDesemb" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#78350f"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+      <linearGradient id="vgFat"    x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#052e16"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+      <linearGradient id="vgFOBa"   x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7f1d1d"/><stop offset="100%" stop-color="#dc2626"/></linearGradient>
+      <linearGradient id="vgFOBb"   x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#991b1b"/><stop offset="100%" stop-color="#f87171"/></linearGradient>
+      <linearGradient id="vgDI"     x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b0764"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
+      <linearGradient id="vgPagExp" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7f1d1d"/><stop offset="100%" stop-color="#f43f5e"/></linearGradient>
+    </defs>`;
+
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;font-family:inherit;">${defs}`;
+
+    // Chart background
+    s += `<rect x="${PAD_L}" y="${PAD_T}" width="${CW}" height="${H-PAD_T-PAD_B}" fill="rgba(255,255,255,0.008)" rx="6"/>`;
+
+    // Grid + date axis
+    const gi = totalDays <= 90 ? 10 : totalDays <= 150 ? 15 : totalDays <= 240 ? 20 : totalDays <= 360 ? 30 : 45;
+    for (let day = 0; day <= totalDays; day += gi) {
+      const gx = PAD_L + (day / totalDays) * CW;
+      const gd = new Date(minT + day * 86400000);
+      const isM = gd.getDate() === 1;
+      s += `<line x1="${gx.toFixed(1)}" y1="${PAD_T}" x2="${gx.toFixed(1)}" y2="${H-PAD_B}" stroke="${isM ? 'rgba(255,255,255,.09)' : 'rgba(255,255,255,.04)'}" stroke-width="${isM ? 1.5 : 1}"/>`;
+      s += `<text x="${gx.toFixed(1)}" y="${H-10}" text-anchor="middle" fill="rgba(255,255,255,.28)" font-size="8.5" font-weight="${isM ? 700 : 400}">${fmtDateFull(gd)}</text>`;
+    }
+
+    // Today marker
+    const nowX = tx(new Date());
+    if (nowX >= PAD_L && nowX <= PAD_L + CW) {
+      s += `<line x1="${nowX.toFixed(1)}" y1="${PAD_T}" x2="${nowX.toFixed(1)}" y2="${H-PAD_B}" stroke="rgba(1,225,142,.5)" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+      s += `<rect x="${nowX-14}" y="${PAD_T-1}" width="28" height="11" rx="3" fill="rgba(1,225,142,.14)"/>`;
+      s += `<text x="${nowX.toFixed(1)}" y="${PAD_T+8}" text-anchor="middle" fill="rgba(1,225,142,.85)" font-size="7.5" font-weight="800">HOJE</text>`;
+    }
+
+    // ── Render cycles ──────────────────────────────────
+    cycles.forEach((c, idx) => {
+      const y0  = PAD_T + idx * ROW_H;
+      const clr = CY_CLR[idx];
+
+      if (idx > 0) s += `<line x1="0" y1="${y0}" x2="${W}" y2="${y0}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>`;
+
+      // ── Label column ───────────────────────────────
+      const lcY = y0 + ROW_H / 2 - 14;
+      s += `<circle cx="14" cy="${lcY}" r="13" fill="${clr}" opacity=".1"/>`;
+      s += `<circle cx="14" cy="${lcY}" r="11" fill="${clr}" opacity=".88"/>`;
+      s += `<text x="14" y="${lcY+4}" text-anchor="middle" fill="white" font-size="10" font-weight="900">${idx+1}</text>`;
+      s += `<text x="30" y="${lcY-5}" text-anchor="start" fill="${clr}" font-size="8.5" font-weight="800" letter-spacing=".6">CICLO ${idx+1}</text>`;
+      s += `<text x="30" y="${lcY+6}" text-anchor="start" fill="rgba(255,255,255,.5)" font-size="8">${fmtDateFull(c.d0)}</text>`;
+      s += `<text x="30" y="${lcY+17}" text-anchor="start" fill="rgba(255,255,255,.28)" font-size="7.5">${diffDays(c.d0,c.dRec)} dias</text>`;
+
+      // ── X positions ────────────────────────────────
+      const x0        = tx(c.d0);
+      const xProntidao = tx(c.dPrepDone);
+      const xBL       = tx(c.dBL);
+      const xChegada  = tx(c.dReg);
+      const xDesemb   = tx(c.dDesemb);
+      const xFat      = tx(c.dFat);
+      const xVDM      = tx(c.dRec);
+      const xPagExp   = tx(c.dPagExp);
+
+      // Aliases para compatibilidade com código de barras FOB/DI abaixo
+      const xPrep = xProntidao;
+      const xReg  = xChegada;
+      const xRec  = xVDM;
+
+      // ── Process bar (7 segmentos coloridos) ────────
+      const tY = y0 + 8;
+      const tH = 15;
+      const segs = [
+        { x1: x0,        x2: xProntidao, fill: 'url(#vgPrep)',       lbl: 'Prontidão' },
+        { x1: xProntidao,x2: xBL,        fill: 'url(#vgEmb)',        lbl: 'BL' },
+        { x1: xBL,       x2: xChegada,   fill: 'url(#vgTrans)',      lbl: 'Transit Time' },
+        { x1: xChegada,  x2: xDesemb,    fill: 'url(#vgDesemb)',     lbl: 'Desemb.' },
+        { x1: xDesemb,   x2: xFat,       fill: 'url(#vgFat)',        lbl: 'Faturamento' },
+        { x1: xFat,      x2: xVDM,       fill: 'rgba(1,225,142,.2)', lbl: 'Receb. VDM' },
+      ];
+      segs.forEach(seg => {
+        const sw = Math.max(1.5, seg.x2 - seg.x1);
+        s += `<rect x="${seg.x1.toFixed(1)}" y="${tY}" width="${sw.toFixed(1)}" height="${tH}" fill="${seg.fill}" rx="2" opacity=".95"/>`;
+        if (sw > 34) {
+          const mx = ((seg.x1 + seg.x2) / 2).toFixed(1);
+          s += `<text x="${mx}" y="${tY+tH-3}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="7.5" font-weight="700">${seg.lbl}</text>`;
+        }
+      });
+
+      // ── Milestone lines + dots ──────────────────────
+      // Linha vertical desce até o fim das barras de exposição
+      const mBottom = tY + (hasSplitFOB ? 158 : 138);
+      const milestones = [
+        { x: x0,       clr: 'rgba(255,255,255,.65)', r: 4   },
+        { x: xBL,      clr: '#60a5fa',               r: 4   },
+        { x: xChegada, clr: '#f59e0b',               r: 4   },
+        { x: xDesemb,  clr: '#fb923c',               r: 3.5 },
+        { x: xFat,     clr: '#10b981',               r: 3.5 },
+        { x: xVDM,     clr: '#01E18E',               r: 5   },
+        { x: xPagExp,  clr: '#f43f5e',               r: 4   },
+      ];
+      milestones.forEach(m => {
+        const lim = Math.min(mBottom, y0 + ROW_H - 5);
+        s += `<line x1="${m.x.toFixed(1)}" y1="${tY}" x2="${m.x.toFixed(1)}" y2="${lim}" stroke="${m.clr}" stroke-width=".7" stroke-opacity=".3" stroke-dasharray="3,3"/>`;
+        s += `<circle cx="${m.x.toFixed(1)}" cy="${tY}" r="${m.r}" fill="${m.clr}" opacity=".95"/>`;
+      });
+      // Marcador de Pagto.Exp. sobre a barra (milestone pontilhado, cai em dDesemb ~)
+      if (xPagExp >= PAD_L && xPagExp <= PAD_L + CW) {
+        s += `<line x1="${xPagExp.toFixed(1)}" y1="${tY-4}" x2="${xPagExp.toFixed(1)}" y2="${tY+tH+2}" stroke="#f43f5e" stroke-width="1.2" stroke-opacity=".55" stroke-dasharray="3,2"/>`;
+      }
+
+      // ── Date labels — tier-based collision avoidance ──
+      const dlY    = tY + tH + 10;
+      const TIER_H = 24;
+      const MIN_GAP = 46;
+
+      const dms = [
+        { x: x0,       lbl: fmtDateFull(c.d0),       tag: 'Pedido',    clr: 'rgba(255,255,255,.75)', r: 4,   bold: true  },
+        { x: xBL,      lbl: fmtDateFull(c.dBL),      tag: 'BL',        clr: '#60a5fa',               r: 4,   bold: true  },
+        { x: xChegada, lbl: fmtDateFull(c.dReg),     tag: 'Chegada',   clr: '#f59e0b',               r: 4,   bold: false },
+        { x: xDesemb,  lbl: fmtDateFull(c.dDesemb),  tag: 'Desemb.',   clr: '#fb923c',               r: 3.5, bold: false },
+        { x: xFat,     lbl: fmtDateFull(c.dFat),     tag: 'Fat.',      clr: '#10b981',               r: 3.5, bold: false },
+        { x: xVDM,     lbl: fmtDateFull(c.dRec),     tag: 'Receb.VDM', clr: '#01E18E',               r: 5,   bold: true  },
+        { x: xPagExp,  lbl: fmtDateFull(c.dPagExp),  tag: 'Pagto.Exp', clr: '#f43f5e',               r: 4,   bold: true  },
+      ];
+
+      // Greedy tier assignment: each label goes to the lowest tier where it fits
+      const tierLastX = {};
+      const labelTiers = dms.map(dm => {
+        for (let t = 0; ; t++) {
+          if ((tierLastX[t] ?? -Infinity) + MIN_GAP <= dm.x) {
+            tierLastX[t] = dm.x;
+            return t;
+          }
+        }
+      });
+      const maxTier = Math.max(...labelTiers);
+
+      dms.forEach((dm, i) => {
+        const tier = labelTiers[i];
+        const lY   = dlY + tier * TIER_H;
+
+        if (tier > 0) {
+          // Stalk connector from milestone dot down to this label
+          const stalkY0 = tY + dm.r + 2;
+          const stalkY1 = lY - 5;
+          if (stalkY1 > stalkY0 + 2) {
+            s += `<line x1="${dm.x.toFixed(1)}" y1="${stalkY0.toFixed(1)}" x2="${dm.x.toFixed(1)}" y2="${stalkY1.toFixed(1)}" stroke="${dm.clr}" stroke-width=".9" stroke-opacity=".45" stroke-dasharray="2.5,2"/>`;
+            s += `<circle cx="${dm.x.toFixed(1)}" cy="${stalkY1.toFixed(1)}" r="1.8" fill="${dm.clr}" opacity=".5"/>`;
+          }
+          // Background pill for readability
+          s += `<rect x="${(dm.x - 23).toFixed(1)}" y="${(lY - 10).toFixed(1)}" width="46" height="21" rx="4" fill="rgba(8,5,20,.88)" stroke="${dm.clr}" stroke-width=".7" stroke-opacity=".4"/>`;
+        }
+
+        s += `<text x="${dm.x.toFixed(1)}" y="${lY}"    text-anchor="middle" fill="${dm.clr}" font-size="7" font-weight="600" opacity="${tier > 0 ? .9 : .65}">${dm.tag}</text>`;
+        s += `<text x="${dm.x.toFixed(1)}" y="${lY+11}" text-anchor="middle" fill="${dm.clr}" font-size="8.5" font-weight="${dm.bold ? 700 : 500}">${dm.lbl}</text>`;
+      });
+
+      // ── FOB exposure bars ───────────────────────────
+      const fobY0 = dlY + (maxTier + 1) * TIER_H + 6;
+      const fobH  = 16;
+      const numFOB = (c.fobPayments || []).length;
+
+      if (numFOB > 0) {
+        c.fobPayments.forEach((fp, fi) => {
+          const fxS  = tx(fp.date);
+          const fxE  = xRec;
+          const fW   = Math.max(2, fxE - fxS);
+          const fyS  = fobY0 + fi * (fobH + 5);
+          const grad = (numFOB > 1 && fi === 0) ? 'url(#vgFOBa)' : 'url(#vgFOBb)';
+
+          s += `<rect x="${fxS.toFixed(1)}" y="${fyS}" width="${fW.toFixed(1)}" height="${fobH}" fill="${grad}" rx="3" opacity=".88"/>`;
+          // Ponto de início do pagamento
+          s += `<circle cx="${fxS.toFixed(1)}" cy="${fyS + fobH/2}" r="4.5" fill="${numFOB > 1 && fi === 0 ? '#dc2626' : '#f87171'}" stroke="rgba(255,255,255,.5)" stroke-width="1.2"/>`;
+
+          if (numFOB > 1) {
+            const pctTxt = Math.round(fp.pct * 100) + '%';
+            s += `<text x="${fxS.toFixed(1)}" y="${fyS-3}" text-anchor="middle" fill="#fca5a5" font-size="8" font-weight="800">${pctTxt} FOB</text>`;
+          }
+          if (fW > 55) {
+            const mx = ((fxS + fxE) / 2).toFixed(1);
+            const ptxt = numFOB > 1 ? `${Math.round(fp.pct*100)}% · ` : '';
+            s += `<text x="${mx}" y="${fyS + fobH - 3}" text-anchor="middle" fill="white" font-size="8" font-weight="700">${ptxt}${fp.days}d · ${fmtBRL(fp.amount, true)}</text>`;
+          }
+        });
+        // Rótulo eixo esquerdo
+        const fobMidY = fobY0 + (numFOB * (fobH + 5) - 5) / 2;
+        s += `<text x="${PAD_L - 5}" y="${fobMidY + 4}" text-anchor="end" fill="rgba(248,113,113,.85)" font-size="8" font-weight="800">FOB</text>`;
+      }
+
+      // ── Desp + Imp bar ──────────────────────────────
+      const despY0 = fobY0 + numFOB * (fobH + 5) + 3;
+      const despH  = 16;
+      if (c.desp + c.imp > 0) {
+        const dxS = xReg;
+        const dxE = xRec;
+        const dW  = Math.max(2, dxE - dxS);
+        s += `<rect x="${dxS.toFixed(1)}" y="${despY0}" width="${dW.toFixed(1)}" height="${despH}" fill="url(#vgDI)" rx="3" opacity=".88"/>`;
+        s += `<circle cx="${dxS.toFixed(1)}" cy="${despY0+despH/2}" r="4.5" fill="#8b5cf6" stroke="rgba(255,255,255,.4)" stroke-width="1.2"/>`;
+        if (dW > 55) {
+          const mx = ((dxS + dxE) / 2).toFixed(1);
+          s += `<text x="${mx}" y="${despY0+despH-3}" text-anchor="middle" fill="white" font-size="8" font-weight="700">Desp+Imp · ${c.daysDesp}d · ${fmtBRL(c.desp+c.imp, true)}</text>`;
+        }
+        s += `<text x="${PAD_L-5}" y="${despY0+despH/2+4}" text-anchor="end" fill="rgba(167,139,250,.85)" font-size="8" font-weight="800">D+I</text>`;
+      }
+
+      // ── Linha de resumo financeiro ──────────────────
+      const sumY = despY0 + despH + 12;
+      if (sumY < y0 + ROW_H - 3) {
+        const totExp  = c.fob + c.desp + c.imp;
+        const totCost = c.costDesp + c.costImp + c.costFOB;
+        const liq     = c.revenue - totCost;
+        const parts   = [];
+        if (totExp > 0)    parts.push(`Exposição: ${fmtBRL(totExp, true)}`);
+        if (totCost > 0)   parts.push(`Custo fin.: ${fmtBRL(totCost, true)}`);
+        if (c.volMes > 0)  parts.push(`Fat.: ${fmtBRL(c.volMes, true)}`);
+        if (c.revenue > 0) parts.push(`Líq.: ${fmtBRL(liq, true)}`);
+        if (parts.length) {
+          s += `<text x="${PAD_L + CW/2}" y="${sumY}" text-anchor="middle" fill="rgba(255,255,255,.22)" font-size="8">${parts.join('   ·   ')}</text>`;
+        }
+      }
+    }); // fim cycles.forEach
+
+    s += '</svg>';
+    document.getElementById('gantt-container').innerHTML = s;
+  }
+
+
+  /* ══════════════════════════════════════════════════════
+     DETAIL TABLE — MATRIX POR CICLO
+  ══════════════════════════════════════════════════════ */
+  function renderDetailTable(cycles, totalCost, totalRevenue, P) {
+    if (!cycles || cycles.length === 0 || !P) return;
+
+    const CYC_COLORS = ['#a855f7','#60a5fa','#22d3ee'];
+    const CYC_NAMES  = ['Ciclo 1','Ciclo 2','Ciclo 3'];
+
+    const fatTotal = P.volMes > 0 ? P.volMes : (P.fobBRL + P.despBRL + P.impBRL);
+
+    // Definições dos estágios (chave → label / cor)
+    const STAGES_DEF = [
+      { key:'pedido',    label:'PEDIDO',       color:'#6366f1' },
+      { key:'prontidao', label:'PRONTIDÃO',    color:'#3b82f6' },
+      { key:'bl',        label:'BL',           color:'#7c3aed' },
+      { key:'transit',   label:'TRANSIT',      color:'#f59e0b' },
+      { key:'desemb',    label:'DESEMBARAÇO',  color:'#06b6d4' },
+      { key:'fat',       label:'FATURAMENTO',  color:'#8b5cf6' },
+      { key:'recvdm',    label:'RECEB. VDM',   color:'#01E18E' },
+      { key:'pagexp',    label:'PAGTO. EXP.',  color:'#f43f5e' },
+    ];
+
+    function getStageDate(c, key) {
+      return { pedido:c.d0, prontidao:c.dPrepDone, bl:c.dBL, transit:c.dReg,
+               desemb:c.dDesemb, fat:c.dFat, recvdm:c.dRec, pagexp:c.dPagExp }[key];
+    }
+
+    // Ordena colunas pela data real do 1º ciclo (mesma ordem relativa para todos os ciclos)
+    const sortedStages = [...STAGES_DEF].sort((a, b) =>
+      getStageDate(cycles[0], a.key).getTime() - getStageDate(cycles[0], b.key).getTime()
+    );
+
+    // Mapeamento tipo de parcela → chave de etapa (legado)
+    const typeToKey = { avista:'pedido', producao:'pedido', embarque:'bl', registro:'transit',
+                        entrega:'recvdm', lc:'bl', cobranca:'bl' };
+
+    // Mapeamento para tipos da Simulação (simPagParcelas / simRecParcelas)
+    const SIM_PAG_TYPE_TO_KEY = {
+      pedido:'pedido', bl:'bl', transit:'transit', desemb:'desemb',
+      entrega:'recvdm', data:'pagexp'
+    };
+
+    // Encontra a etapa mais próxima (última etapa cuja data <= dt)
+    function dateToNearestStageKey(dt, c) {
+      const t = dt.getTime();
+      let result = sortedStages[0]?.key || 'pedido';
+      for (const s of sortedStages) {
+        if (getStageDate(c, s.key).getTime() <= t) result = s.key;
+        else break;
+      }
+      return result;
+    }
+
+    // Resolve tipo de parcela → chave de etapa considerando datas absolutas e offsets
+    function simParcelToKey(p, c) {
+      switch(p.tipo || '') {
+        case 'pedido':  return 'pedido';
+        case 'bl':      return 'bl';
+        case 'transit': return 'transit';
+        case 'desemb':  return 'desemb';
+        case 'fat':     return 'fat';
+        case 'fat_n': {
+          const n = parseInt(p.dias || 0) || 0;
+          return n > 0 ? dateToNearestStageKey(addDays(c.dFat, n), c) : 'fat';
+        }
+        case 'recvdm':  return 'recvdm';
+        case 'pagexp':  return 'pagexp';
+        case 'entrega': return 'recvdm';
+        case 'data': {
+          if (!p.data) return 'pagexp';
+          try {
+            const dt = new Date(p.data);
+            return isNaN(dt.getTime()) ? 'pagexp' : dateToNearestStageKey(dt, c);
+          } catch { return 'pagexp'; }
+        }
+        default: return 'recvdm';
+      }
+    }
+
+    // Fluxo FOB por etapa (saídas) — usa simPagParcelas se disponível
+    const fobByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+    if (P.fobParcelas && P.fobParcelas.length > 0) {
+      P.fobParcelas.forEach(p => {
+        const k = SIM_PAG_TYPE_TO_KEY[p.tipo] ?? typeToKey[p.tipo] ?? typeToKey[p.cond] ?? 'pagexp';
+        fobByKey[k] -= P.fobBRL * ((p.pct || 0) / 100);
+      });
+    } else {
+      fobByKey['pedido'] -= P.fobBRL * 0.20;
+      fobByKey['pagexp'] -= P.fobBRL * 0.80;
+    }
+
+    // Fluxo Desp+Imp (saída em DESEMBARAÇO)
+    const diByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+    diByKey['desemb'] = -(P.despBRL + P.impBRL);
+
+    // Faturamento ao cliente (crédito em FATURAMENTO)
+    const fatByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+    fatByKey['fat'] = fatTotal;
+
+    // Recebimento do cliente — parcelas configuradas (simRecParcelas) ou 100% em RECEB.VDM
+    const recByKey = Object.fromEntries(STAGES_DEF.map(s => [s.key, 0]));
+    if (P.recParcelas?.length > 0) {
+      P.recParcelas.forEach(p => {
+        const k = simParcelToKey(p, cycles[0]);
+        recByKey[k] = (recByKey[k] || 0) + fatTotal * ((p.pct || 0) / 100);
+      });
+    } else {
+      recByKey['recvdm'] = fatTotal;
+    }
+
+    const peakExp = Math.max(0, P.fobBRL + P.despBRL + P.impBRL);
+
+    // Cabeçalhos das colunas na ordem cronológica
+    const thCols = sortedStages.map(s =>
+      `<th class="mtz-col-stage-th" style="--sc:${s.color}">${s.label}</th>`
+    ).join('');
+
+    function fmtV(v) {
+      if (!v || v === 0) return '—';
+      const abs = Math.abs(Math.round(v));
+      return (v < 0 ? '- ' : '') + 'R$ ' + abs.toLocaleString('pt-BR');
+    }
+    function fmtCF(v) {
+      if (v === 0) return 'R$ 0';
+      const abs = Math.abs(Math.round(v));
+      return (v < 0 ? '- ' : '+ ') + 'R$ ' + abs.toLocaleString('pt-BR');
+    }
+    function emptyCell() { return `<td class="mtz-cell mtz-empty-cell">—</td>`; }
+
+    let html = '<div class="ciclos-wrapper">';
+
+    cycles.forEach((c, ci) => {
+      // Dias Etapa: duração desde a etapa anterior na ordem cronológica real
+      const rDiasEtapa = sortedStages.map((s, idx) => {
+        if (idx === 0) return `<td class="mtz-cell mtz-days">—</td>`;
+        const d = diffDays(getStageDate(c, sortedStages[idx-1].key), getStageDate(c, s.key));
+        return `<td class="mtz-cell mtz-days">${d > 0 ? d + 'd' : '—'}</td>`;
+      }).join('');
+
+      // Dias Acum: dias corridos desde o Pedido (d0)
+      const rDiasAcum = sortedStages.map((s, idx) => {
+        if (idx === 0) return `<td class="mtz-cell mtz-days">—</td>`;
+        const d = diffDays(c.d0, getStageDate(c, s.key));
+        return `<td class="mtz-cell mtz-days">${d + 'd'}</td>`;
+      }).join('');
+
+      // Datas
+      const rDatas = sortedStages.map(s =>
+        `<td class="mtz-cell mtz-date-cell">${fmtDateFull(getStageDate(c, s.key))}</td>`
+      ).join('');
+
+      // Fluxos financeiros
+      const rFOB = sortedStages.map(s => {
+        const v = fobByKey[s.key];
+        return v !== 0 ? `<td class="mtz-cell mtz-neg-val">${fmtV(v)}</td>` : emptyCell();
+      }).join('');
+
+      const rDI = sortedStages.map(s => {
+        const v = diByKey[s.key];
+        return v !== 0 ? `<td class="mtz-cell mtz-neg-val">${fmtV(v)}</td>` : emptyCell();
+      }).join('');
+
+      const rFat = sortedStages.map(s => {
+        const v = fatByKey[s.key];
+        return v !== 0 ? `<td class="mtz-cell mtz-fat-val">${fmtV(v)}</td>` : emptyCell();
+      }).join('');
+
+      const rRec = sortedStages.map(s => {
+        const v = recByKey[s.key];
+        return v !== 0 ? `<td class="mtz-cell mtz-pos-val">${fmtV(v)}</td>` : emptyCell();
+      }).join('');
+
+      // CF acumulado: soma de todos os fluxos cuja data <= data da coluna atual
+      const cfCum = sortedStages.map(s => {
+        const t = getStageDate(c, s.key).getTime();
+        let cf = 0;
+        sortedStages.forEach(ss => {
+          if (getStageDate(c, ss.key).getTime() <= t) {
+            cf += (fobByKey[ss.key] || 0) + (diByKey[ss.key] || 0) + (recByKey[ss.key] || 0);
+          }
+        });
+        return cf;
+      });
+      const expCred = cfCum.map(v => Math.max(0, -v));
+
+      const rCF = cfCum.map(v => {
+        const cls = v < 0 ? 'mtz-neg-val' : v > 0 ? 'mtz-pos-val' : 'mtz-zero-val';
+        return `<td class="mtz-cell mtz-cf-val ${cls}">${fmtCF(v)}</td>`;
+      }).join('');
+
+      const rExp = expCred.map(v =>
+        v > 0 ? `<td class="mtz-cell mtz-exp-val">${fmtV(v)}</td>`
+              : `<td class="mtz-cell mtz-zero-val">—</td>`
+      ).join('');
+
+      const durTotal = diffDays(c.d0, c.dRec);
+
+      html += `
+      <div class="ciclo-card">
+        <div class="ciclo-card-hdr">
+          <div class="ciclo-hdr-badge" style="background:${CYC_COLORS[ci]};box-shadow:0 0 8px ${CYC_COLORS[ci]}88;"></div>
+          <span class="ciclo-hdr-title">${CYC_NAMES[ci]}</span>
+          <span class="ciclo-hdr-range">${fmtDateFull(c.d0)} → ${fmtDateFull(c.dRec)}</span>
+          <span class="ciclo-hdr-spacer"></span>
+          <span class="ciclo-hdr-dur">${durTotal} dias</span>
+          ${Math.max(...expCred) > 0 ? `<span class="ciclo-hdr-exp">Exp. máx. R$ ${Math.round(Math.max(...expCred)).toLocaleString('pt-BR')}</span>` : ''}
+        </div>
+        <div class="ciclo-scroll">
+          <table class="mtz-table">
+            <thead>
+              <tr>
+                <th class="mtz-row-lbl-hdr"></th>
+                ${thCols}
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="mtz-sec-hdr"><td colspan="9">Cronograma</td></tr>
+              <tr><td class="mtz-row-lbl">Dias Etapa</td>${rDiasEtapa}</tr>
+              <tr><td class="mtz-row-lbl">Dias Acum.</td>${rDiasAcum}</tr>
+              <tr class="mtz-dates-sep"><td class="mtz-row-lbl">Data</td>${rDatas}</tr>
+
+              <tr class="mtz-sec-hdr"><td colspan="9">Fluxo Financeiro</td></tr>
+              <tr><td class="mtz-row-lbl">Pagto. FOB</td>${rFOB}</tr>
+              <tr><td class="mtz-row-lbl">Desp + Imp</td>${rDI}</tr>
+              <tr><td class="mtz-row-lbl">Fat. Cliente</td>${rFat}</tr>
+              <tr><td class="mtz-row-lbl">Recebimento</td>${rRec}</tr>
+
+              <tr class="mtz-sec-hdr"><td colspan="9">Posição</td></tr>
+              <tr><td class="mtz-row-lbl">Flx. de Caixa</td>${rCF}</tr>
+              <tr class="mtz-exp-row"><td class="mtz-row-lbl">Exp. de Crédito</td>${rExp}</tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    });
+
+    // Resumo consolidado
+    const totFOB     = P.fobBRL * cycles.length;
+    const totDI      = (P.despBRL + P.impBRL) * cycles.length;
+    const totFat     = fatTotal * cycles.length;
+    const net        = totalRevenue - totalCost;
+    const peakExpSum = P.fobBRL + P.despBRL + P.impBRL;
+
+    html += `
+    <div class="ciclo-resumo">
+      <div class="ciclo-resumo-title">Resumo Consolidado — ${cycles.length} Ciclos</div>
+      <div class="ciclo-resumo-grid">
+        <div class="ciclo-resumo-item">
+          <div class="ciclo-resumo-lbl">Total FOB (${cycles.length}×)</div>
+          <div class="ciclo-resumo-val">${fmtBRL(totFOB, true)}</div>
+        </div>
+        <div class="ciclo-resumo-item">
+          <div class="ciclo-resumo-lbl">Total Desp+Imp (${cycles.length}×)</div>
+          <div class="ciclo-resumo-val">${fmtBRL(totDI, true)}</div>
+        </div>
+        <div class="ciclo-resumo-item">
+          <div class="ciclo-resumo-lbl">Total Faturamento (${cycles.length}×)</div>
+          <div class="ciclo-resumo-val">${fmtBRL(totFat, true)}</div>
+        </div>
+        <div class="ciclo-resumo-item">
+          <div class="ciclo-resumo-lbl">Exp. Máx. por Ciclo</div>
+          <div class="ciclo-resumo-val mtz-exp-val">${fmtBRL(peakExpSum, true)}</div>
+        </div>
+        <div class="ciclo-resumo-item">
+          <div class="ciclo-resumo-lbl">Custo Financeiro</div>
+          <div class="ciclo-resumo-val mtz-neg-val">${fmtBRL(totalCost, true)}</div>
+        </div>
+        <div class="ciclo-resumo-item">
+          <div class="ciclo-resumo-lbl">Resultado Líquido</div>
+          <div class="ciclo-resumo-val ${net >= 0 ? 'mtz-pos-val' : 'mtz-neg-val'}">${fmtBRL(net, true)}</div>
+        </div>
+      </div>
+    </div>`;
+
+    html += '</div>';
+    document.getElementById('ciclos-container').innerHTML = html;
+  }
+</script>
+</body>
+</html>

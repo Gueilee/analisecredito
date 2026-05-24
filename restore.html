@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Restaurar Dados — Vendemmia</title>
+<style>
+  body { font-family: sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#0f0a1e; color:#e2e8f0; }
+  .card { background:#1a1040; border:1px solid rgba(255,255,255,.1); padding:2rem 2.5rem; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,.4); max-width:500px; text-align:center; }
+  h2 { margin-top:0; color:#a78bfa; }
+  p { color:#94a3b8; line-height:1.6; }
+  button { background:linear-gradient(135deg,#6d28d9,#ec4899); color:#fff; border:none; padding:.85rem 2rem; border-radius:8px; font-size:1rem; font-weight:700; cursor:pointer; margin-top:1rem; width:100%; }
+  button:hover { opacity:.9; }
+  .ok  { color:#01e18e; font-weight:700; font-size:1.05rem; margin-top:1rem; display:block; }
+  .err { color:#ef4444; font-weight:600; }
+  .info { font-size:.82rem; color:#64748b; margin-top:.5rem; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Restaurar Solicitação CONEXIA</h2>
+  <p>Restaura os dados completos da <strong>CONEXIA EDUCAÇÃO S.A.</strong> incluindo análise de IA, dados da Receita Federal e status aprovado.</p>
+  <p id="status"></p>
+  <button onclick="restaurar()">Restaurar Dados Completos</button>
+  <p class="info">Após restaurar, você será redirecionado para o sistema automaticamente.</p>
+</div>
+<script>
+function restaurar() {
+  try {
+    // ── Dados completos da Receita Federal (do historico backend) ──────────
+    const rfData = {"uf":"SP","cep":"14091018","qsa":[{"pais":null,"nome_socio":"ADRIANA BAPTISTON CEFALI ZAHER","codigo_pais":null,"faixa_etaria":"Entre 61 a 70 anos","cnpj_cpf_do_socio":"***607418**","qualificacao_socio":"Diretor","codigo_faixa_etaria":7,"data_entrada_sociedade":"2010-12-16","identificador_de_socio":2,"cpf_representante_legal":"***000000**","nome_representante_legal":"","codigo_qualificacao_socio":10,"qualificacao_representante_legal":"Não informada","codigo_qualificacao_representante_legal":0},{"pais":null,"nome_socio":"CHAIM ZAHER","codigo_pais":null,"faixa_etaria":"Entre 71 a 80 anos","cnpj_cpf_do_socio":"***094998**","qualificacao_socio":"Presidente","codigo_faixa_etaria":8,"data_entrada_sociedade":"2010-12-16","identificador_de_socio":2,"cpf_representante_legal":"***000000**","nome_representante_legal":"","codigo_qualificacao_socio":16,"qualificacao_representante_legal":"Não informada","codigo_qualificacao_representante_legal":0},{"pais":null,"nome_socio":"NILSON CURTI","codigo_pais":null,"faixa_etaria":"Entre 61 a 70 anos","cnpj_cpf_do_socio":"***684058**","qualificacao_socio":"Diretor","codigo_faixa_etaria":7,"data_entrada_sociedade":"2014-10-20","identificador_de_socio":2,"cpf_representante_legal":"***000000**","nome_representante_legal":"","codigo_qualificacao_socio":10,"qualificacao_representante_legal":"Não informada","codigo_qualificacao_representante_legal":0},{"pais":null,"nome_socio":"RAFAEL GOMES PERRI","codigo_pais":null,"faixa_etaria":"Entre 61 a 70 anos","cnpj_cpf_do_socio":"***607368**","qualificacao_socio":"Diretor","codigo_faixa_etaria":7,"data_entrada_sociedade":"2014-10-20","identificador_de_socio":2,"cpf_representante_legal":"***000000**","nome_representante_legal":"","codigo_qualificacao_socio":10,"qualificacao_representante_legal":"Não informada","codigo_qualificacao_representante_legal":0},{"pais":null,"nome_socio":"THALITA CEFALI ZAHER","codigo_pais":null,"faixa_etaria":"Entre 41 a 50 anos","cnpj_cpf_do_socio":"***616018**","qualificacao_socio":"Diretor","codigo_faixa_etaria":5,"data_entrada_sociedade":"2018-03-19","identificador_de_socio":2,"cpf_representante_legal":"***000000**","nome_representante_legal":"","codigo_qualificacao_socio":10,"qualificacao_representante_legal":"Não informada","codigo_qualificacao_representante_legal":0},{"pais":null,"nome_socio":"THAMILA CEFALI ZAHER MEMORIA","codigo_pais":null,"faixa_etaria":"Entre 31 a 40 anos","cnpj_cpf_do_socio":"***683148**","qualificacao_socio":"Diretor","codigo_faixa_etaria":4,"data_entrada_sociedade":"2018-03-19","identificador_de_socio":2,"cpf_representante_legal":"***000000**","nome_representante_legal":"","codigo_qualificacao_socio":10,"qualificacao_representante_legal":"Não informada","codigo_qualificacao_representante_legal":0}],"cnpj":"12669046000187","pais":null,"email":null,"porte":"DEMAIS","bairro":"JARDIM MACEDO","numero":"70","ddd_fax":"","municipio":"RIBEIRAO PRETO","logradouro":"DEOLINDA","cnae_fiscal":4761001,"codigo_pais":null,"complemento":"ANDAR 1 SALA 01","codigo_porte":5,"razao_social":"CONEXIA EDUCACAO S.A.","nome_fantasia":"CONEXIA","capital_social":128027750,"ddd_telefone_1":"1636039449","ddd_telefone_2":"","opcao_pelo_mei":null,"codigo_municipio":6969,"cnaes_secundarios":[{"codigo":4781400,"descricao":"Comércio varejista de artigos do vestuário e acessórios"},{"codigo":4751201,"descricao":"Comércio varejista especializado de equipamentos e suprimentos de informática"},{"codigo":4761003,"descricao":"Comércio varejista de artigos de papelaria"},{"codigo":5811500,"descricao":"Edição de livros"},{"codigo":8550302,"descricao":"Atividades de apoio à educação, exceto caixas escolares"},{"codigo":8599604,"descricao":"Treinamento em desenvolvimento profissional e gerencial"},{"codigo":7490104,"descricao":"Atividades de intermediação e agenciamento de serviços e negócios em geral, exceto imobiliários"},{"codigo":6462000,"descricao":"Holdings de instituições não-financeiras"},{"codigo":6202300,"descricao":"Desenvolvimento e licenciamento de programas de computador customizáveis"}],"natureza_juridica":"Sociedade Anônima Fechada","descricao_natureza_juridica":"Sociedade Anônima Fechada","descricao_porte":"DEMAIS","regime_tributario":[{"ano":2019,"cnpj_da_scp":null,"forma_de_tributacao":"LUCRO PRESUMIDO","quantidade_de_escrituracoes":1},{"ano":2020,"cnpj_da_scp":null,"forma_de_tributacao":"LUCRO PRESUMIDO","quantidade_de_escrituracoes":1},{"ano":2021,"cnpj_da_scp":null,"forma_de_tributacao":"LUCRO REAL","quantidade_de_escrituracoes":1},{"ano":2022,"cnpj_da_scp":null,"forma_de_tributacao":"LUCRO REAL","quantidade_de_escrituracoes":1},{"ano":2023,"cnpj_da_scp":null,"forma_de_tributacao":"LUCRO REAL","quantidade_de_escrituracoes":1},{"ano":2024,"cnpj_da_scp":null,"forma_de_tributacao":"LUCRO REAL","quantidade_de_escrituracoes":1}],"situacao_especial":"","opcao_pelo_simples":null,"situacao_cadastral":2,"data_opcao_pelo_mei":null,"data_exclusao_do_mei":null,"cnae_fiscal_descricao":"Comércio varejista de livros","codigo_municipio_ibge":3543402,"data_inicio_atividade":"2010-10-07","data_situacao_especial":null,"data_opcao_pelo_simples":null,"data_situacao_cadastral":"2010-10-07","nome_cidade_no_exterior":"","codigo_natureza_juridica":2054,"data_exclusao_do_simples":null,"motivo_situacao_cadastral":0,"ente_federativo_responsavel":"","identificador_matriz_filial":1,"qualificacao_do_responsavel":10,"descricao_situacao_cadastral":"ATIVA","descricao_tipo_de_logradouro":"RUA","descricao_motivo_situacao_cadastral":"SEM MOTIVO","descricao_identificador_matriz_filial":"MATRIZ"};
+
+    // ── Análise de IA completa (do historico backend) ──────────────────────
+    const analiseIA = {"score":82,"classificacao":"AA","recomendacao":"aprovar","limite_recomendado_exportador":"R$ 270.350,00","limite_recomendado_desp":"R$ 24.620,38","limite_recomendado_imp":"R$ 282.094,25","exposicao_total_recomendada":"R$ 577.064,63","prazo_recomendado":60,"resumo_executivo":"A CONEXIA EDUCAÇÃO S.A. apresenta perfil cadastral sólido, com 15 anos de atividade, situação ativa na Receita Federal e capital social de R$ 128 milhões, amplamente superior à exposição solicitada. A operação é compatível com o CNAE declarado e o produto importado possui baixo risco de retenção alfandegária. Recomenda-se aprovação integral com prazo de 60 dias, alinhado ao ciclo logístico da operação.","pontos_positivos":["Capital social de R$ 128.027.750,00 representa aproximadamente 221 vezes a exposição total solicitada, conferindo altíssima margem de segurança patrimonial.","Empresa com 15 anos de mercado, situação cadastral ativa e quadro societário estável com sócios de longa data, indicando maturidade operacional e governança consolidada.","CNAE 4761-0/01 (comércio varejista de livros) é plenamente compatível com o produto importado (livros didáticos e cadernos de atividades), reduzindo risco de inconsistência declaratória.","Livros didáticos possuem tratamento tributário favorável no Brasil (imunidade constitucional de ICMS e isenção de IPI), o que mitiga riscos de bloqueio alfandegário ou autuações fiscais."],"pontos_atencao":["Potencial anual declarado em USD (R$ 290.000/mês vs. USD 290.000/ano) apresenta inconsistência de moeda e frequência que deve ser esclarecida pelo time de operações antes da liberação.","A exposição total de R$ 577.064,63 supera aproximadamente 1,99 vezes o volume mensal declarado (R$ 290.000), o que é aceitável, mas exige monitoramento do fluxo de caixa do cliente para reembolso pontual.","Trânsito internacional de 49 dias somado ao embarque de 10 dias totaliza ciclo de ~59 dias, demandando prazo de crédito adequado para evitar stress de liquidez no momento do desembolso.","Ausência de informação sobre o segmento de atuação (B2B/B2G/B2C) e concentração de receita — relevante para avaliar dependência de contratos públicos ou privados."],"alertas_criticos":[],"analise_cadastral":"A CONEXIA EDUCAÇÃO S.A. (CNPJ 12.669.046/0001-87) encontra-se com situação cadastral ATIVA desde sua abertura em 07/10/2010, sem ocorrências restritivas registradas na Receita Federal. O capital social declarado de R$ 128.027.750,00 é expressivo e condizente com uma empresa de médio-grande porte no setor educacional. A empresa não optou pelo Simples Nacional nem se enquadra como MEI, o que indica porte tributário compatível com operações de importação de maior escala.","analise_societaria":"O quadro societário é composto por seis sócios, com predominância da família Zaher (Chaim Zaher, Adriana Baptiston Cefali Zaher, Thalita Cefali Zaher e Thamila Cefali Zaher Memória), configurando uma empresa de controle familiar. Chaim Zaher, sócio fundador na faixa etária de 71 a 80 anos, e sua esposa Adriana (61-70 anos) integram a sociedade desde a fundação em dezembro de 2010, indicando continuidade e estabilidade de governança. A entrada de sócios não familiares (Nilson Curti e Rafael Gomes Perri) em 2014 e de membros da segunda geração familiar em 2018 sugere processo de profissionalização e sucessão em curso. Não há sócio único, o que afasta alertas críticos de concentração total de risco em uma única pessoa.","analise_proporcionalidade":"A exposição total solicitada de R$ 577.064,63 representa apenas 0,45% do capital social registrado de R$ 128.027.750,00, proporção extremamente favorável e confortável para concessão de crédito. Em relação ao volume mensal declarado de R$ 290.000,00, a exposição equivale a aproximadamente 1,99 meses de faturamento — abaixo do limiar crítico de 3 vezes o volume mensal. O potencial anual declarado em USD 290.000 (equivalente a aproximadamente R$ 1,45 milhão a câmbio de R$ 5,00) sugere que a operação de importação representa parcela relevante, porém não dominante, do ciclo de negócios da empresa. A rentabilidade estimada para a Vendemmia de 4% sobre o volume representa aproximadamente R$ 11.600/mês, com custo administrativo de 0,20%, resultando em margem líquida de 3,80% — operação financeiramente viável para ambas as partes.","analise_operacional":"O modal marítimo a partir da China é o mais utilizado para importação de materiais educacionais e livros, sendo adequado para o produto declarado. O Incoterm CIF transfere ao exportador a responsabilidade pelo frete e seguro até o porto de destino, reduzindo a exposição logística da Vendemmia na etapa internacional. O prazo de trânsito de 49 dias somado aos 10 dias de embarque totaliza ciclo operacional de ~59 dias, compatível com o prazo recomendado de 60 dias. A operação do tipo 'encomenda' implica produção ou aquisição sob pedido, o que reduz risco de mercadoria sem destinatário, mas exige atenção ao cronograma de entrega e confirmação de pedido firme pelo cliente. Livros didáticos e cadernos de atividades são produtos de baixo risco de retenção na alfândega brasileira, beneficiados por imunidade tributária constitucional (art. 150, VI, 'd', CF/88), o que mitiga risco de contingências fiscais na importação.","fundamentacao":"A CONEXIA EDUCAÇÃO S.A. apresenta fundamentos cadastrais e financeiros consistentes para suportar a operação de crédito solicitada. Com 15 anos de atividade ininterrupta, situação ativa na Receita Federal e capital social de R$ 128 milhões, a empresa demonstra solidez patrimonial muito acima da exposição pretendida, conferindo elevada segurança ao crédito da Vendemmia. O histórico societário estável, com sócios fundadores presentes desde 2010 e processo de profissionalização visível, reforça a confiabilidade da gestão.\n\nA proporcionalidade entre a exposição total de R$ 577.064,63 e os indicadores financeiros disponíveis é altamente favorável: representa menos de 0,5% do capital social e aproximadamente 2 meses de volume operacional declarado. Não há gatilho de alerta crítico por excesso de exposição em relação ao volume mensal (limiar de 3x). A rentabilidade de 4% para a Vendemmia é compatível com o risco identificado e justifica a operação comercialmente.\n\nDo ponto de vista operacional, a importação de livros didáticos e cadernos de atividades da China via modal marítimo CIF é uma operação de baixa complexidade regulatória, com produto isento de IPI e com tratamento tributário favorável. O ciclo logístico total de ~59 dias é bem capturado pelo prazo de crédito recomendado de 60 dias. A operação do tipo encomenda reduz risco de mercadoria ociosa ou sem destinatário definido.\n\nRecomenda-se a aprovação integral dos limites solicitados (Exportador: R$ 270.350,00 | Despesas alfandegárias: R$ 24.620,38 | Impostos: R$ 282.094,25 | Total: R$ 577.064,63), com prazo de 60 dias."};
+
+    // ── Solicitação restaurada com estrutura correta ───────────────────────
+    const solicitacao = {
+      // Identificadores
+      id: "mpfxqruc200bd",
+      hist_id: "82353b3c-e6b0-4965-b330-24eeffd1ffe4",
+
+      // Dados da empresa
+      tipoAnalise: "trade",
+      dataSolicitacao: "2026-05-21",
+      empresa: "CONEXIA EDUCAÇÃO S.A",
+      cnpj: "12.669.046/0001-87",
+      fundacao: "2010-10-07",
+      ramo: "EDUCAÇÃO",
+      produto: "LIVROS DIDÁTICOS, CADERNOS DE ATIVIDADES",
+      descricao: "IMPORTAÇÃO POR ENCOMENDA DE LIVROS",
+      clienteIntegrado: "trade",
+      clienteIntegradoMultiplos: [],
+
+      // Volume
+      volPotencial: "290.000,00",
+      vol6Meses: "290.000,00",
+      volMes: "290.000,00",
+      volMesMoeda: "BRL",
+      vol6MesesMoeda: "USD",
+      volPotencialMoeda: "USD",
+      qtdEmbarques: "1",
+
+      // Operação
+      modal: "maritimo",
+      origens: "China",
+      desconto: "0",
+      custoFin: "sim",
+      cessao: "na",
+      cessaoResp: "",
+      custoAdm: "0.20",
+      rentabilidade: "4",
+      incoterms: "CIF — Cost Insurance Freight",
+      tipoOp: "encomenda",
+      exportador: "SHENZHEN JINHAO COLOR PRITING CO. LTDA",
+      bancoExportador: "INFO NO PRINT AO LADO E ANEXO AO E-MAIL",
+      importadorFatura: "VENDEMMIA",
+      consignatario: "VENDEMMIA",
+
+      // Limites solicitados
+      limiteExportador: "270.350,00",
+      limiteDesp: "24.620,38",
+      limiteImp: "282.094,25",
+
+      // Prazos
+      prazoInvoice: "30",
+      prazoEmbarque: "10",
+      prazoTransit: "49",
+      prazoPagtoExport: "59",
+
+      // Pagamentos
+      pagtoExportador: "Carta de Crédito (L/C)",
+      pagtoClienteExp: "À vista no registro",
+      pagtoDesp: "Registro + 3 dias",
+      pagtoImp: "Registro + 3 dias",
+      prazoDesp: "60",
+      prazoImp: "60",
+
+      comentario: "POTENCIAL PARA OPERAÇÃO DE ARMAZÉM NUM FUTURO PRÓXIMO",
+
+      documentos: {
+        balanco: ["BP e DRE CONEXIA 2024.pdf", "BP e DRE CONEXIA 2025.pdf"],
+        contrato: ["BP e DRE CONEXIA 2025.pdf"],
+        dre: ["BP e DRE CONEXIA 2025.pdf"],
+        fat: ["BP e DRE CONEXIA 2025.pdf"],
+        "t-contrato": [],
+        "a-contrato": []
+      },
+
+      // Status e metadados
+      status: "aprovado",
+      solicitante: "u6",
+      solicitanteNome: "G. P. Pereira",
+      createdAt: "2026-05-21T20:20:37.620Z",
+      updatedAt: "2026-05-21T20:56:38.442Z",
+      analise_at: "2026-05-21T20:56:38.438Z",
+      analise_modelo: "claude-sonnet-4-6",
+      rf_consultada_at: "2026-05-21T20:56:38.438Z",
+
+      // Decisão do analista (aprovado pelo comitê)
+      limiteAprovado: "577.064,63",
+      prazoAprovado: "60",
+      analistaObs: "",
+      parecerTecnico: "",
+      decisaoAnalista: "G. P. Pereira",
+      decisao_at: "2026-05-21T21:30:00.000Z",
+
+      // Análise de IA — formato correto que renderAnalysis() espera:
+      // { cnpj_data: {status, data}, analysis: {...}, bureau_fonte, modelo_ia }
+      analise: {
+        cnpj_data: {
+          status: "ok",
+          data: rfData
+        },
+        analysis: analiseIA,
+        bureau_fonte: "BrasilAPI / Receita Federal",
+        modelo_ia: "claude-sonnet-4-6"
+      }
+    };
+
+    localStorage.setItem('vd_solicitacoes', JSON.stringify([solicitacao]));
+    localStorage.setItem('vd_db_version', '4');
+
+    document.getElementById('status').innerHTML =
+      '<span class="ok">✓ localStorage restaurado!</span><br>' +
+      '<small style="color:#64748b;">Sincronizando decisão com o servidor…</small>';
+
+    // Sincroniza a decisão "aprovado" com o historico backend
+    fetch('/api/historico/82353b3c-e6b0-4965-b330-24eeffd1ffe4/decisao', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        status:          'aprovado',
+        limiteAprovado:  '577.064,63',
+        limiteDesp:      '24.620,38',
+        limiteImp:       '282.094,25',
+        prazoAprovado:   '60',
+        analistaObs:     '',
+        parecerTecnico:  '',
+        decisaoAnalista: 'G. P. Pereira',
+        decisao_at:      '2026-05-21T21:30:00.000Z',
+      }),
+    }).then(r => {
+      const msg = r.ok ? '✓ Decisão sincronizada com o servidor!' : '⚠ Não foi possível sincronizar com o servidor (você pode usar normalmente mesmo assim).';
+      document.getElementById('status').innerHTML =
+        '<span class="ok">✓ CONEXIA restaurada com sucesso!</span><br>' +
+        '<small style="color:#64748b;">' + msg + ' Redirecionando…</small>';
+    }).catch(() => {
+      document.getElementById('status').innerHTML =
+        '<span class="ok">✓ CONEXIA restaurada!</span><br>' +
+        '<small style="color:#64748b;">Servidor offline — dados locais restaurados. Redirecionando…</small>';
+    }).finally(() => {
+      setTimeout(() => { window.location.href = 'index.html'; }, 2500);
+    });
+
+  } catch(e) {
+    document.getElementById('status').innerHTML =
+      '<span class="err">Erro: ' + e.message + '</span>';
+  }
+}
+</script>
+</body>
+</html>

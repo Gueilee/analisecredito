@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comitê de Crédito — Vendemmia</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="db.js"></script>
+  <script src="components.js"></script>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    :root {
+      --gold:        #f59e0b;
+      --gold-light:  #fbbf24;
+      --gold-bg:     rgba(245,158,11,.1);
+      --gold-border: rgba(245,158,11,.22);
+      --gold-glow:   rgba(245,158,11,.25);
+    }
+
+    /* ── Banner topo ────────────────────────────────────── */
+    .comite-banner {
+      display: flex; align-items: center; gap: 1.4rem;
+      background: linear-gradient(135deg, rgba(201,125,0,.14) 0%, rgba(245,158,11,.06) 100%);
+      border: 1px solid var(--gold-border);
+      border-radius: var(--radius-lg);
+      padding: 1.4rem 1.8rem;
+      margin-bottom: 1.8rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .comite-banner::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #c97d00, var(--gold));
+    }
+    .banner-icon {
+      width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+      background: var(--gold-bg); border: 1px solid var(--gold-border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .banner-icon svg { width: 24px; height: 24px; color: var(--gold); }
+    .banner-text { flex: 1; }
+    .banner-title { font-size: 1rem; font-weight: 800; color: var(--text-primary); margin-bottom: .25rem; }
+    .banner-desc  { font-size: .78rem; color: var(--text-muted); line-height: 1.55; }
+    .banner-count-box { text-align: center; flex-shrink: 0; }
+    .banner-count { font-size: 2.6rem; font-weight: 900; color: var(--gold); line-height: 1; letter-spacing: -2px; }
+    .banner-count-lbl { font-size: .68rem; color: var(--text-muted); font-weight: 500; margin-top: .1rem; }
+
+    /* ── Stats strip ─────────────────────────────────────── */
+    .stats-strip {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+      margin-bottom: 1.8rem;
+    }
+    .stat-card {
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius); padding: 1.1rem 1.4rem;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    }
+    .stat-card.gold::before   { background: linear-gradient(90deg,#c97d00,var(--gold)); }
+    .stat-card.purple::before { background: linear-gradient(90deg,var(--brand-deep-purple),var(--brand-pink)); }
+    .stat-card.blue::before   { background: linear-gradient(90deg,#1a4ecf,var(--blue)); }
+    .stat-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; margin-bottom: .65rem; }
+    .stat-icon svg { width: 16px; height: 16px; }
+    .stat-icon.gold   { background: var(--gold-bg);   color: var(--gold); }
+    .stat-icon.purple { background: rgba(66,44,118,.3);  color: var(--purple-light); }
+    .stat-icon.blue   { background: var(--blue-bg);   color: var(--blue); }
+    .stat-value { font-size: 1.7rem; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -1px; margin-bottom: .2rem; }
+    .stat-label { font-size: .72rem; color: var(--text-muted); font-weight: 500; }
+
+    /* ── Cards grid ─────────────────────────────────────── */
+    .comite-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(580px, 1fr));
+      gap: 1.4rem;
+    }
+
+    /* ── Individual card ────────────────────────────────── */
+    .comite-card {
+      background: var(--purple-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s, transform .2s;
+      position: relative;
+    }
+    .comite-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #c97d00, var(--gold));
+    }
+    .comite-card:hover {
+      border-color: var(--gold-border);
+      box-shadow: 0 12px 48px rgba(245,158,11,.1);
+      transform: translateY(-2px);
+    }
+
+    /* Card header */
+    .cc-header { display: flex; align-items: flex-start; gap: 1rem; padding: 1.5rem 1.5rem 1.1rem; }
+    .cc-avatar {
+      width: 54px; height: 54px; border-radius: 13px; flex-shrink: 0;
+      background: linear-gradient(135deg, #c97d00, #f59e0b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.05rem; font-weight: 800; color: #1a0f00;
+      box-shadow: 0 6px 20px rgba(245,158,11,.3);
+    }
+    .cc-info { flex: 1; min-width: 0; }
+    .cc-name { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); line-height: 1.25; margin-bottom: .18rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cc-cnpj { font-size: .72rem; color: var(--text-muted); margin-bottom: .5rem; }
+    .cc-badges { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .badge-encomenda {
+      display: inline-flex; align-items: center; gap: .25rem;
+      background: var(--gold-bg); border: 1px solid var(--gold-border); color: var(--gold);
+      font-size: .63rem; font-weight: 700; padding: .18rem .55rem; border-radius: 99px;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .badge-encomenda svg { width: 9px; height: 9px; }
+    .badge-dias {
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+      color: var(--text-muted); font-size: .63rem; padding: .18rem .55rem; border-radius: 99px;
+    }
+    .badge-tipo {
+      background: rgba(124,58,237,.12); border: 1px solid rgba(124,58,237,.25);
+      color: var(--purple-light); font-size: .63rem; padding: .18rem .55rem; border-radius: 99px;
+    }
+
+    /* Metrics */
+    .cc-metrics {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid rgba(255,255,255,.05);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    .cc-metric {
+      padding: .8rem 1.2rem;
+      border-right: 1px solid rgba(255,255,255,.05);
+    }
+    .cc-metric:last-child { border-right: none; }
+    .cc-m-label { font-size: .62rem; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .22rem; }
+    .cc-m-value { font-size: .92rem; font-weight: 800; color: var(--text-primary); }
+    .cc-m-value.money { color: var(--gold); }
+
+    /* Analyst block */
+    .cc-analyst { padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .cc-analyst-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .65rem; }
+    .cc-analyst-who { display: flex; align-items: center; gap: .5rem; }
+    .cc-analyst-av {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand-deep-purple), var(--brand-pink));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .58rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .cc-analyst-name { font-size: .78rem; font-weight: 600; color: var(--text-secondary); }
+    .cc-analyst-role { font-size: .65rem; color: var(--text-faint); }
+    .ai-rec-pill {
+      display: inline-flex; align-items: center; gap: .28rem;
+      font-size: .64rem; font-weight: 700; padding: .2rem .6rem; border-radius: 99px;
+    }
+    .ai-rec-pill svg { width: 10px; height: 10px; }
+    .ai-rec-pill.aprovar { background: rgba(1,225,142,.1); color: var(--brand-neon-green); border: 1px solid rgba(1,225,142,.25); }
+    .ai-rec-pill.negar   { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,.25); }
+    .ai-rec-pill.revisar { background: var(--yellow-bg); color: var(--yellow); border: 1px solid rgba(245,158,11,.25); }
+
+    .cc-section-lbl {
+      font-size: .6rem; font-weight: 700; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: .6px; margin-bottom: .6rem;
+      display: flex; align-items: center; gap: .35rem;
+    }
+    .cc-section-lbl svg { width: 10px; height: 10px; opacity: .6; }
+
+    .cc-fin-meta {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-bottom: .65rem;
+    }
+    .cc-fin-item {
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius-sm); padding: .45rem .75rem;
+    }
+    .cc-fin-lbl { font-size: .59rem; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .1rem; }
+    .cc-fin-val { font-size: .84rem; font-weight: 800; color: var(--text-primary); }
+    .cc-fin-val.money { color: var(--gold); }
+
+    .cc-parecer {
+      font-size: .79rem; color: var(--text-muted); line-height: 1.65; font-style: italic;
+      background: rgba(245,158,11,.04);
+      border-left: 2.5px solid rgba(245,158,11,.4);
+      padding: .6rem .9rem;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin-bottom: .5rem;
+    }
+    .cc-obs {
+      font-size: .75rem; color: var(--text-muted); line-height: 1.6;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+      border-radius: var(--radius-sm); padding: .5rem .8rem; margin-bottom: .5rem;
+    }
+    .cc-no-parecer {
+      font-size: .76rem; color: var(--text-faint); font-style: italic; padding: .35rem 0;
+    }
+
+    /* Actions */
+    .cc-actions {
+      display: flex; gap: .7rem; padding: 1.1rem 1.5rem 1.4rem;
+      align-items: center;
+    }
+    .cc-btn {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: .45rem;
+      padding: .76rem 1rem; border-radius: var(--radius-sm);
+      border: 1.5px solid transparent;
+      font-family: inherit; font-size: .82rem; font-weight: 700;
+      cursor: pointer; transition: all .18s;
+    }
+    .cc-btn svg { width: 14px; height: 14px; }
+    .cc-btn.ver {
+      background: rgba(99,102,241,.15); color: #c4b5fd;
+      border-color: rgba(99,102,241,.4); flex: 1;
+      font-size: .86rem; letter-spacing: .2px;
+    }
+    .cc-btn.ver:hover {
+      background: rgba(99,102,241,.22); color: #fff;
+      border-color: var(--purple-accent); transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(99,102,241,.3);
+    }
+
+    /* ── Empty state ────────────────────────────────────── */
+    .comite-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 5rem 2rem; gap: 1.2rem;
+    }
+    .comite-empty-icon {
+      width: 76px; height: 76px; border-radius: 50%;
+      background: var(--gold-bg); border: 2px solid var(--gold-border);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 40px rgba(245,158,11,.1);
+    }
+    .comite-empty-icon svg { width: 32px; height: 32px; color: var(--gold); }
+    .comite-empty h3 { font-size: 1.3rem; font-weight: 800; color: var(--text-primary); }
+    .comite-empty p { font-size: .86rem; color: var(--text-muted); max-width: 380px; line-height: 1.6; }
+
+    /* ── Modal ──────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.72);
+      backdrop-filter: blur(8px); z-index: 1000;
+      display: none; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; animation: fadeIn .18s ease; }
+
+    .modal-box {
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); width: 90%; max-width: 520px;
+      box-shadow: 0 28px 90px rgba(0,0,0,.7);
+      animation: slideUp .22s ease; overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 1.6rem 1.8rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.06);
+      position: relative;
+    }
+    .modal-header::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .modal-header.aprovar::before { background: linear-gradient(90deg,#c97d00,var(--gold)); }
+    .modal-header.negar::before   { background: linear-gradient(90deg,#c0182a,var(--red)); }
+
+    .modal-icon {
+      width: 46px; height: 46px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: .9rem;
+    }
+    .modal-icon svg { width: 22px; height: 22px; }
+    .modal-icon.aprovar { background: var(--gold-bg); color: var(--gold); }
+    .modal-icon.negar   { background: var(--red-bg);  color: var(--red); }
+
+    .modal-title { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); margin-bottom: .15rem; }
+    .modal-company { font-size: .8rem; color: var(--text-muted); }
+
+    .modal-body  { padding: 1.5rem 1.8rem; display: flex; flex-direction: column; gap: 1rem; }
+    .modal-field-label {
+      font-size: .64rem; font-weight: 700; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: .6px; margin-bottom: .35rem;
+    }
+    .modal-input {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+      border-radius: var(--radius-sm); color: var(--text-primary);
+      font-family: inherit; font-size: .86rem; padding: .65rem .9rem;
+      outline: none; transition: border-color .15s, box-shadow .15s; box-sizing: border-box;
+    }
+    .modal-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(245,158,11,.15); }
+    textarea.modal-input { resize: vertical; line-height: 1.6; }
+    .modal-input-prefix {
+      display: flex; align-items: center;
+      background: var(--input-bg); border: 1px solid var(--input-border);
+      border-radius: var(--radius-sm); overflow: hidden;
+    }
+    .modal-input-prefix span {
+      padding: .65rem .75rem; color: var(--text-faint); font-size: .82rem;
+      border-right: 1px solid var(--input-border); background: rgba(255,255,255,.03);
+    }
+    .modal-input-prefix input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--text-primary); font-family: inherit; font-size: .86rem; padding: .65rem .8rem;
+    }
+    .modal-input-prefix:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(245,158,11,.15); }
+
+    .modal-footer { display: flex; gap: .75rem; padding: .5rem 1.8rem 1.6rem; }
+    .modal-btn {
+      flex: 1; padding: .84rem 1rem; border-radius: var(--radius-sm);
+      border: 1.5px solid transparent; font-family: inherit; font-size: .85rem; font-weight: 700;
+      cursor: pointer; transition: all .18s;
+      display: flex; align-items: center; justify-content: center; gap: .45rem;
+    }
+    .modal-btn svg { width: 14px; height: 14px; }
+    .modal-btn.cancel { background: rgba(255,255,255,.04); color: var(--text-muted); border-color: var(--glass-border); flex: 0.6; }
+    .modal-btn.cancel:hover { background: rgba(255,255,255,.08); color: var(--text-primary); }
+    .modal-btn.confirm-aprovar { background: linear-gradient(135deg,#c97d00,#f59e0b); color: #1a0f00; box-shadow: 0 4px 16px rgba(245,158,11,.3); }
+    .modal-btn.confirm-aprovar:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(245,158,11,.45); }
+    .modal-btn.confirm-negar { background: linear-gradient(135deg,#c0182a,var(--red)); color: #fff; box-shadow: 0 4px 16px rgba(239,68,68,.3); }
+    .modal-btn.confirm-negar:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(239,68,68,.4); }
+
+    /* ── Toast ──────────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius); padding: .85rem 1.2rem;
+      font-size: .83rem; color: var(--text-primary);
+      box-shadow: 0 8px 32px rgba(0,0,0,.45); z-index: 2000;
+      display: flex; align-items: center; gap: .65rem;
+      animation: none;
+      pointer-events: none;
+      opacity: 0; transform: translateY(100px);
+      transition: opacity .3s ease, transform .35s cubic-bezier(.22,.68,0,1.2);
+    }
+    .toast.show {
+      pointer-events: auto;
+      opacity: 1; transform: translateY(0);
+    }
+    .toast svg  { width: 16px; height: 16px; flex-shrink: 0; }
+    .toast.success { border-left: 3px solid var(--brand-neon-green); }
+    .toast.success svg { color: var(--brand-neon-green); }
+    .toast.error { border-left: 3px solid var(--red); }
+    .toast.error svg { color: var(--red); }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+<script>
+  const session = DB.auth.requireAuth();
+  // RBAC: apenas Financeiro, Administrador e Diretor acessam o Comitê de Crédito
+  const _DECISION_ROLES = ['Financeiro', 'Administrador', 'Admin', 'Diretor'];
+  const canDecide = session && _DECISION_ROLES.some(r => (session.role || '').includes(r));
+  if (!canDecide) window.location.href = 'index.html';
+</script>
+
+<div class="app-shell">
+  <aside class="sidebar"></aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1>Comitê de Crédito</h1>
+        <p>Solicitações de Encomenda aguardando deliberação da diretoria e sócios</p>
+      </div>
+      <div class="topbar-actions">
+        <a href="solicitacoes.html" class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/></svg>
+          Solicitações
+        </a>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <!-- ── Banner ── -->
+      <div class="comite-banner animate-in">
+        <div class="banner-icon">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="banner-text">
+          <div class="banner-title">Processo de Comitê — Operação por Encomenda</div>
+          <div class="banner-desc">Clientes com operação classificada como <strong style="color:var(--gold);">Encomenda</strong> exigem deliberação direta da diretoria e sócios antes da liberação do crédito. Analise o parecer técnico do time financeiro e registre a decisão final do Comitê.</div>
+        </div>
+        <div class="banner-count-box">
+          <div class="banner-count" id="banner-count">0</div>
+          <div class="banner-count-lbl">aguardando</div>
+        </div>
+      </div>
+
+      <!-- ── Stats ── -->
+      <div class="stats-strip animate-in delay-1">
+        <div class="stat-card gold">
+          <div class="stat-icon gold">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="stat-value" id="stat-pendentes">0</div>
+          <div class="stat-label">Em deliberação</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon purple">
+            <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </div>
+          <div class="stat-value" id="stat-volume">—</div>
+          <div class="stat-label">Exposição total</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon blue">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </div>
+          <div class="stat-value" id="stat-dias">—</div>
+          <div class="stat-label">Dias (média em espera)</div>
+        </div>
+      </div>
+
+      <!-- ── Cards ── -->
+      <div class="comite-grid animate-in delay-2" id="comite-grid">
+        <div style="color:var(--text-faint);font-size:.82rem;padding:2rem;">Carregando…</div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══ MODAL DECISÃO ══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header" id="modal-header">
+      <div class="modal-icon" id="modal-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="modal-title" id="modal-title">Decisão do Comitê</div>
+      <div class="modal-company" id="modal-company"></div>
+    </div>
+
+    <div class="modal-body">
+      <!-- Limite (apenas aprovação) -->
+      <div id="modal-limite-wrap">
+        <div class="modal-field-label">Limite Final Aprovado</div>
+        <div class="modal-input-prefix">
+          <span>R$</span>
+          <input type="text" id="modal-limite" placeholder="0,00" oninput="maskMoneyModal(this)" />
+        </div>
+      </div>
+
+      <!-- Deliberação -->
+      <div>
+        <div class="modal-field-label">Deliberação do Comitê <span style="color:var(--red);">*</span></div>
+        <textarea id="modal-deliberacao" class="modal-input" rows="4"
+          placeholder="Registre a deliberação, justificativa da decisão e observações do Comitê…"></textarea>
+      </div>
+
+      <!-- Info box contexto -->
+      <div id="modal-context" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius-sm);padding:.75rem 1rem;font-size:.76rem;color:var(--text-faint);line-height:1.5;"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="modal-btn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="modal-btn" id="modal-confirm-btn" onclick="confirmDecision()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ─────────────────────────────────────────────── -->
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+  /* ── Init ────────────────────────────────────────────── */
+  App.mount('comite');
+
+  let targetId       = null;
+  let targetDecision = null;
+  let allRecords     = [];
+
+  /* ── Render principal ────────────────────────────────── */
+  function render() {
+    allRecords = DB.solicitacoes.getAll().filter(s => s.status === 'em_comite');
+    const grid = document.getElementById('comite-grid');
+
+    // Stats
+    document.getElementById('banner-count').textContent  = allRecords.length;
+    document.getElementById('stat-pendentes').textContent = allRecords.length;
+
+    let totalExposicao = 0;
+    let totalDias = 0;
+    allRecords.forEach(s => {
+      const vals = ['limiteExportador','limiteDesp','limiteImp'];
+      vals.forEach(k => {
+        const n = parseFloat((s[k]||'0').replace(/\./g,'').replace(',','.')) || 0;
+        totalExposicao += n;
+      });
+      const decisaoAt = s.decisao_at || s.updatedAt || s.createdAt;
+      const dias = decisaoAt ? Math.floor((Date.now() - new Date(decisaoAt)) / 86400000) : 0;
+      totalDias += dias;
+    });
+
+    const vol = totalExposicao >= 1e6
+      ? 'R$ ' + (totalExposicao/1e6).toFixed(1).replace('.',',') + 'M'
+      : DB.utils.fmtMoney(totalExposicao.toFixed(2).replace('.',','));
+    document.getElementById('stat-volume').textContent = allRecords.length ? vol : '—';
+    document.getElementById('stat-dias').textContent   = allRecords.length
+      ? Math.round(totalDias / allRecords.length) + 'd'
+      : '—';
+
+    if (allRecords.length === 0) {
+      grid.innerHTML = buildEmpty();
+      return;
+    }
+
+    grid.innerHTML = allRecords.map(buildCard).join('');
+  }
+
+  /* ── Constrói card ───────────────────────────────────── */
+  function buildCard(s) {
+    const initials = s.empresa.split(' ').filter(w => w.length > 2).slice(0,2).map(w => w[0].toUpperCase()).join('') || s.empresa.slice(0,2).toUpperCase();
+
+    const decisaoAt = s.decisao_at || s.updatedAt || s.createdAt;
+    const diasInt   = decisaoAt ? Math.floor((Date.now() - new Date(decisaoAt)) / 86400000) : 0;
+    const diasLabel = diasInt === 0 ? 'hoje' : diasInt === 1 ? '1 dia' : diasInt + ' dias';
+
+    // Limite exportador
+    const limiteLabel = DB.utils.fmtMoney(s.limiteExportador) !== '—' ? DB.utils.fmtMoney(s.limiteExportador) : '—';
+
+    // Exposição total
+    const expTotal = ['limiteExportador','limiteDesp','limiteImp']
+      .reduce((acc,k) => acc + (parseFloat((s[k]||'0').replace(/\./g,'').replace(',','.')) || 0), 0);
+    const expLabel = expTotal > 0 ? DB.utils.fmtMoney(expTotal.toFixed(2).replace('.',',')) : '—';
+
+    // Volume mensal
+    const volMes = s.volMes ? 'R$ ' + s.volMes + (s.volMesMoeda ? ' ' + s.volMesMoeda : '') : '—';
+
+    // IA recomendação
+    const rec = s.analise?.analysis?.recomendacao || '';
+    const recLabel = { aprovar: 'IA: Aprovar', negar: 'IA: Negar', revisar: 'IA: Revisar' }[rec] || '';
+    const recPill  = rec ? `<span class="ai-rec-pill ${rec}">
+      <svg viewBox="0 0 24 24" fill="none">${rec === 'aprovar' ? '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' : rec === 'negar' ? '<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' : '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'}
+      </svg>${recLabel}</span>` : '';
+
+    // Analista — todos os campos preenchidos na tela de Análise Financeira
+    const analista      = s.decisaoAnalista || '—';
+    const analistaAv    = analista.split(' ').filter(w => w.length > 1).slice(0,2).map(w => w[0].toUpperCase()).join('');
+    const limiteAnalista = s.limiteAprovado ? DB.utils.fmtMoney(s.limiteAprovado) : '—';
+    const prazoAnalista  = s.prazoAprovado  ? s.prazoAprovado + ' dias'            : '—';
+    const parecerText    = s.parecerTecnico || '';
+    const obsText        = s.analistaObs    || '';
+
+    // Tipo op
+    const tipoOpMap = { encomenda: 'Encomenda', 'conta-ordem': 'Conta & Ordem', gestao: 'Gestão' };
+    const tipoOpLbl = tipoOpMap[s.tipoOp] || s.tipoOp || 'Trade';
+
+    return `
+    <div class="comite-card animate-in">
+      <div class="cc-header">
+        <div class="cc-avatar">${initials}</div>
+        <div class="cc-info">
+          <div class="cc-name" title="${s.empresa}">${s.empresa}</div>
+          <div class="cc-cnpj">CNPJ: ${s.cnpj} · Encaminhado há ${diasLabel}</div>
+          <div class="cc-badges">
+            <span class="badge-encomenda">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Encomenda
+            </span>
+            <span class="badge-tipo">${tipoOpLbl}</span>
+            <span class="badge-dias">${DB.utils.fmtDate(s.decisao_at || s.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cc-metrics">
+        <div class="cc-metric">
+          <div class="cc-m-label">Limite Exportador</div>
+          <div class="cc-m-value money">${limiteLabel}</div>
+        </div>
+        <div class="cc-metric">
+          <div class="cc-m-label">Exposição Total</div>
+          <div class="cc-m-value money">${expLabel}</div>
+        </div>
+        <div class="cc-metric">
+          <div class="cc-m-label">Vol. Mensal</div>
+          <div class="cc-m-value">${volMes}</div>
+        </div>
+      </div>
+
+      <div class="cc-analyst">
+        <div class="cc-section-lbl">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/></svg>
+          Parecer do Analista Financeiro
+        </div>
+
+        <div class="cc-analyst-header">
+          <div class="cc-analyst-who">
+            <div class="cc-analyst-av">${analistaAv || 'AN'}</div>
+            <div>
+              <div class="cc-analyst-name">${analista}</div>
+              <div class="cc-analyst-role">Analista Financeiro · ${DB.utils.fmtDate(s.decisao_at || s.updatedAt)}</div>
+            </div>
+          </div>
+          ${recPill}
+        </div>
+
+        <div class="cc-fin-meta">
+          <div class="cc-fin-item">
+            <div class="cc-fin-lbl">Limite Sugerido</div>
+            <div class="cc-fin-val money">${limiteAnalista}</div>
+          </div>
+          <div class="cc-fin-item">
+            <div class="cc-fin-lbl">Prazo Sugerido</div>
+            <div class="cc-fin-val">${prazoAnalista}</div>
+          </div>
+        </div>
+
+        ${parecerText
+          ? `<div class="cc-parecer">"${parecerText}"</div>`
+          : `<div class="cc-no-parecer">Sem parecer técnico registrado</div>`}
+
+        ${obsText
+          ? `<div class="cc-obs"><strong style="color:var(--text-secondary);font-style:normal;">Condições e Obs.:</strong> ${obsText}</div>`
+          : ''}
+      </div>
+
+      <div class="cc-actions">
+        <a class="cc-btn ver" href="analise-financeira.html?id=${s.id}">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
+          Ver análise completa
+        </a>
+      </div>
+    </div>`;
+  }
+
+  /* ── Empty state ─────────────────────────────────────── */
+  function buildEmpty() {
+    return `<div class="comite-empty" style="grid-column:1/-1;">
+      <div class="comite-empty-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Nenhuma análise pendente</h3>
+      <p>Todas as solicitações de Encomenda já foram deliberadas pelo Comitê ou ainda não foram encaminhadas pelo time financeiro.</p>
+      <a href="solicitacoes.html" class="btn btn-secondary">Ver todas as solicitações</a>
+    </div>`;
+  }
+
+  /* ── Modal ───────────────────────────────────────────── */
+  function openDecision(id, decision, empresa) {
+    targetId       = id;
+    targetDecision = decision;
+
+    const isAprovar = decision === 'aprovado';
+    const sol       = DB.solicitacoes.getById(id);
+
+    document.getElementById('modal-header').className = 'modal-header ' + decision;
+    document.getElementById('modal-icon').className   = 'modal-icon '   + decision;
+    document.getElementById('modal-title').textContent   = isAprovar ? 'Aprovar Crédito — Comitê' : 'Negar Crédito — Comitê';
+    document.getElementById('modal-company').textContent = empresa;
+
+    // Limite apenas para aprovação
+    document.getElementById('modal-limite-wrap').style.display = isAprovar ? '' : 'none';
+    if (isAprovar && sol?.limiteExportador) {
+      document.getElementById('modal-limite').value = sol.limiteExportador;
+    } else {
+      document.getElementById('modal-limite').value = '';
+    }
+
+    document.getElementById('modal-deliberacao').value = '';
+
+    // Contexto
+    const parecer = sol?.parecerTecnico ? `Parecer do analista: "${sol.parecerTecnico.substring(0,120)}${sol.parecerTecnico.length > 120 ? '...' : ''}"` : 'Sem parecer técnico registrado.';
+    document.getElementById('modal-context').textContent = parecer;
+
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    confirmBtn.className = 'modal-btn confirm-' + decision;
+    confirmBtn.innerHTML = isAprovar
+      ? `<svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Confirmar Aprovação`
+      : `<svg viewBox="0 0 24 24" fill="none" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg> Confirmar Negação`;
+
+    document.getElementById('modal-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('modal-deliberacao').focus(), 120);
+  }
+
+  function closeModal(e) {
+    if (e && e.target !== document.getElementById('modal-overlay')) return;
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  function confirmDecision() {
+    const deliberacao = document.getElementById('modal-deliberacao').value.trim();
+    if (!deliberacao) {
+      document.getElementById('modal-deliberacao').style.borderColor = 'var(--red)';
+      document.getElementById('modal-deliberacao').focus();
+      setTimeout(() => document.getElementById('modal-deliberacao').style.borderColor = '', 2000);
+      return;
+    }
+
+    const limite = document.getElementById('modal-limite').value.trim();
+    const isAprovar = targetDecision === 'aprovado';
+
+    DB.solicitacoes.update(targetId, {
+      status:             targetDecision,
+      deliberacaoComite:  deliberacao,
+      decisaoComite:      session?.name || 'Comitê',
+      comite_at:          new Date().toISOString(),
+      ...(isAprovar && limite ? { limiteAprovado: limite } : {}),
+    });
+
+    document.getElementById('modal-overlay').classList.remove('open');
+    showToast(
+      isAprovar ? 'Crédito aprovado pelo Comitê de Crédito!' : 'Crédito negado pelo Comitê.',
+      isAprovar ? 'success' : 'error'
+    );
+
+    setTimeout(() => render(), 600);
+  }
+
+  /* ── Máscaras ────────────────────────────────────────── */
+  function maskMoneyModal(el) {
+    let v = el.value.replace(/\D/g,'');
+    if (!v) { el.value = ''; return; }
+    v = (parseInt(v,10)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    el.value = v;
+  }
+
+  /* ── Toast ───────────────────────────────────────────── */
+  let _toastTimer;
+  function showToast(msg, type) {
+    const t   = document.getElementById('toast');
+    if (!t) return;
+    const ico = document.querySelector('#toast svg');
+    clearTimeout(_toastTimer);
+    document.getElementById('toast-msg').textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    if (ico) ico.innerHTML = type === 'success'
+      ? '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+      : '<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+    _toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+  }
+
+  /* ── Keyboard ────────────────────────────────────────── */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('modal-overlay').classList.remove('open');
+  });
+
+  /* ── Boot ────────────────────────────────────────────── */
+  render();
+</script>
+</body>
+</html>

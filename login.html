@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Análise de Crédito — Vendemmia</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="db.js"></script>
+  <script>
+    if (DB.auth.getSession()) window.location.href = 'index.html';
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --deep-purple: #422c76;
+      --pink:        #ff2f69;
+      --off-white:   #faf9f5;
+      --neon-green:  #01E18E;
+      --glass-bg:    rgba(8, 5, 22, 0.68);
+      --text-muted:  rgba(250, 249, 245, 0.46);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      background-color: #04020e;
+      background-image: url('login.png');
+      background-size: 74%;
+      background-position: left center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(to left,
+        rgba(4,2,14,.85) 0%,
+        rgba(4,2,14,.85) 36%,
+        transparent 62%
+      );
+      z-index: 0;
+    }
+
+    /* ── Layout ─────────────────────────────── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 3.5rem 0 1.5rem;
+    }
+
+    /* ── Card ───────────────────────────────── */
+    .card {
+      width: 100%;
+      max-width: 460px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(32px) saturate(200%);
+      -webkit-backdrop-filter: blur(32px) saturate(200%);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 28px;
+      padding: 2.6rem 3rem 2.4rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        0 32px 90px rgba(0,0,0,.65),
+        inset 0 1px 0 rgba(255,255,255,.08),
+        inset 0 -1px 0 rgba(0,0,0,.25);
+      animation: cardIn .65s cubic-bezier(.22,.68,0,1.18) both;
+    }
+
+    /* linha decorativa no topo */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 15%; right: 15%;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(124,58,237,.9),
+        rgba(255,47,105,.85),
+        transparent
+      );
+    }
+
+    /* reflexo roxo no canto */
+    .card::after {
+      content: '';
+      position: absolute;
+      bottom: -90px; right: -90px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(66,44,118,.12) 0%, transparent 70%);
+      pointer-events: none;
+      border-radius: 50%;
+    }
+
+    /* ── Logo (dentro do card) ──────────────── */
+    .logo-section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.8rem;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+
+    .logo-img {
+      display: block;
+      width: 210px;
+      height: auto;
+      filter:
+        brightness(0) invert(1)
+        drop-shadow(0 0 6px rgba(210,170,255,.9))
+        drop-shadow(0 0 18px rgba(124,58,237,.75))
+        drop-shadow(0 0 38px rgba(233,30,140,.45));
+      opacity: .96;
+      animation: glowPulse 3.5s ease-in-out infinite;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .header { margin-bottom: 1.8rem; }
+
+    .status-line {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      font-size: .72rem;
+      color: var(--neon-green);
+      font-weight: 500;
+      letter-spacing: .15px;
+      margin-bottom: .6rem;
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--neon-green);
+      flex-shrink: 0;
+      animation: pulseDot 2.2s ease-in-out infinite;
+    }
+
+    .header h1 {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--off-white);
+      letter-spacing: -.5px;
+      line-height: 1.2;
+      margin-bottom: .28rem;
+    }
+
+    .header p {
+      font-size: .875rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── Form ───────────────────────────────── */
+    .form { display: flex; flex-direction: column; gap: 1.1rem; }
+
+    .field { display: flex; flex-direction: column; gap: .4rem; }
+
+    .field-label {
+      font-size: .71rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    .input-wrap { position: relative; display: flex; align-items: center; }
+
+    .input-icon {
+      position: absolute;
+      left: 1rem;
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      transition: color .22s;
+    }
+
+    .input-icon svg { width: 16px; height: 16px; stroke-width: 1.7; }
+
+    .input {
+      width: 100%;
+      padding: .85rem 1rem .85rem 2.8rem;
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 13px;
+      font-family: inherit;
+      font-size: .9rem;
+      color: var(--off-white);
+      outline: none;
+      transition: border-color .25s, box-shadow .25s, background .25s;
+    }
+
+    .input::placeholder { color: rgba(250,249,245,.2); }
+
+    .input:focus {
+      border-color: rgba(124,58,237,.7);
+      background: rgba(66,44,118,.1);
+      box-shadow: 0 0 0 3px rgba(124,58,237,.18);
+    }
+
+    .input-wrap:focus-within .input-icon { color: rgba(160,128,230,.9); }
+
+    .eye-btn {
+      position: absolute;
+      right: 1rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0;
+      display: flex;
+      align-items: center;
+      transition: color .2s;
+    }
+
+    .eye-btn:hover { color: var(--off-white); }
+    .eye-btn svg { width: 16px; height: 16px; stroke-width: 1.7; }
+
+    /* ── Forgot ─────────────────────────────── */
+    .forgot-row { display: flex; justify-content: flex-end; margin-top: -.15rem; }
+
+    .forgot {
+      font-size: .78rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    .forgot:hover { color: var(--pink); }
+
+    /* ── Error ──────────────────────────────── */
+    #login-error {
+      display: none;
+      align-items: center;
+      gap: .5rem;
+      padding: .62rem .95rem;
+      background: rgba(255,47,105,.08);
+      border: 1px solid rgba(255,47,105,.22);
+      border-radius: 11px;
+      font-size: .8rem;
+      color: #ff7090;
+    }
+
+    #login-error svg { width: 14px; height: 14px; stroke-width: 1.7; flex-shrink: 0; }
+
+    /* ── Button ─────────────────────────────── */
+    .btn-login {
+      position: relative;
+      margin-top: .25rem;
+      width: 100%;
+      padding: .94rem;
+      border: none;
+      border-radius: 13px;
+      font-family: inherit;
+      font-size: .96rem;
+      font-weight: 700;
+      color: var(--off-white);
+      cursor: pointer;
+      overflow: hidden;
+      background: linear-gradient(135deg, var(--deep-purple) 0%, var(--pink) 100%);
+      box-shadow: 0 4px 22px rgba(255,47,105,.3), 0 2px 8px rgba(66,44,118,.38);
+      transition: transform .18s ease, box-shadow .18s ease;
+      letter-spacing: .15px;
+    }
+
+    .btn-login::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.18) 0%, transparent 55%);
+      opacity: 0;
+      transition: opacity .2s;
+    }
+
+    .btn-login:hover { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(255,47,105,.42), 0 4px 16px rgba(66,44,118,.48); }
+    .btn-login:hover::before { opacity: 1; }
+    .btn-login:active { transform: translateY(0); }
+
+    .btn-login .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,.18);
+      transform: scale(0);
+      animation: ripple .55s linear;
+      pointer-events: none;
+    }
+
+    /* ── Demo / Footer ──────────────────────── */
+    .demo-hint {
+      margin-top: -.2rem;
+      text-align: center;
+      font-size: .68rem;
+      color: rgba(250,249,245,.26);
+    }
+
+    .card-footer {
+      margin-top: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .6rem;
+    }
+
+    .support-link {
+      font-size: .76rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .support-link a {
+      color: rgba(168,132,240,.9);
+      text-decoration: none;
+      transition: color .2s;
+    }
+
+    .support-link a:hover { color: var(--pink); }
+
+    .ssl-note {
+      display: flex;
+      align-items: center;
+      gap: .38rem;
+      font-size: .67rem;
+      color: rgba(250,249,245,.24);
+    }
+
+    .ssl-note svg { width: 11px; height: 11px; stroke-width: 1.7; }
+
+    /* ── Animations ─────────────────────────── */
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(30px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(1,225,142,.5); }
+      60%       { box-shadow: 0 0 0 5px rgba(1,225,142,0); }
+    }
+
+    @keyframes ripple {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    @keyframes glowPulse {
+      0%, 100% {
+        filter:
+          brightness(0) invert(1)
+          drop-shadow(0 0 5px rgba(210,170,255,.85))
+          drop-shadow(0 0 16px rgba(124,58,237,.7))
+          drop-shadow(0 0 32px rgba(233,30,140,.4));
+        opacity: .95;
+      }
+      50% {
+        filter:
+          brightness(0) invert(1)
+          drop-shadow(0 0 9px rgba(220,190,255,1))
+          drop-shadow(0 0 26px rgba(124,58,237,1))
+          drop-shadow(0 0 55px rgba(233,30,140,.65));
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .wrapper { justify-content: center; padding: 1.5rem; }
+    }
+
+    @media (max-width: 520px) {
+      .card { padding: 2.2rem 1.8rem 2rem; border-radius: 22px; max-width: 100%; }
+      .header h1 { font-size: 1.42rem; }
+      .logo-img { width: 175px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div class="card">
+
+    <!-- Logo oficial dentro do card -->
+    <div class="logo-section">
+      <img src="logo.png" alt="Análise de Crédito — Vendemmia" class="logo-img" />
+    </div>
+
+    <div class="header">
+      <div class="status-line">
+        <span class="status-dot"></span>
+        Sistema operacional
+      </div>
+      <h1>Bem-vindo de volta</h1>
+      <p>Acesse o portal de Análise de Crédito</p>
+    </div>
+
+    <form class="form" onsubmit="handleLogin(event)">
+
+      <div class="field">
+        <label class="field-label" for="email">E-mail corporativo</label>
+        <div class="input-wrap">
+          <span class="input-icon"><i data-lucide="mail"></i></span>
+          <input
+            id="email"
+            class="input"
+            type="email"
+            placeholder="seu@vendemmia.com.br"
+            autocomplete="email"
+            required
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="password">Senha</label>
+        <div class="input-wrap">
+          <span class="input-icon"><i data-lucide="lock-keyhole"></i></span>
+          <input
+            id="password"
+            class="input"
+            type="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+            style="padding-right: 3rem;"
+          />
+          <button type="button" class="eye-btn" onclick="togglePw()" aria-label="Mostrar senha">
+            <i id="eye-icon" data-lucide="eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="forgot-row">
+        <a href="#" class="forgot">Esqueceu a senha?</a>
+      </div>
+
+      <div id="login-error">
+        <i data-lucide="circle-alert"></i>
+        <span id="login-error-msg">E-mail ou senha incorretos.</span>
+      </div>
+
+      <button type="submit" class="btn-login" id="btn-submit" onclick="addRipple(event)">
+        Entrar no Sistema
+      </button>
+
+    </form>
+
+    <div class="card-footer">
+      <p class="support-link">
+        Problemas de acesso? <a href="mailto:suporte@vendemmia.com.br">Falar com suporte</a>
+      </p>
+      <div class="ssl-note">
+        <i data-lucide="shield-check"></i>
+        Conexão segura · SSL/TLS 256-bit
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  function togglePw() {
+    const input = document.getElementById('password');
+    const icon  = document.getElementById('eye-icon');
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    icon.setAttribute('data-lucide', showing ? 'eye' : 'eye-off');
+    lucide.createIcons();
+  }
+
+  function addRipple(e) {
+    const btn    = document.getElementById('btn-submit');
+    const circle = document.createElement('span');
+    const diam   = Math.max(btn.clientWidth, btn.clientHeight);
+    const rect   = btn.getBoundingClientRect();
+    circle.className = 'ripple';
+    circle.style.cssText = `width:${diam}px;height:${diam}px;left:${e.clientX-rect.left-diam/2}px;top:${e.clientY-rect.top-diam/2}px;`;
+    btn.appendChild(circle);
+    setTimeout(() => circle.remove(), 600);
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const btn      = document.getElementById('btn-submit');
+    const errBox   = document.getElementById('login-error');
+    const errMsg   = document.getElementById('login-error-msg');
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    errBox.style.display = 'none';
+    btn.textContent  = 'Verificando...';
+    btn.disabled     = true;
+    btn.style.opacity = '.7';
+
+    const result = await DB.auth.login(email, password);
+    if (result.ok) {
+      btn.textContent = '✓ Acesso autorizado';
+      btn.style.background = 'linear-gradient(135deg, #019e64, #01E18E)';
+      btn.style.opacity = '1';
+      btn.style.boxShadow = '0 4px 22px rgba(1,225,142,.38)';
+      setTimeout(() => { window.location.href = 'index.html'; }, 700);
+    } else {
+      btn.textContent  = 'Entrar no Sistema';
+      btn.disabled     = false;
+      btn.style.opacity = '1';
+      errMsg.textContent = result.error;
+      errBox.style.display = 'flex';
+    }
+  }
+</script>
+
+</body>
+</html>

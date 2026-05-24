@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consultar Solicitação — Vendemmia</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="db.js"></script>
+  <script src="components.js"></script>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── Hero do cliente ─────────────────────────────────── */
+    .client-hero {
+      background: var(--purple-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 1.8rem 2rem;
+      margin-bottom: 1.4rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .client-hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--purple-accent), var(--pink-accent));
+    }
+
+    .client-hero-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.4rem;
+      flex-wrap: wrap;
+    }
+
+    .client-big-avatar {
+      width: 64px; height: 64px;
+      background: linear-gradient(135deg, var(--purple-accent), var(--pink-accent));
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(124,58,237,.35);
+    }
+
+    .client-hero-info { flex: 1; min-width: 0; }
+    .client-hero-name {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1.2;
+      margin-bottom: .3rem;
+    }
+
+    .client-hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem .5rem;
+      align-items: center;
+      font-size: .8rem;
+      color: var(--text-muted);
+      margin-top: .5rem;
+    }
+
+    .meta-chip {
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .22rem .65rem;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 99px;
+      font-size: .73rem;
+    }
+
+    .meta-chip svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+    .origem-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .2rem .65rem;
+      background: rgba(59,130,246,.1);
+      border: 1px solid rgba(59,130,246,.25);
+      border-radius: 99px;
+      font-size: .7rem;
+      color: var(--blue);
+    }
+
+    .client-hero-actions {
+      display: flex;
+      gap: .6rem;
+      align-items: flex-start;
+      flex-shrink: 0;
+    }
+
+    /* ── Timeline de status ──────────────────────────────── */
+    .status-timeline {
+      display: flex;
+      align-items: center;
+      margin-top: 1.4rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid rgba(255,255,255,.06);
+      gap: 0;
+    }
+
+    .timeline-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .4rem;
+      position: relative;
+    }
+
+    .timeline-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      right: -50%;
+      height: 2px;
+      background: var(--purple-border);
+      z-index: 0;
+    }
+
+    .timeline-step.done:not(:last-child)::after,
+    .timeline-step.active:not(:last-child)::after {
+      background: linear-gradient(90deg, var(--purple-accent), var(--purple-border));
+    }
+
+    .timeline-dot {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 2px solid var(--purple-border);
+      background: var(--purple-dark);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      z-index: 1;
+      transition: all .3s;
+    }
+
+    .timeline-dot svg { width: 13px; height: 13px; }
+
+    .timeline-step.done   .timeline-dot { border-color: var(--green);          background: var(--green);          color: #fff; }
+    .timeline-step.active .timeline-dot { border-color: var(--purple-accent);  background: var(--purple-accent);  color: #fff; box-shadow: 0 0 0 4px rgba(124,58,237,.2); }
+    .timeline-step.error  .timeline-dot { border-color: var(--red);            background: var(--red);            color: #fff; }
+
+    .timeline-label {
+      font-size: .68rem;
+      font-weight: 500;
+      color: var(--text-faint);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .timeline-step.done   .timeline-label { color: var(--green); }
+    .timeline-step.active .timeline-label { color: var(--text-primary); font-weight: 600; }
+    .timeline-step.error  .timeline-label { color: var(--red); }
+
+    .timeline-date {
+      font-size: .63rem;
+      color: var(--text-faint);
+      text-align: center;
+    }
+
+    /* ── Tabs ────────────────────────────────────────────── */
+    .tabs-bar {
+      display: flex;
+      gap: .2rem;
+      border-bottom: 1px solid var(--glass-border);
+      margin-bottom: 1.4rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: .65rem 1.1rem;
+      font-size: .83rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color .2s, border-color .2s;
+      margin-bottom: -1px;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .tab-btn svg { width: 14px; height: 14px; }
+    .tab-btn:hover { color: var(--text-primary); }
+    .tab-btn.active { color: var(--purple-light); border-bottom-color: var(--purple-light); font-weight: 600; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: slideUp .25s ease; }
+
+    /* ── Info grid ───────────────────────────────────────── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+
+    .info-label {
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: var(--text-faint);
+    }
+
+    .info-value {
+      font-size: .9rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+
+    .info-value.empty { color: var(--text-faint); font-style: italic; font-weight: 400; font-size: .82rem; }
+    .info-value.highlight { color: var(--purple-light); font-weight: 700; }
+    .info-value.money { color: var(--green); font-weight: 700; font-size: 1rem; }
+
+    /* ── Prazo cards ─────────────────────────────────────── */
+    .prazo-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .8rem;
+    }
+
+    .prazo-display {
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius-sm);
+      padding: .9rem;
+      text-align: center;
+    }
+
+    .prazo-display-label { font-size: .68rem; color: var(--text-muted); margin-bottom: .4rem; }
+    .prazo-display-value { font-size: 1.4rem; font-weight: 800; color: var(--text-primary); }
+    .prazo-display-unit  { font-size: .65rem; color: var(--text-faint); margin-top: .2rem; }
+
+    /* ── Documento pill ──────────────────────────────────── */
+    .doc-pill-grid { display: flex; flex-direction: column; gap: .5rem; }
+
+    .doc-pill {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .7rem 1rem;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      font-size: .82rem;
+    }
+
+    .doc-pill.has-file   { background: rgba(34,197,94,.05); border-color: rgba(34,197,94,.2); }
+    .doc-pill.no-file    { background: rgba(239,68,68,.05);  border-color: rgba(239,68,68,.2); }
+
+    .doc-pill-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .doc-pill.has-file .doc-pill-icon { background: var(--green-bg); color: var(--green); }
+    .doc-pill.no-file  .doc-pill-icon { background: var(--red-bg);   color: var(--red); }
+    .doc-pill-icon svg { width: 16px; height: 16px; }
+
+    .doc-pill-name  { flex: 1; font-weight: 600; color: var(--text-primary); }
+    .doc-pill-files { font-size: .72rem; color: var(--text-muted); }
+    .doc-pill-status {
+      font-size: .7rem; font-weight: 700;
+      padding: .15rem .55rem; border-radius: 99px;
+    }
+
+    .doc-pill.has-file .doc-pill-status { background: var(--green-bg); color: var(--green); }
+    .doc-pill.no-file  .doc-pill-status { background: var(--red-bg);   color: var(--red); }
+
+    /* ── Parecer card ────────────────────────────────────── */
+    .parecer-card {
+      border-radius: var(--radius);
+      padding: 1.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .parecer-card.aprovado { background: rgba(34,197,94,.07);  border: 1px solid rgba(34,197,94,.25); }
+    .parecer-card.negado   { background: rgba(239,68,68,.07);  border: 1px solid rgba(239,68,68,.25); }
+    .parecer-card.pendente { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.25); }
+
+    .parecer-header { display: flex; align-items: center; gap: .8rem; margin-bottom: .9rem; }
+    .parecer-icon   { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .parecer-card.aprovado .parecer-icon { background: var(--green-bg);  color: var(--green); }
+    .parecer-card.negado   .parecer-icon { background: var(--red-bg);    color: var(--red); }
+    .parecer-card.pendente .parecer-icon { background: var(--yellow-bg); color: var(--yellow); }
+    .parecer-icon svg { width: 18px; height: 18px; }
+
+    .parecer-title { font-weight: 700; font-size: .95rem; color: var(--text-primary); }
+    .parecer-sub   { font-size: .73rem; color: var(--text-muted); }
+    .parecer-text  { font-size: .85rem; color: var(--text-secondary); line-height: 1.6; }
+
+    .limite-aprovado-display {
+      display: inline-flex;
+      align-items: baseline;
+      gap: .4rem;
+      margin-top: .8rem;
+      padding: .6rem 1rem;
+      background: rgba(34,197,94,.1);
+      border: 1px solid rgba(34,197,94,.3);
+      border-radius: var(--radius-sm);
+    }
+
+    .limite-aprovado-label { font-size: .72rem; color: var(--text-muted); }
+    .limite-aprovado-value { font-size: 1.2rem; font-weight: 800; color: var(--green); }
+
+    /* ── Prazos timeline (view) ─────────────────────────── */
+    .prazos-view { display: flex; flex-direction: column; gap: .25rem; }
+    .prazos-view-row { display: flex; align-items: center; gap: .7rem; padding: .38rem .6rem; border-radius: var(--radius-sm); background: rgba(255,255,255,.02); }
+    .prazos-view-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .prazos-view-lbl { flex: 1; font-size: .82rem; color: var(--text-secondary); }
+    .prazos-view-val { font-size: .85rem; font-weight: 700; white-space: nowrap; }
+    .prazos-view-cum { font-size: .7rem; color: var(--text-faint); min-width: 90px; text-align: right; white-space: nowrap; flex-shrink: 0; }
+
+    /* ── Barra de exposição (view) ───────────────────────── */
+    .exp-bar-view { margin-top: .75rem; padding: .75rem 1rem; background: rgba(66,44,118,.1); border-radius: var(--radius-sm); }
+    .exp-bar-row { display: flex; height: 10px; border-radius: 5px; overflow: hidden; gap: 1px; background: rgba(0,0,0,.25); margin-bottom: .5rem; }
+    .exp-bar-seg { height: 100%; }
+    .exp-bar-legend { display: flex; flex-wrap: wrap; gap: .3rem .75rem; }
+    .exp-bar-leg { display: flex; align-items: center; gap: .28rem; font-size: .7rem; color: var(--text-muted); }
+    .exp-bar-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+    /* ── Pagto exportador — parcelas (view) ──────────────── */
+    .pagto-parcelas-view { display: flex; flex-direction: column; gap: .3rem; }
+    .pagto-parcel-view { display: flex; align-items: center; gap: .55rem; padding: .38rem .7rem; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: var(--radius-sm); }
+    .pagto-parcel-pct { font-size: .88rem; font-weight: 800; color: var(--purple-light); min-width: 38px; }
+    .pagto-parcel-lbl { font-size: .82rem; color: var(--text-secondary); }
+
+    /* ── Comentário box ──────────────────────────────────── */
+    .comentario-box {
+      background: rgba(124,58,237,.06);
+      border: 1px solid rgba(124,58,237,.2);
+      border-left: 3px solid var(--purple-accent);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.2rem;
+      font-size: .87rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--purple-card); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: .9rem 1.3rem; font-size: .85rem; color: var(--text-primary); box-shadow: var(--shadow-lg); z-index: 2000; display: flex; align-items: center; gap: .7rem; animation: none; pointer-events: none; transform: translateY(100px); opacity: 0; transition: opacity .3s ease, transform .35s cubic-bezier(.22,.68,0,1.2); }
+    .toast.show { pointer-events: auto; transform: translateY(0); opacity: 1; }
+    .toast svg { width: 18px; height: 18px; color: var(--green); flex-shrink: 0; }
+
+    /* Modal exclusão */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: var(--purple-card); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 2rem; max-width: 400px; width: 90%; text-align: center; box-shadow: var(--shadow-lg); animation: slideUp .25s ease; }
+    .modal-icon { width: 56px; height: 56px; background: var(--red-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.2rem; }
+    .modal-icon svg { width: 26px; height: 26px; color: var(--red); }
+    .modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: .5rem; }
+    .modal-sub   { font-size: .85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; }
+    .modal-actions { display: flex; gap: .8rem; justify-content: center; }
+
+    @media (max-width: 860px) {
+      .prazo-cards { grid-template-columns: repeat(2, 1fr); }
+      .info-grid   { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<script>DB.auth.requireAuth();</script>
+
+<div class="app-shell">
+
+  <!-- sidebar montado por components.js -->
+  <aside class="sidebar"></aside>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1 id="topbar-title">Consultar Solicitação</h1>
+        <p id="topbar-sub">Detalhes completos da análise de crédito</p>
+      </div>
+      <div class="topbar-actions">
+        <a href="index.html" class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Voltar
+        </a>
+        <a href="#" id="btn-analise" class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Análise Financeira
+        </a>
+        <a href="#" id="btn-editar" class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          Editar
+        </a>
+        <button class="btn btn-danger btn-sm" onclick="openDeleteModal()">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          Excluir
+        </button>
+      </div>
+    </header>
+
+    <main class="page-content" id="page-content" style="display:none;">
+
+      <!-- HERO ─────────────────────────────────────────── -->
+      <div class="client-hero animate-in">
+        <div class="client-hero-top">
+          <div class="client-big-avatar" id="hero-avatar">??</div>
+          <div class="client-hero-info">
+            <div class="client-hero-name" id="hero-name">—</div>
+            <div class="client-hero-meta" id="hero-meta"></div>
+          </div>
+          <div class="client-hero-actions">
+            <span class="badge" id="hero-badge">—</span>
+          </div>
+        </div>
+
+        <!-- Timeline de status -->
+        <div class="status-timeline" id="status-timeline"></div>
+      </div>
+
+      <!-- TABS ─────────────────────────────────────────── -->
+      <div class="tabs-bar" id="tabs-bar">
+        <button class="tab-btn active" onclick="switchTab(this,'tab-cadastral')">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.6"/></svg>
+          Dados Cadastrais
+        </button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-comercial')">
+          <svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="6" y1="20" x2="6" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Dados Comerciais
+        </button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-operacao')">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+          Operação & Exportador
+        </button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-despesas')">
+          <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Despesas & Impostos
+        </button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-docs')">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.6"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.6"/></svg>
+          Documentos
+        </button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-parecer')">
+          <svg viewBox="0 0 24 24" fill="none"><polyline points="9 11 12 14 22 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Parecer Financeiro
+        </button>
+      </div>
+
+      <!-- TAB: CADASTRAL ─────────────────────────────── -->
+      <div class="tab-panel active card animate-in" id="tab-cadastral">
+        <div class="section-title mb-md">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.6"/></svg>
+          1. Dados Cadastrais
+        </div>
+        <div class="info-grid" id="grid-cadastral"></div>
+      </div>
+
+      <!-- TAB: COMERCIAL ─────────────────────────────── -->
+      <div class="tab-panel card animate-in" id="tab-comercial">
+        <div class="section-title mb-md">
+          <svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="6" y1="20" x2="6" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          2. Dados Comerciais Estimados
+        </div>
+        <div class="info-grid" id="grid-comercial"></div>
+      </div>
+
+      <!-- TAB: OPERAÇÃO ──────────────────────────────── -->
+      <div class="tab-panel card animate-in" id="tab-operacao">
+        <div class="section-title mb-md">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+          3.1 Operação com Exportador
+        </div>
+        <div class="info-grid mb-lg" id="grid-operacao"></div>
+
+        <div class="section-title mb-md">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          3.1.6 Prazos Estimados da Operação
+        </div>
+        <div id="prazo-cards"></div>
+      </div>
+
+      <!-- TAB: DESPESAS ──────────────────────────────── -->
+      <div class="tab-panel animate-in" id="tab-despesas">
+        <div class="card mb-md">
+          <div class="section-title mb-md">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="currentColor" stroke-width="1.6"/></svg>
+            3.2 Despesas de Desembaraço / Nacionalização
+          </div>
+          <div class="info-grid" id="grid-despesas"></div>
+        </div>
+        <div class="card">
+          <div class="section-title mb-md">
+            <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            3.3 Impostos de Comercialização
+          </div>
+          <div class="info-grid" id="grid-impostos"></div>
+        </div>
+      </div>
+
+      <!-- TAB: DOCUMENTOS ────────────────────────────── -->
+      <div class="tab-panel animate-in" id="tab-docs">
+        <div class="card mb-md">
+          <div class="section-title mb-md">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.6"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.6"/></svg>
+            Documentos Obrigatórios
+          </div>
+          <div class="doc-pill-grid" id="doc-pills"></div>
+        </div>
+        <div class="card" id="comentario-card">
+          <div class="section-title mb-md">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.6"/></svg>
+            4. Comentário do Trader / Operações
+          </div>
+          <div class="comentario-box" id="comentario-box"></div>
+        </div>
+      </div>
+
+      <!-- TAB: PARECER ───────────────────────────────── -->
+      <div class="tab-panel animate-in" id="tab-parecer">
+        <div id="parecer-content"></div>
+      </div>
+
+    </main>
+
+    <!-- Loading state -->
+    <div id="page-loading" style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:1rem;">
+      <svg viewBox="0 0 24 24" fill="none" width="40" height="40" style="color:var(--text-faint);animation:spin 1s linear infinite;">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="20 40" stroke-linecap="round"/>
+      </svg>
+      <p style="font-size:.85rem;color:var(--text-faint);">Carregando solicitação…</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal de exclusão -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal-box">
+    <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+    <div class="modal-title">Excluir Solicitação</div>
+    <div class="modal-sub" id="delete-modal-sub">Tem certeza que deseja excluir esta solicitação?</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('delete-modal').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span id="toast-msg"></span>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+  /* ── Sidebar ────────────────────────────────────────── */
+  App.mount('solicitacoes');
+
+  /* ── Helpers ─────────────────────────────────────────── */
+  const v   = (val, fallback = '—') => (val && String(val).trim() !== '' && val !== '0' && val !== '0,00') ? val : fallback;
+  const vm  = (val) => { if (!val || val === '0' || val === '0,00') return '<span class="info-value empty">—</span>'; return `<span class="info-value money">${DB.utils.fmtMoney(val)}</span>`; };
+  const vv  = (val, cls='') => `<span class="info-value ${cls}">${v(val)}</span>`;
+  const badge = (status) => `<span class="badge ${DB.utils.statusBadge[status] || 'pendente'}">${DB.utils.statusLabel[status] || status}</span>`;
+
+  function infoItem(label, valueHtml) {
+    return `<div class="info-item"><div class="info-label">${label}</div>${valueHtml}</div>`;
+  }
+
+  function infoVal(label, val, cls = '') {
+    const display = v(val);
+    return infoItem(label, `<span class="info-value ${display === '—' ? 'empty' : cls}">${display}</span>`);
+  }
+
+  /* ── Carregar solicitação da URL ─────────────────────── */
+  const urlParams = new URLSearchParams(window.location.search);
+  const id = urlParams.get('id');
+
+  let registro = null;
+
+  if (!id) {
+    window.location.href = 'index.html';
+  } else {
+    registro = DB.solicitacoes.getById(id);
+    if (!registro) {
+      document.getElementById('page-loading').innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" width="40" height="40" style="color:var(--red)"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <p style="font-size:.85rem;color:var(--text-muted);">Solicitação não encontrada. <a href="index.html" style="color:var(--purple-light)">Voltar</a></p>`;
+    } else {
+      renderPage(registro);
+    }
+  }
+
+  /* ── Renderizar página completa ──────────────────────── */
+  function renderPage(d) {
+    document.getElementById('page-loading').style.display = 'none';
+    document.getElementById('page-content').style.display = 'block';
+
+    // Topbar
+    document.getElementById('topbar-title').textContent = d.empresa;
+    document.getElementById('topbar-sub').textContent   = 'CNPJ: ' + d.cnpj + '  ·  Solicitação nº ' + d.id.toUpperCase();
+    document.getElementById('btn-analise').href = 'analise-financeira.html?id=' + d.id;
+    document.getElementById('btn-editar').href  = 'nova-solicitacao.html?id=' + d.id;
+    document.getElementById('delete-modal-sub').textContent = `Excluir a solicitação de "${d.empresa}"? Esta ação não pode ser desfeita.`;
+    document.title = d.empresa + ' — Consulta | Vendemmia';
+
+    // Hero
+    const initials = d.empresa.split(' ').filter(w => w.length > 2).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+    document.getElementById('hero-avatar').textContent = initials || d.empresa.slice(0,2).toUpperCase();
+    document.getElementById('hero-name').textContent   = d.empresa;
+    document.getElementById('hero-badge').className    = 'badge ' + (DB.utils.statusBadge[d.status] || 'pendente');
+    document.getElementById('hero-badge').textContent  = DB.utils.statusLabel[d.status] || d.status;
+
+    // Meta chips
+    const chips = [
+      d.cnpj              ? `<span class="meta-chip"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="8" y1="13" x2="12" y2="13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>${d.cnpj}</span>` : '',
+      d.solicitanteNome   ? `<span class="meta-chip"><svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.6"/></svg>${d.solicitanteNome}</span>` : '',
+      d.createdAt         ? `<span class="meta-chip"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>${DB.utils.fmtDate(d.createdAt)}</span>` : '',
+      d.origemDados       ? `<span class="origem-badge"><svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/></svg>Importado de ${d.origemDados}</span>` : '',
+    ].filter(Boolean).join('');
+    document.getElementById('hero-meta').innerHTML = chips;
+
+    // Timeline
+    renderTimeline(d.status, d.createdAt, d.updatedAt, d.parecerData);
+
+    // Tabs content
+    renderCadastral(d);
+    renderComercial(d);
+    renderOperacao(d);
+    renderDespesas(d);
+    renderDocs(d);
+    renderParecer(d);
+  }
+
+  /* ── Timeline ────────────────────────────────────────── */
+  function renderTimeline(status, createdAt, updatedAt, parecerData) {
+    const conclusaoLabel = status === 'negado'    ? 'Negado'
+                         : status === 'em_comite' ? 'Em Comitê'
+                         : 'Crédito Liberado';
+    const conclusaoIcon  = status === 'negado'
+      ? '<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+      : status === 'em_comite'
+        ? '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
+        : '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+
+    const steps = [
+      { key: 'solicitacao', label: 'Solicitação',  icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/>', date: DB.utils.fmtDate(createdAt) },
+      { key: 'analise',     label: 'Em Análise',   icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>', date: '' },
+      { key: 'parecer',     label: 'Parecer',      icon: '<polyline points="9 11 12 14 22 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>', date: parecerData ? DB.utils.fmtDate(parecerData) : '' },
+      { key: 'conclusao',   label: conclusaoLabel, icon: conclusaoIcon, date: '' },
+    ];
+
+    const stateMap = {
+      pendente:   [0],
+      em_analise: [0, 1],
+      em_comite:  [0, 1, 2, 3],
+      aprovado:   [0, 1, 2, 3],
+      negado:     [0, 1, 2, 3],
+    };
+    const activeIdx = stateMap[status] ? Math.max(...stateMap[status]) : 0;
+    const doneSet   = new Set(stateMap[status] || [0]);
+
+    const tl = document.getElementById('status-timeline');
+    tl.innerHTML = steps.map((s, i) => {
+      let cls = '';
+      if (i < activeIdx) cls = 'done';
+      else if (i === activeIdx) cls = (status === 'negado' && i === 3) ? 'error'
+                                    : (status === 'em_comite' && i === 3) ? 'active'
+                                    : 'active';
+
+      return `<div class="timeline-step ${cls}">
+        <div class="timeline-dot">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13">${s.icon}</svg>
+        </div>
+        <div class="timeline-label">${s.label}</div>
+        ${s.date ? `<div class="timeline-date">${s.date}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Aba Cadastral ───────────────────────────────────── */
+  function renderCadastral(d) {
+    document.getElementById('grid-cadastral').innerHTML = [
+      infoVal('Data da Solicitação',  d.dataSolicitacao ? new Date(d.dataSolicitacao).toLocaleDateString('pt-BR') : DB.utils.fmtDate(d.createdAt)),
+      infoVal('Empresa / Razão Social', d.empresa, 'highlight'),
+      infoVal('CNPJ',                 d.cnpj),
+      infoVal('Data de Fundação',     d.fundacao ? new Date(d.fundacao).toLocaleDateString('pt-BR') : ''),
+      infoVal('Ramo de Atividade',    d.ramo),
+      infoVal('Produto Principal',    d.produto),
+      infoVal('Cliente Integrado',    d.clienteIntegrado ? (DB.utils.integradoLabel[d.clienteIntegrado] || d.clienteIntegrado) : ''),
+      infoVal('Segmento',             d.segmento || ''),
+      infoItem('Breve Descrição', `<span class="info-value" style="grid-column:span 2">${v(d.descricao)}</span>`),
+    ].join('');
+  }
+
+  /* ── Aba Comercial ───────────────────────────────────── */
+  function renderComercial(d) {
+    const moedaPotencial = d.volPotencialMoeda || 'BRL';
+    const moedaMes       = d.volMesMoeda       || 'BRL';
+    const moeda6M        = d.vol6MesesMoeda    || 'BRL';
+
+    // Custo Administrativo — campo livre (ex: "CDI + 0,18% ao mês")
+    const custoAdmDisplay = d.custoAdm
+      ? `<span class="info-value">${d.custoAdm}</span>`
+      : `<span class="info-value empty">—</span>`;
+
+    // Rentabilidade — usa texto estruturado quando disponível
+    const rentText = (d.rentabilidadeParsed && d.rentabilidadeParsed.texto)
+      ? d.rentabilidadeParsed.texto
+      : (d.rentabilidadeObs || (d.rentabilidade ? d.rentabilidade + '%' : ''));
+    const rentDisplay = rentText
+      ? `<span class="info-value" style="line-height:1.55">${rentText}</span>`
+      : `<span class="info-value empty">—</span>`;
+
+    const qtdEmbarques = d.qtdEmbarques ||
+      [d.qtdEmbarquesMes1, d.qtdEmbarquesMes2, d.qtdEmbarquesMes3, d.qtdEmbarquesMes4]
+        .filter(Boolean).join(', ');
+
+    document.getElementById('grid-comercial').innerHTML = [
+      infoItem('Volume Potencial do Cliente',       `<span class="info-value money">${moedaPotencial !== 'BRL' ? moedaPotencial + ' ' : ''}${v(d.volPotencial)}</span>`),
+      infoItem('Volume Estimado 6 Meses',           `<span class="info-value money">${moeda6M !== 'BRL' ? moeda6M + ' ' : ''}${v(d.vol6Meses)}</span>`),
+      infoItem('Volume a Faturar / Mês',            `<span class="info-value money">${moedaMes !== 'BRL' ? moedaMes + ' ' : ''}${v(d.volMes)}</span>`),
+      infoVal('Qtd. Embarques / Mês',               qtdEmbarques),
+      infoVal('Principal Modal',                    d.modal ? (DB.utils.modalLabel[d.modal] || d.modal) : ''),
+      infoVal('Principais Origens',                 d.origens),
+      infoVal('Desconto Comercial',                 d.desconto ? d.desconto + '%' : ''),
+      infoVal('Custo Financeiro',                   d.custoFin === 'sim' ? 'Sim' : d.custoFin === 'nao' ? 'Não' : d.custoFin || ''),
+      infoVal('Operação de Cessão',                 d.cessao === 'sim' ? 'Sim' : d.cessao === 'nao' ? 'Não' : d.cessao || ''),
+      d.cessaoResp ? infoVal('Responsável pela Cessão', d.cessaoResp) : '',
+      infoItem('2.7 Custo Administrativo',          custoAdmDisplay),
+      infoItem('2.8 Rentabilidade Estimada',        rentDisplay),
+    ].filter(Boolean).join('');
+  }
+
+  /* ── Aba Operação ────────────────────────────────────── */
+  function renderOperacao(d) {
+    const exportadorDisplay = (() => {
+      if (d.exportadores && d.exportadores.length) return d.exportadores.filter(Boolean).join('<br>');
+      return v(d.exportador);
+    })();
+
+    // Limite exportador — usa texto completo se disponível (ex: "USD 270.350,00 por container")
+    const limiteText = d.limiteExportador ||
+      (d.limiteExportadorParsed && d.limiteExportadorParsed.texto) || '';
+
+    // Pagto ao exportador — parcelas (novo) ou texto simples (legado)
+    let pagtoExpHtml;
+    if (d.pagtoExportadorParcelas && d.pagtoExportadorParcelas.length) {
+      pagtoExpHtml = `<div class="pagto-parcelas-view">${
+        d.pagtoExportadorParcelas.map(p =>
+          `<div class="pagto-parcel-view">
+            <span class="pagto-parcel-pct">${p.pct}%</span>
+            <span class="pagto-parcel-lbl">${p.label || p.tipo}</span>
+          </div>`
+        ).join('')
+      }</div>`;
+    } else if (d.pagtoExportador) {
+      pagtoExpHtml = `<span class="info-value">${d.pagtoExportador}</span>`;
+    } else {
+      pagtoExpHtml = `<span class="info-value empty">—</span>`;
+    }
+
+    document.getElementById('grid-operacao').innerHTML = [
+      infoVal('3.1.1 Incoterms',                        d.incoterms),
+      infoVal('3.1.2 Tipo de Operação',                 d.tipoOp ? (DB.utils.tipoOpLabel[d.tipoOp] || d.tipoOp) : ''),
+      infoItem('3.1.3 Exportador(es)',                  `<span class="info-value">${exportadorDisplay}</span>`),
+      infoVal('3.1.4 Banco / Canal do Exportador',      d.bancoExportador),
+      infoVal('3.1.3 Importador na Fatura Comercial',   d.importadorFatura),
+      infoVal('3.1.3 Consignatário no B/L',             d.consignatario),
+      infoItem('3.1.5 Limite ao Exportador',
+        limiteText
+          ? `<span class="info-value highlight">${limiteText}</span>`
+          : `<span class="info-value empty">—</span>`),
+      infoVal('3.1.7 Prazo da Invoice (data estimada)', d.prazoInvoiceData
+        ? new Date(d.prazoInvoiceData + 'T00:00:00').toLocaleDateString('pt-BR')
+        : (d.prazoInvoice || '')),
+      infoItem('3.1.8 Pagto. ao Exportador',            pagtoExpHtml),
+      infoVal('3.1.8 Pagto. do Cliente à Vendemmia',    d.pagtoClienteExp),
+    ].join('');
+
+    renderPrazosTimeline(d);
+  }
+
+  /* ── Timeline de Prazos ──────────────────────────────── */
+  function renderPrazosTimeline(d) {
+    const phases = [
+      parseInt(d.prazoPrepEmbarque)   || 10,
+      parseInt(d.prazoEmbarque)        || 10,
+      parseInt(d.prazoTransit)         || 30,
+      parseInt(d.prazoDesembaraco)     || 2,
+      parseInt(d.prazoFaturamento)     || 3,
+      parseInt(d.prazoPagtoVendemmia)  || 60,
+    ];
+
+    // acumulados: cum[0]=0, ..., cum[6]=total
+    const cum = [0];
+    phases.forEach(p => cum.push(cum[cum.length - 1] + p));
+    const total = cum[6];
+
+    // Data da invoice
+    const invoiceDate = d.prazoInvoiceData || '';
+    let dateRangeHtml = '';
+    if (invoiceDate) {
+      const start = new Date(invoiceDate + 'T00:00:00');
+      const end   = new Date(start); end.setDate(end.getDate() + total);
+      const fmt   = dt => dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+      dateRangeHtml = `<span style="font-size:.74rem;color:var(--text-muted)">${fmt(start)} → ${fmt(end)}</span>`;
+    }
+
+    const STEP_COLORS = ['#a855f7','#3b82f6','#7c3aed','#f59e0b','#06b6d4','#8b5cf6','#01E18E'];
+    const STEP_BAR    = ['#3b82f6','#7c3aed','#f59e0b','#06b6d4','#8b5cf6','#01E18E'];
+    const LABELS      = ['Prep. Embarque','Embarque','Transit Time','Desembaraço','Faturamento','Pagto. Vendemmia'];
+
+    const steps = [
+      { num:1, color:STEP_COLORS[0], label:'Envio da Invoice',
+        valHtml: invoiceDate
+          ? `<span class="prazos-view-val" style="color:${STEP_COLORS[0]}">${new Date(invoiceDate+'T00:00:00').toLocaleDateString('pt-BR')}</span>`
+          : `<span class="prazos-view-val" style="color:var(--text-faint);font-weight:400">—</span>`,
+        cum: 'Dia 0' },
+      { num:2, color:STEP_COLORS[1], label:'Preparação para Embarque',  val:phases[0], cumIdx:1 },
+      { num:3, color:STEP_COLORS[2], label:'Embarque',                  val:phases[1], cumIdx:2 },
+      { num:4, color:STEP_COLORS[3], label:'Transit Time',              val:phases[2], cumIdx:3 },
+      { num:5, color:STEP_COLORS[4], label:'Desembaraço',               val:phases[3], cumIdx:4 },
+      { num:6, color:STEP_COLORS[5], label:'Faturamento',               val:phases[4], cumIdx:5 },
+      { num:7, color:STEP_COLORS[6], label:'Pagto. à Vendemmia',        val:phases[5], cumIdx:6 },
+    ];
+
+    const rowsHtml = steps.map(s => {
+      const valHtml = s.valHtml ||
+        `<span class="prazos-view-val" style="color:${s.color}">${s.val} <span style="font-size:.69rem;color:var(--text-faint);font-weight:400">dias</span></span>`;
+      const cumHtml = s.cum || `Dia ${cum[s.cumIdx-1]} – ${cum[s.cumIdx]}`;
+      return `<div class="prazos-view-row">
+        <div class="prazos-view-num" style="background:${s.color}">${s.num}</div>
+        <span class="prazos-view-lbl">${s.label}</span>
+        ${valHtml}
+        <span class="prazos-view-cum">${cumHtml}</span>
+      </div>`;
+    }).join('');
+
+    const segsHtml = phases.map((p, i) =>
+      `<div class="exp-bar-seg" style="background:${STEP_BAR[i]};width:${total > 0 ? (p/total*100).toFixed(1) : 0}%"></div>`
+    ).join('');
+
+    const legendHtml = STEP_BAR.map((c, i) =>
+      `<div class="exp-bar-leg"><div class="exp-bar-dot" style="background:${c}"></div>${LABELS[i]}</div>`
+    ).join('');
+
+    document.getElementById('prazo-cards').innerHTML = `
+      <div class="prazos-view">${rowsHtml}</div>
+      <div class="exp-bar-view">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:.35rem">
+          <span style="font-size:.7rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-muted)">Exposição Financeira Estimada</span>
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+            <span style="font-size:1.05rem;font-weight:800;color:var(--text-primary)">${total} <span style="font-size:.7rem;font-weight:400;color:var(--text-faint)">dias</span></span>
+            ${dateRangeHtml}
+          </div>
+        </div>
+        <div class="exp-bar-row">${segsHtml}</div>
+        <div class="exp-bar-legend">${legendHtml}</div>
+      </div>`;
+  }
+
+  /* ── Aba Despesas ────────────────────────────────────── */
+  function renderDespesas(d) {
+    document.getElementById('grid-despesas').innerHTML = [
+      infoItem('Limite Proposto Despesas / Mês', vm(d.limiteDesp)),
+      infoVal('Prazo Proposto (dias)',           d.prazoDesp),
+      infoVal('Forma de Pagto. (Cliente → Vendemmia)', d.pagtoDesp),
+    ].join('');
+
+    document.getElementById('grid-impostos').innerHTML = [
+      infoItem('Limite Proposto Impostos / Mês', vm(d.limiteImp)),
+      infoVal('Prazo Proposto (dias)',            d.prazoImp),
+      infoVal('Forma de Pagto. (Cliente → Vendemmia)', d.pagtoImp),
+    ].join('');
+  }
+
+  /* ── Aba Documentos ──────────────────────────────────── */
+  function renderDocs(d) {
+    const docs = d.documentos || {};
+    const docDefs = [
+      { key: 'balanco',  name: 'Últimos 2 Balanços Patrimoniais',     desc: 'Balanços dos dois últimos exercícios' },
+      { key: 'contrato', name: 'Contrato Social',                      desc: 'Contrato consolidado ou última alteração' },
+      { key: 'dre',      name: 'DRE / DFC',                            desc: 'Demonstração de Resultado e Fluxo de Caixa' },
+      { key: 'fat',      name: 'Estudo Tributário',                    desc: 'Estudo tributário elaborado para esta operação' },
+    ];
+
+    document.getElementById('doc-pills').innerHTML = docDefs.map(def => {
+      const files = docs[def.key] || [];
+      const has   = files.length > 0;
+      const fileList = has ? files.map(f => `<span style="display:block;margin-top:.2rem;font-size:.72rem;color:var(--text-muted);">📎 ${f}</span>`).join('') : '';
+      return `<div class="doc-pill ${has ? 'has-file' : 'no-file'}">
+        <div class="doc-pill-icon">
+          <svg viewBox="0 0 24 24" fill="none">${has
+            ? '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+            : '<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}
+          </svg>
+        </div>
+        <div style="flex:1">
+          <div class="doc-pill-name">${def.name}</div>
+          <div class="doc-pill-files">${def.desc}${fileList}</div>
+        </div>
+        <span class="doc-pill-status">${has ? 'Anexado' : 'Pendente'}</span>
+      </div>`;
+    }).join('');
+
+    // Comentário
+    const comentario = v(d.comentario);
+    if (comentario === '—') {
+      document.getElementById('comentario-card').style.display = 'none';
+    } else {
+      document.getElementById('comentario-box').textContent = comentario;
+    }
+  }
+
+  /* ── Aba Parecer ─────────────────────────────────────── */
+  function renderParecer(d) {
+    const el = document.getElementById('parecer-content');
+
+    if (d.status === 'aprovado') {
+      el.innerHTML = `
+        <div class="parecer-card aprovado">
+          <div class="parecer-header">
+            <div class="parecer-icon"><svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div>
+              <div class="parecer-title">Crédito Aprovado</div>
+              <div class="parecer-sub">Analista: ${v(d.parecerAnalista)} · ${DB.utils.fmtDate(d.parecerData)}</div>
+            </div>
+          </div>
+          <p class="parecer-text">${v(d.parecerFinanceiro)}</p>
+          <div class="limite-aprovado-display">
+            <span class="limite-aprovado-label">Limite aprovado:</span>
+            <span class="limite-aprovado-value">${DB.utils.fmtMoney(d.limiteAprovado)}</span>
+          </div>
+        </div>`;
+    } else if (d.status === 'negado') {
+      el.innerHTML = `
+        <div class="parecer-card negado">
+          <div class="parecer-header">
+            <div class="parecer-icon"><svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+            <div>
+              <div class="parecer-title">Crédito Negado</div>
+              <div class="parecer-sub">Analista: ${v(d.parecerAnalista)} · ${DB.utils.fmtDate(d.parecerData)}</div>
+            </div>
+          </div>
+          <p class="parecer-text">${v(d.parecerFinanceiro)}</p>
+        </div>`;
+    } else if (d.status === 'em_comite') {
+      const analista  = d.decisaoAnalista || d.parecerAnalista || '';
+      const dataDecis = d.decisao_at ? new Date(d.decisao_at).toLocaleDateString('pt-BR') : '';
+      el.innerHTML = `
+        <div class="parecer-card" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.28);">
+          <div class="parecer-header">
+            <div class="parecer-icon" style="background:rgba(245,158,11,.15);color:#f59e0b;">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <div class="parecer-title" style="color:#f59e0b;">Em Comitê de Crédito</div>
+              <div class="parecer-sub">${analista ? 'Analista: ' + analista : ''}${analista && dataDecis ? ' · ' : ''}${dataDecis}</div>
+            </div>
+          </div>
+          <p class="parecer-text" style="margin-bottom:.85rem;">O parecer técnico foi registrado e a operação está aguardando a decisão final do Comitê de Crédito.</p>
+          ${d.parecerTecnico ? `
+          <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.18);border-left:3px solid #f59e0b;border-radius:var(--radius-sm);padding:.85rem 1rem;font-size:.86rem;color:var(--text-secondary);line-height:1.65;font-style:italic;margin-bottom:.75rem;">
+            "${d.parecerTecnico}"
+          </div>` : ''}
+          ${d.limiteAprovado ? `
+          <div class="limite-aprovado-display" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);">
+            <span class="limite-aprovado-label">Limite proposto:</span>
+            <span class="limite-aprovado-value" style="color:#f59e0b;">${DB.utils.fmtMoney(d.limiteAprovado)}</span>
+          </div>` : ''}
+          <a href="comite-credito.html" class="btn btn-sm" style="margin-top:1rem;display:inline-flex;background:linear-gradient(135deg,#c97d00,#f59e0b);color:#1a0f00;border:none;font-weight:700;">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Ir ao Comitê de Crédito
+          </a>
+        </div>`;
+    } else if (d.status === 'em_analise') {
+      el.innerHTML = `
+        <div class="parecer-card pendente">
+          <div class="parecer-header">
+            <div class="parecer-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+            <div>
+              <div class="parecer-title">Análise em Andamento</div>
+              <div class="parecer-sub">Aguardando avaliação do time financeiro</div>
+            </div>
+          </div>
+          <p class="parecer-text">A solicitação está sendo analisada. Você será notificado quando houver um parecer.</p>
+        </div>`;
+    } else if (d.status === 'pendente') {
+      el.innerHTML = `
+        <div class="parecer-card" style="background:rgba(100,65,180,.07);border:1px solid rgba(100,65,180,.28);">
+          <div class="parecer-header">
+            <div class="parecer-icon" style="background:rgba(100,65,180,.15);color:var(--purple-light);">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <div class="parecer-title" style="color:var(--purple-light);">Na Fila — Aguardando Análise</div>
+              <div class="parecer-sub">Solicitação enviada e aguardando atribuição ao time financeiro</div>
+            </div>
+          </div>
+          <p class="parecer-text">A solicitação foi encaminhada com sucesso. O time financeiro irá iniciar a análise em breve.</p>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div class="parecer-card pendente">
+          <div class="parecer-header">
+            <div class="parecer-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div>
+              <div class="parecer-title">Aguardando Envio</div>
+              <div class="parecer-sub">Solicitação ainda não encaminhada ao time financeiro</div>
+            </div>
+          </div>
+          <p class="parecer-text">Complete o preenchimento da solicitação e os documentos obrigatórios para envio.</p>
+          <a href="nova-solicitacao.html?id=${id}" class="btn btn-primary btn-sm" style="margin-top:1rem;display:inline-flex;">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.7"/></svg>
+            Completar e Enviar
+          </a>
+        </div>`;
+    }
+  }
+
+  /* ── Tabs ────────────────────────────────────────────── */
+  function switchTab(btn, panelId) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(panelId).classList.add('active');
+  }
+
+  /* ── Excluir ─────────────────────────────────────────── */
+  function openDeleteModal()  { document.getElementById('delete-modal').classList.add('open'); }
+  function confirmDelete() {
+    DB.solicitacoes.delete(id);
+    sessionStorage.setItem('vd_saved', 'Solicitação excluída com sucesso.');
+    window.location.href = 'index.html';
+  }
+
+  /* ── Toast ───────────────────────────────────────────── */
+  if (sessionStorage.getItem('vd_toast')) {
+    const _toastMsg = sessionStorage.getItem('vd_toast');
+    sessionStorage.removeItem('vd_toast');
+    setTimeout(() => {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = _toastMsg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }, 120);
+  }
+</script>
+
+</body>
+</html>

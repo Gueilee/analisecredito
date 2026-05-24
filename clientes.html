@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consulta de Clientes — Vendemmia</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="db.js"></script>
+  <script src="components.js"></script>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── Layout ──────────────────────────────────────────── */
+    .main-area { overflow: hidden; }
+    .page-content { padding: 0 !important; overflow: hidden !important; display: flex; flex-direction: column; }
+
+    .split-shell {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    /* ── Left: client list ─────────────────────────────── */
+    .list-panel {
+      width: 308px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--purple-dark);
+    }
+
+    .list-toolbar {
+      padding: .9rem 1rem .8rem;
+      border-bottom: 1px solid var(--glass-border);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .65rem;
+    }
+
+    .list-search-wrap {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 9px;
+      padding: .55rem .85rem;
+    }
+    .list-search-wrap svg { width: 14px; height: 14px; color: var(--text-faint); flex-shrink: 0; }
+    .list-search-wrap input {
+      background: none; border: none; outline: none;
+      font-family: inherit; font-size: .84rem;
+      color: var(--text-primary); width: 100%;
+    }
+    .list-search-wrap input::placeholder { color: var(--text-faint); }
+
+    .filter-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .chip {
+      font-size: .63rem; font-weight: 700; letter-spacing: .3px;
+      text-transform: uppercase; padding: .28rem .7rem;
+      border-radius: 99px; border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.04); color: var(--text-faint);
+      cursor: pointer; transition: all .15s; font-family: inherit;
+    }
+    .chip:hover { border-color: rgba(255,255,255,.2); color: var(--text-muted); }
+    .chip.active { background: rgba(124,58,237,.2); border-color: rgba(124,58,237,.5); color: #c4b5fd; }
+    .chip.c-aprovado.active  { background: rgba(1,225,142,.1); border-color: rgba(1,225,142,.4); color: var(--brand-neon-green); }
+    .chip.c-negado.active    { background: var(--red-bg); border-color: rgba(239,68,68,.4); color: var(--red); }
+    .chip.c-analise.active   { background: var(--yellow-bg); border-color: rgba(245,158,11,.4); color: var(--yellow); }
+    .chip.c-pendente.active  { background: rgba(107,114,128,.1); border-color: rgba(107,114,128,.3); color: #9ca3af; }
+    .chip.c-comite.active    { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.4); color: #f59e0b; }
+
+    .list-count {
+      font-size: .68rem; color: var(--text-faint);
+      padding: .4rem 1rem .2rem;
+      flex-shrink: 0;
+    }
+
+    .list-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: .4rem .5rem;
+    }
+    .list-scroll::-webkit-scrollbar { width: 4px; }
+    .list-scroll::-webkit-scrollbar-track { background: transparent; }
+    .list-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+
+    /* ── Client card ─────────────────────────────────────── */
+    .cc {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .8rem .85rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .14s;
+      border: 1px solid transparent;
+      margin-bottom: .3rem;
+    }
+    .cc:hover { background: rgba(255,255,255,.04); }
+    .cc.active {
+      background: rgba(124,58,237,.14);
+      border-color: rgba(124,58,237,.35);
+    }
+
+    .cc-avatar {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 800; color: #fff;
+      flex-shrink: 0; letter-spacing: .5px;
+    }
+
+    .cc-body { flex: 1; min-width: 0; }
+    .cc-name {
+      font-size: .82rem; font-weight: 700;
+      color: var(--text-primary); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+    .cc-cnpj { font-size: .7rem; color: var(--text-faint); margin-top: .12rem; font-family: monospace; }
+    .cc-meta { display: flex; align-items: center; gap: .45rem; margin-top: .35rem; }
+    .cc-count { font-size: .66rem; color: var(--text-faint); }
+    .cc-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .cc-status-text { font-size: .66rem; font-weight: 600; }
+
+    .cc-right { text-align: right; flex-shrink: 0; }
+    .cc-date { font-size: .68rem; color: var(--text-faint); white-space: nowrap; }
+
+    .list-empty {
+      text-align: center; padding: 2.5rem 1rem;
+      color: var(--text-faint); font-size: .8rem;
+    }
+    .list-empty svg { width: 36px; height: 36px; margin: 0 auto .8rem; display: block; opacity: .3; }
+
+    /* ── Right: detail panel ────────────────────────────── */
+    .detail-panel {
+      flex: 1; overflow-y: auto; min-width: 0;
+      background: var(--purple-deep);
+    }
+    .detail-panel::-webkit-scrollbar { width: 6px; }
+    .detail-panel::-webkit-scrollbar-track { background: transparent; }
+    .detail-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 6px; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; min-height: 400px;
+      text-align: center; padding: 3rem;
+    }
+    .empty-state-icon {
+      width: 72px; height: 72px; border-radius: 18px;
+      background: rgba(124,58,237,.1); border: 1px solid rgba(124,58,237,.2);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.2rem;
+    }
+    .empty-state-icon svg { width: 32px; height: 32px; color: rgba(124,58,237,.6); }
+    .empty-title { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: .5rem; }
+    .empty-sub { font-size: .83rem; color: var(--text-muted); line-height: 1.6; max-width: 340px; }
+
+    /* ── Client header (in detail) ───────────────────────── */
+    .client-header {
+      background: linear-gradient(135deg, rgba(66,44,118,.35) 0%, rgba(9,6,26,.6) 100%);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 1.5rem 1.8rem 1.2rem;
+    }
+    .ch-top { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+    .ch-avatar {
+      width: 56px; height: 56px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 800; color: #fff;
+      flex-shrink: 0; letter-spacing: .5px;
+      border: 2px solid rgba(255,255,255,.12);
+    }
+    .ch-info { flex: 1; min-width: 0; }
+    .ch-name {
+      font-size: 1.15rem; font-weight: 800;
+      color: var(--text-primary); line-height: 1.2; margin-bottom: .3rem;
+    }
+    .ch-cnpj { font-size: .78rem; color: var(--text-muted); font-family: monospace; }
+    .ch-tags { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
+    .ch-tag {
+      font-size: .64rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .3px; padding: .22rem .65rem; border-radius: 99px;
+      background: rgba(255,255,255,.07); color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,.1);
+    }
+
+    /* KPI stats strip */
+    .client-stats {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: .75rem;
+      padding: 1rem 1.8rem;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .cs-card {
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+      border-radius: 10px; padding: .7rem .9rem; text-align: center;
+    }
+    .cs-value { font-size: 1.4rem; font-weight: 900; color: var(--text-primary); line-height: 1; }
+    .cs-label { font-size: .63rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-faint); margin-top: .3rem; }
+
+    /* ── Timeline ─────────────────────────────────────────── */
+    .timeline-wrap { padding: 1.4rem 1.8rem; }
+    .timeline-label {
+      font-size: .65rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--text-faint);
+      margin-bottom: 1rem; display: flex; align-items: center; gap: .6rem;
+    }
+    .timeline-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: rgba(255,255,255,.06);
+    }
+
+    .timeline-entry {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .timeline-entry::before {
+      content: ''; position: absolute;
+      left: -1rem; top: 28px; bottom: -1rem; width: 1px;
+      background: rgba(255,255,255,.06);
+      pointer-events: none;
+    }
+    .timeline-entry:last-child::before { display: none; }
+
+    .te-header {
+      display: flex; align-items: center; gap: .85rem;
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: 12px; padding: .9rem 1.1rem;
+      cursor: pointer; transition: background .14s, border-color .14s;
+      position: relative;
+    }
+    .te-header:hover { background: rgba(66,44,118,.25); border-color: rgba(124,58,237,.3); }
+
+    .te-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0; border: 2px solid;
+    }
+
+    .te-meta-wrap { flex: 1; min-width: 0; }
+    .te-docnum { font-size: .82rem; font-weight: 700; color: var(--text-primary); }
+    .te-submeta { font-size: .7rem; color: var(--text-faint); margin-top: .15rem; }
+    .te-tsline  { font-size: .62rem; color: rgba(255,255,255,.2); margin-top: .22rem; font-family: monospace; letter-spacing: .2px; }
+    .te-date-edit { cursor: pointer; border-bottom: 1px dashed transparent; transition: border-color .15s; display: inline-flex; align-items: center; gap: .25rem; }
+    .te-date-edit:hover { border-bottom-color: var(--text-faint); color: var(--text-primary); }
+    .te-date-edit svg { opacity: 0; transition: opacity .15s; }
+    .te-date-edit:hover svg { opacity: 1; }
+
+    .te-status {
+      font-size: .66rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .3px; padding: .22rem .7rem; border-radius: 99px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    .te-chevron {
+      width: 16px; height: 16px; color: var(--text-faint);
+      transition: transform .2s; flex-shrink: 0;
+    }
+    .te-chevron.open { transform: rotate(180deg); }
+
+    .te-delete-btn {
+      display: none; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 6px; border: none;
+      background: rgba(239,68,68,.12); color: #f87171;
+      cursor: pointer; flex-shrink: 0; transition: background .14s;
+    }
+    .te-delete-btn:hover { background: rgba(239,68,68,.3); color: #fca5a5; }
+    .te-header:hover .te-delete-btn { display: flex; }
+
+    /* ── Timeline body ───────────────────────────────────── */
+    .te-body {
+      display: none;
+      background: rgba(255,255,255,.018);
+      border: 1px solid var(--glass-border);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      overflow: hidden;
+    }
+    .te-body.open { display: block; }
+
+    /* Sections within entry */
+    .te-section { border-bottom: 1px solid rgba(255,255,255,.05); }
+    .te-section:last-child { border-bottom: none; }
+
+    .te-sec-hdr {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .75rem 1.1rem; cursor: pointer;
+      transition: background .14s;
+    }
+    .te-sec-hdr:hover { background: rgba(255,255,255,.03); }
+    .te-sec-hdr svg.sec-icon { width: 15px; height: 15px; flex-shrink: 0; }
+    .te-sec-title { flex: 1; font-size: .78rem; font-weight: 700; color: var(--text-secondary); }
+    .te-sec-chevron { width: 14px; height: 14px; color: var(--text-faint); transition: transform .2s; }
+    .te-sec-chevron.open { transform: rotate(180deg); }
+
+    .te-sec-body { display: none; padding: .3rem 1.1rem 1rem; }
+    .te-sec-body.open { display: block; }
+
+    /* ── Data grids inside sections ──────────────────────── */
+    .data-grid {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: .5rem .75rem;
+    }
+    .data-grid.cols-2 { grid-template-columns: repeat(2,1fr); }
+    .data-grid.cols-4 { grid-template-columns: repeat(4,1fr); }
+    .dg-item { padding: .55rem .7rem; background: rgba(255,255,255,.03); border-radius: 7px; }
+    .dg-label { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-faint); margin-bottom: .2rem; }
+    .dg-value { font-size: .8rem; color: var(--text-secondary); font-weight: 500; word-break: break-word; }
+    .dg-value.green { color: var(--brand-neon-green); }
+    .dg-value.red { color: var(--red); }
+    .dg-value.yellow { color: var(--yellow); }
+    .dg-value.mono { font-family: monospace; }
+
+    /* Section heading */
+    .sec-sub-label {
+      font-size: .62rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--text-faint);
+      margin: .9rem 0 .5rem; padding-bottom: .3rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+
+    /* QSA table */
+    .qsa-table { width: 100%; border-collapse: collapse; font-size: .76rem; margin-top: .5rem; }
+    .qsa-table th { color: var(--text-faint); font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: .35rem .5rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .qsa-table td { padding: .45rem .5rem; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,.03); }
+    .qsa-table tr:last-child td { border-bottom: none; }
+
+    /* AI score */
+    .score-row { display: flex; align-items: flex-start; gap: 1.2rem; margin-bottom: .8rem; }
+    .score-gauge { flex-shrink: 0; }
+    .score-meta { flex: 1; display: flex; flex-direction: column; gap: .5rem; padding-top: .3rem; }
+
+    .badge-pill {
+      display: inline-flex; align-items: center; gap: .35rem;
+      font-size: .68rem; font-weight: 700; padding: .28rem .75rem;
+      border-radius: 99px; border: 1px solid;
+    }
+    .badge-pill.green  { background: rgba(1,225,142,.1); color: var(--brand-neon-green); border-color: rgba(1,225,142,.3); }
+    .badge-pill.red    { background: var(--red-bg); color: var(--red); border-color: rgba(239,68,68,.3); }
+    .badge-pill.yellow { background: var(--yellow-bg); color: var(--yellow); border-color: rgba(245,158,11,.3); }
+    .badge-pill.purple { background: rgba(124,58,237,.12); color: #c4b5fd; border-color: rgba(124,58,237,.3); }
+    .badge-pill.blue   { background: var(--blue-bg); color: #60a5fa; border-color: rgba(59,130,246,.3); }
+
+    /* AI resumo */
+    .ai-resumo {
+      font-size: .8rem; color: var(--text-muted); line-height: 1.65;
+      padding: .7rem .85rem; background: rgba(255,255,255,.03);
+      border-radius: 8px; border-left: 3px solid rgba(124,58,237,.4);
+      margin-bottom: .75rem;
+    }
+
+    /* Pontos grid */
+    .pontos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+    .ponto-item {
+      display: flex; align-items: flex-start; gap: .5rem;
+      font-size: .76rem; color: var(--text-muted); line-height: 1.45;
+      padding: .45rem .6rem; background: rgba(255,255,255,.025); border-radius: 6px;
+    }
+    .ponto-item .ponto-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: .38rem; }
+
+    /* Alertas */
+    .alerta-item {
+      display: flex; align-items: flex-start; gap: .65rem;
+      padding: .6rem .8rem; margin-bottom: .4rem;
+      background: var(--red-bg); border: 1px solid rgba(239,68,68,.22);
+      border-radius: 8px; font-size: .77rem; color: var(--red); line-height: 1.5;
+    }
+    .alerta-item svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: .15rem; }
+
+    /* AI detail blocks */
+    .ai-block {
+      margin-bottom: .7rem; padding: .7rem .85rem;
+      background: rgba(255,255,255,.025); border-radius: 8px;
+    }
+    .ai-block-title {
+      font-size: .63rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--text-faint); margin-bottom: .4rem;
+    }
+    .ai-block-text { font-size: .78rem; color: var(--text-muted); line-height: 1.65; }
+
+    /* Limits table */
+    .lim-table { width: 100%; border-collapse: collapse; font-size: .78rem; margin-top: .5rem; }
+    .lim-table th { color: var(--text-faint); font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: .35rem .6rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .lim-table td { padding: .48rem .6rem; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,.03); }
+    .lim-table tr:last-child td { border-bottom: none; }
+    .lim-table .money { color: var(--brand-neon-green); font-weight: 600; }
+    .lim-table .total-row td { font-weight: 700; color: var(--text-primary); border-top: 1px solid rgba(255,255,255,.08); }
+
+    /* Decision box */
+    .dec-header {
+      display: flex; align-items: center; gap: .85rem;
+      padding: .85rem 1rem; border-radius: 10px; margin-bottom: .7rem;
+      border: 1px solid;
+    }
+    .dec-header.aprovado  { background: rgba(1,225,142,.08); border-color: rgba(1,225,142,.25); }
+    .dec-header.negado    { background: var(--red-bg); border-color: rgba(239,68,68,.3); }
+    .dec-header.em_analise{ background: var(--yellow-bg); border-color: rgba(245,158,11,.3); }
+    .dec-header.em_comite { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.3); }
+    .dec-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .dec-icon svg { width: 18px; height: 18px; }
+    .dec-icon.aprovado  { background: rgba(1,225,142,.15); color: var(--brand-neon-green); }
+    .dec-icon.negado    { background: rgba(239,68,68,.15); color: var(--red); }
+    .dec-icon.em_analise{ background: rgba(245,158,11,.15); color: var(--yellow); }
+    .dec-icon.em_comite { background: rgba(245,158,11,.15); color: #f59e0b; }
+    .dec-status { font-size: 1rem; font-weight: 800; }
+    .dec-status.aprovado  { color: var(--brand-neon-green); }
+    .dec-status.negado    { color: var(--red); }
+    .dec-status.em_analise{ color: var(--yellow); }
+    .dec-analista { font-size: .73rem; color: var(--text-faint); margin-top: .15rem; }
+
+    .parecer-box {
+      padding: .8rem .95rem; background: rgba(124,58,237,.06);
+      border: 1px solid rgba(124,58,237,.2); border-left: 3px solid rgba(124,58,237,.5);
+      border-radius: 8px; font-size: .8rem; color: var(--text-muted);
+      line-height: 1.65; font-style: italic; margin-bottom: .7rem;
+    }
+    .parecer-label {
+      font-size: .6rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .4px; color: rgba(196,168,255,.6); margin-bottom: .4rem;
+    }
+
+    /* Docs / Anexos */
+    .doc-category { margin-bottom: .7rem; }
+    .doc-cat-label {
+      font-size: .63rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .4px; color: var(--text-faint); margin-bottom: .35rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .doc-file-item {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .5rem .7rem; background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06); border-radius: 7px;
+      margin-bottom: .3rem; font-size: .78rem; color: var(--text-secondary);
+    }
+    .doc-file-item svg { width: 15px; height: 15px; color: var(--purple-light); flex-shrink: 0; }
+    .doc-file-size { margin-left: auto; font-size: .68rem; color: var(--text-faint); }
+    .doc-no-files {
+      padding: .6rem .8rem; background: rgba(255,255,255,.02);
+      border: 1px dashed rgba(255,255,255,.08); border-radius: 7px;
+      font-size: .76rem; color: var(--text-faint); font-style: italic;
+    }
+
+    /* Links */
+    .sim-link {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .55rem 1.1rem; border-radius: 8px;
+      background: rgba(124,58,237,.15); border: 1px solid rgba(124,58,237,.35);
+      color: #c4b5fd; font-size: .8rem; font-weight: 600; text-decoration: none;
+      transition: background .14s, border-color .14s; margin-right: .6rem; margin-top: .3rem;
+    }
+    .sim-link:hover { background: rgba(124,58,237,.25); border-color: rgba(124,58,237,.55); color: #ddd6fe; }
+    .sim-link svg { width: 14px; height: 14px; }
+
+    @media (max-width: 900px) {
+      .list-panel { width: 260px; }
+      .client-stats { grid-template-columns: repeat(2,1fr); }
+      .data-grid { grid-template-columns: repeat(2,1fr); }
+      .pontos-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Modal exclusão ──────────────────────────────────── */
+    #del-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      backdrop-filter: blur(6px); z-index: 2000;
+      display: none; align-items: center; justify-content: center;
+    }
+    #del-modal-overlay.open { display: flex; }
+    .del-modal-box {
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); padding: 2rem 2rem 1.6rem;
+      max-width: 360px; width: 90%; text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,.6);
+      animation: delModalIn .22s cubic-bezier(.22,.68,0,1.2) both;
+    }
+    @keyframes delModalIn { from { opacity:0; transform:scale(.94) translateY(8px); } to { opacity:1; transform:none; } }
+    .del-modal-icon {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.25);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.1rem; color: #f87171;
+    }
+    .del-modal-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: .45rem; }
+    .del-modal-sub   { font-size: .83rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 1.5rem; }
+    .del-modal-btns  { display: flex; gap: .65rem; justify-content: center; }
+    .del-modal-btns button {
+      flex: 1; padding: .6rem 1rem; border-radius: var(--radius-sm);
+      font-size: .84rem; font-weight: 600; cursor: pointer;
+      border: 1px solid; transition: background .14s, transform .1s;
+    }
+    .del-modal-btns button:active { transform: scale(.97); }
+    .del-btn-cancel {
+      background: rgba(255,255,255,.05); color: var(--text-muted);
+      border-color: var(--glass-border) !important;
+    }
+    .del-btn-cancel:hover { background: rgba(255,255,255,.09); color: var(--text-primary); }
+    .del-btn-confirm {
+      background: rgba(239,68,68,.15); color: #f87171;
+      border-color: rgba(239,68,68,.35) !important;
+    }
+    .del-btn-confirm:hover { background: rgba(239,68,68,.28); color: #fca5a5; }
+  </style>
+</head>
+<body>
+<script>const session = DB.auth.requireAuth();</script>
+
+<div class="app-shell">
+  <aside class="sidebar"></aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-title">
+        <div class="breadcrumb">Gestão</div>
+        <h1>Consulta de Clientes</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="topbar-count" style="font-size:.8rem;color:var(--text-muted);"></span>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div class="split-shell">
+
+        <!-- ══ LEFT PANEL ══════════════════════════════════ -->
+        <div class="list-panel">
+          <div class="list-toolbar">
+            <div class="list-search-wrap">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.7"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <input type="text" id="search-input" placeholder="Empresa ou CNPJ…" oninput="applyFilters()" />
+            </div>
+            <div class="filter-chips">
+              <button class="chip active"        onclick="setFilter('all',this)">Todos</button>
+              <button class="chip c-aprovado"    onclick="setFilter('aprovado',this)">Aprovado</button>
+              <button class="chip c-negado"      onclick="setFilter('negado',this)">Negado</button>
+              <button class="chip c-analise"     onclick="setFilter('em_analise',this)">Em Análise</button>
+              <button class="chip c-pendente"    onclick="setFilter('pendente',this)">Pendente</button>
+              <button class="chip c-comite"     onclick="setFilter('em_comite',this)">Comitê</button>
+            </div>
+          </div>
+          <div class="list-count" id="list-count"></div>
+          <div class="list-scroll" id="list-scroll">
+            <div class="list-empty">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              Carregando clientes…
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ RIGHT PANEL ═════════════════════════════════ -->
+        <div class="detail-panel" id="detail-panel">
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </div>
+            <div class="empty-title">Selecione um cliente</div>
+            <div class="empty-sub">Escolha um cliente na lista à esquerda para ver o histórico completo de análises, dados da Receita Federal, parecer do analista e documentos.</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIG & CONSTANTS
+══════════════════════════════════════════════════════════════ */
+App.mount('clientes');
+const API_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+
+const STATUS_LABEL = {
+  aprovado:  'Aprovado',
+  negado:    'Negado',
+  em_analise:'Em Análise',
+  pendente:  'Pendente',
+  em_comite: 'Em Comitê',
+};
+const STATUS_COLOR = {
+  aprovado:  '#01E18E',
+  negado:    '#ef4444',
+  em_analise:'#f59e0b',
+  pendente:  '#6b7280',
+  em_comite: '#f59e0b',
+};
+const STATUS_BG = {
+  aprovado:  'rgba(1,225,142,.12)',
+  negado:    'rgba(239,68,68,.12)',
+  em_analise:'rgba(245,158,11,.12)',
+  pendente:  'rgba(107,114,128,.12)',
+  em_comite: 'rgba(245,158,11,.12)',
+};
+
+/* ══════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════ */
+let allClients    = [];   // [{cnpj, empresa, entries:[], latestDate, latestStatus}]
+let activeFilter  = 'all';
+let selectedCNPJ  = null;
+let expandedEntries = new Set();
+let expandedSections = new Set();
+
+/* ══════════════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════════════ */
+function normCNPJ(v) { return (v || '').replace(/\D/g, ''); }
+
+function fmtCNPJ(v) {
+  const d = normCNPJ(v);
+  if (d.length !== 14) return v;
+  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function fmtMoney(v) {
+  if (!v) return '—';
+  const n = parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+  if (isNaN(n)) return v;
+  return 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2});
+}
+function esc(v) {
+  return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const AVATAR_COLORS = ['#7c3aed','#2563eb','#0891b2','#059669','#d97706','#dc2626','#7c3aed','#6d28d9'];
+function avatarColor(name) {
+  const code = (name||'').charCodeAt(0) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[code];
+}
+function initials(name) {
+  return (name||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase() || '??';
+}
+
+function docNum(sol) {
+  const year = sol.dataSolicitacao ? new Date(sol.dataSolicitacao).getFullYear() : new Date().getFullYear();
+  const raw  = sol.id || sol.solicitacao_id || '';
+  return 'AC-' + year + '-' + raw.slice(-8).toUpperCase();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DATA LOADING & MERGING
+══════════════════════════════════════════════════════════════ */
+async function loadData() {
+  // 1. Backend historico
+  const histEntries = [];
+  try {
+    const r = await fetch(`${API_URL}/api/historico?limit=2000`, { credentials: 'include' });
+    if (r.ok) { const d = await r.json(); histEntries.push(...(d.entries||[])); }
+  } catch(_) {}
+
+  // 2. LocalStorage solicitations
+  const localSols = DB.solicitacoes.getAll() || [];
+
+  // 3. Merge by solicitation id
+  const byId = new Map();
+  histEntries.forEach(e => {
+    // Normaliza RF vinda do backend: pode ter wrapper { status, data } ou estar direto
+    const rfApiRaw = e.receita_federal || null;
+    const rfApiNorm = rfApiRaw ? (rfApiRaw.data || rfApiRaw) : null;
+
+    byId.set(e.solicitacao_id, {
+      source: 'api',
+      solicitacao_id: e.solicitacao_id,
+      empresa:         e.empresa,
+      cnpj:            e.cnpj,
+      status_solicitacao: e.status_solicitacao,
+      solicitante:     e.solicitante,
+      data_solicitacao: e.data_solicitacao,
+      dados_sol:       e.dados_solicitacao || {},
+      receita_federal: rfApiNorm,
+      analise_ia:      e.analise_ia || null,
+      modelo_ia:       e.modelo_ia || null,
+      timestamps: {
+        solicitacao_criada_at: e.solicitacao_criada_at || e.data_solicitacao || null,
+        rf_consultada_at:      e.rf_consultada_at  || null,
+        analise_ia_at:         e.analise_ia_at     || null,
+        decisao_at:            e.decisao_at        || null,
+      },
+    });
+  });
+
+  localSols.forEach(sol => {
+    const sid = sol.id;
+
+    // Normaliza RF: a API retorna { status, data: {...} } — extrai o nível data
+    const rfRaw = sol.analise?.cnpj_data || null;
+    const rfNorm = rfRaw ? (rfRaw.data || rfRaw) : null;
+
+    if (!byId.has(sid)) {
+      byId.set(sid, {
+        source: 'local',
+        solicitacao_id: sid,
+        empresa:         sol.empresa,
+        cnpj:            sol.cnpj,
+        status_solicitacao: sol.status || 'pendente',
+        solicitante:     sol.solicitanteNome || sol.solicitante || '—',
+        data_solicitacao: sol.dataSolicitacao || sol.createdAt || new Date().toISOString(),
+        dados_sol:       sol,
+        receita_federal: rfNorm,
+        analise_ia:      sol.analise?.analysis  || null,
+        modelo_ia:       sol.analise?.modelo_ia || null,
+        timestamps: {
+          solicitacao_criada_at: sol.createdAt || sol.dataSolicitacao || null,
+          rf_consultada_at:      sol.rf_consultada_at || null,
+          analise_ia_at:         sol.rf_consultada_at || sol.analise_at || null,
+          decisao_at:            sol.decisao_at || null,
+        },
+      });
+    } else {
+      // Enrich API entry with local sol data. Local sol has the authoritative
+      // status and analyst decision fields — it must override the API snapshot
+      // which was captured at submission time and may have stale status/parecer.
+      const existing = byId.get(sid);
+      existing.dados_sol = { ...(existing.dados_sol||{}), ...sol };
+      existing.status_solicitacao = sol.status || existing.status_solicitacao;
+      if (!existing.receita_federal && rfNorm) existing.receita_federal = rfNorm;
+      if (!existing.analise_ia && sol.analise?.analysis) existing.analise_ia = sol.analise.analysis;
+      if (!existing.timestamps) existing.timestamps = {};
+      if (!existing.timestamps.rf_consultada_at && sol.rf_consultada_at) existing.timestamps.rf_consultada_at = sol.rf_consultada_at;
+      if (!existing.timestamps.analise_ia_at    && sol.analise_at)       existing.timestamps.analise_ia_at    = sol.analise_at;
+      if (!existing.timestamps.decisao_at       && sol.decisao_at)       existing.timestamps.decisao_at       = sol.decisao_at;
+      // Preferir data local sobre a data do backend:
+      // dataSolicitacao = corrigida manualmente; createdAt = quando foi criada localmente
+      if (sol.dataSolicitacao) existing.data_solicitacao = sol.dataSolicitacao;
+      else if (sol.createdAt)  existing.data_solicitacao = sol.createdAt;
+    }
+  });
+
+  // Remover registros explicitamente deletados (inclusive os que só existem no backend)
+  const _deletedIds = DB.deletedIds.getAll();
+  for (const _did of _deletedIds) byId.delete(_did);
+
+  // 4. Group by normalized CNPJ
+  const byCNPJ = new Map();
+  for (const entry of byId.values()) {
+    const key = normCNPJ(entry.cnpj) || ('__' + entry.empresa);
+    if (!byCNPJ.has(key)) {
+      byCNPJ.set(key, { cnpj: entry.cnpj, empresa: entry.empresa, entries: [] });
+    }
+    byCNPJ.get(key).entries.push(entry);
+  }
+
+  // 5. Sort within groups and compute metadata
+  allClients = [];
+  for (const client of byCNPJ.values()) {
+    client.entries.sort((a,b) => new Date(b.data_solicitacao) - new Date(a.data_solicitacao));
+    client.latestDate   = client.entries[0].data_solicitacao;
+    client.latestStatus = client.entries[0].status_solicitacao;
+    allClients.push(client);
+  }
+  allClients.sort((a,b) => new Date(b.latestDate) - new Date(a.latestDate));
+
+  document.getElementById('topbar-count').textContent = allClients.length + ' cliente' + (allClients.length !== 1 ? 's' : '');
+  applyFilters();
+
+  // Auto-select client if ?cnpj= is in the URL (e.g. returning from exposicao readonly)
+  const _urlCNPJ = new URLSearchParams(location.search).get('cnpj');
+  if (_urlCNPJ) {
+    const _norm = _urlCNPJ.replace(/\D/g, '');
+    const _match = allClients.find(c => normCNPJ(c.cnpj) === _norm);
+    if (_match) selectClient(_norm);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILTER & RENDER LIST
+══════════════════════════════════════════════════════════════ */
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const term = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  let results = allClients;
+
+  if (activeFilter !== 'all') {
+    results = results.filter(c =>
+      c.latestStatus === activeFilter ||
+      c.entries.some(e => e.status_solicitacao === activeFilter)
+    );
+  }
+  if (term) {
+    results = results.filter(c =>
+      c.empresa.toLowerCase().includes(term) ||
+      c.cnpj.replace(/\D/g,'').includes(term.replace(/\D/g,''))
+    );
+  }
+
+  renderList(results);
+}
+
+function renderList(clients) {
+  if (!clients) clients = allClients;
+  const el = document.getElementById('list-scroll');
+  const countEl = document.getElementById('list-count');
+
+  if (!clients.length) {
+    el.innerHTML = `<div class="list-empty">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Nenhum cliente encontrado
+    </div>`;
+    countEl.textContent = '';
+    return;
+  }
+
+  countEl.textContent = clients.length + ' cliente' + (clients.length !== 1 ? 's' : '');
+
+  el.innerHTML = clients.map(c => {
+    const clr  = STATUS_COLOR[c.latestStatus] || '#6b7280';
+    const lbl  = STATUS_LABEL[c.latestStatus] || 'Pendente';
+    const isActive = normCNPJ(c.cnpj) === selectedCNPJ;
+    const n    = c.entries.length;
+    return `<div class="cc ${isActive ? 'active' : ''}" onclick="selectClient('${esc(normCNPJ(c.cnpj))}')">
+      <div class="cc-avatar" style="background:${avatarColor(c.empresa)};">${initials(c.empresa)}</div>
+      <div class="cc-body">
+        <div class="cc-name" title="${esc(c.empresa)}">${esc(c.empresa)}</div>
+        <div class="cc-cnpj">${esc(fmtCNPJ(c.cnpj))}</div>
+        <div class="cc-meta">
+          <span class="cc-count">${n} análise${n!==1?'s':''}</span>
+          <span class="cc-status-dot" style="background:${clr};"></span>
+          <span class="cc-status-text" style="color:${clr};">${lbl}</span>
+        </div>
+      </div>
+      <div class="cc-right">
+        <div class="cc-date">${fmtDate(c.latestDate)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SELECT CLIENT → RENDER DETAIL
+══════════════════════════════════════════════════════════════ */
+function selectClient(cnpjNorm) {
+  selectedCNPJ = cnpjNorm;
+  expandedEntries.clear();
+  expandedSections.clear();
+
+  const client = allClients.find(c => normCNPJ(c.cnpj) === cnpjNorm);
+  if (!client) return;
+
+  // Re-render list to update active state
+  applyFilters();
+
+  renderDetail(client);
+}
+
+function renderDetail(client) {
+  const total     = client.entries.length;
+  const aprovadas = client.entries.filter(e => e.status_solicitacao === 'aprovado').length;
+  const negadas   = client.entries.filter(e => e.status_solicitacao === 'negado').length;
+  const emAnal    = client.entries.filter(e => e.status_solicitacao === 'em_analise').length;
+  const pendentes = client.entries.filter(e => e.status_solicitacao === 'pendente').length;
+
+  const sol0 = client.entries[0].dados_sol || {};
+  const tags = [sol0.segmento, sol0.ramo, sol0.modal && (sol0.modal.charAt(0).toUpperCase()+sol0.modal.slice(1))].filter(Boolean);
+
+  let html = `
+  <!-- ── Company header ── -->
+  <div class="client-header">
+    <div class="ch-top">
+      <div class="ch-avatar" style="background:${avatarColor(client.empresa)};">${initials(client.empresa)}</div>
+      <div class="ch-info">
+        <div class="ch-name">${esc(client.empresa)}</div>
+        <div class="ch-cnpj">${esc(fmtCNPJ(client.cnpj))}</div>
+        <div class="ch-tags">
+          ${tags.map(t => `<span class="ch-tag">${esc(t)}</span>`).join('')}
+          ${sol0.fundacao ? `<span class="ch-tag">Fundado em ${fmtDate(sol0.fundacao)}</span>` : ''}
+          ${sol0.produto  ? `<span class="ch-tag">${esc(sol0.produto)}</span>` : ''}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Stats ── -->
+  <div class="client-stats">
+    <div class="cs-card"><div class="cs-value">${total}</div><div class="cs-label">Total Análises</div></div>
+    <div class="cs-card"><div class="cs-value" style="color:var(--brand-neon-green);">${aprovadas}</div><div class="cs-label">Aprovadas</div></div>
+    <div class="cs-card"><div class="cs-value" style="color:var(--red);">${negadas}</div><div class="cs-label">Negadas</div></div>
+    <div class="cs-card"><div class="cs-value" style="color:var(--yellow);">${emAnal + pendentes}</div><div class="cs-label">Em Andamento</div></div>
+  </div>
+
+  <!-- ── Timeline ── -->
+  <div class="timeline-wrap">
+    <div class="timeline-label">Histórico de Análises</div>
+    ${client.entries.map((e,i) => renderTimelineEntry(e, i)).join('')}
+  </div>`;
+
+  document.getElementById('detail-panel').innerHTML = html;
+  document.getElementById('detail-panel').scrollTop = 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TIMELINE ENTRY
+══════════════════════════════════════════════════════════════ */
+function renderTimelineEntry(entry, idx) {
+  // dados_sol: estado completo da solicitação salvo no backend
+  // dec: objeto decisao_analista (salvo separadamente via PATCH — fonte de verdade pós-análise)
+  const sol  = entry.dados_sol || {};
+  const dec  = entry.decisao_analista || {};
+  const ts   = entry.timestamps || {};
+  const st   = entry.status_solicitacao || sol.status || 'pendente';
+  const clr  = STATUS_COLOR[st];
+  const lbl  = STATUS_LABEL[st];
+  const eid  = entry.solicitacao_id + '_' + idx;
+  const dn   = docNum({ id: entry.solicitacao_id, dataSolicitacao: entry.data_solicitacao });
+
+  // Linha de auditoria de datas
+  const tsLine = buildTimestampLine(ts, entry.data_solicitacao);
+
+  const chevronSVG = `<svg class="te-chevron" viewBox="0 0 24 24" fill="none" id="chev-${eid}"><polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  return `
+  <div class="timeline-entry">
+    <div class="te-header" onclick="toggleEntry('${eid}')">
+      <div class="te-dot" style="background:${clr};border-color:${clr};"></div>
+      <div class="te-meta-wrap">
+        <div class="te-docnum">${esc(dn)}</div>
+        <div class="te-submeta">${esc(entry.solicitante || '—')} · <span class="te-date-edit" onclick="editEntryDate('${entry.solicitacao_id}', '${(entry.data_solicitacao || '').split('T')[0]}', event)" title="Clique para corrigir a data">${fmtDate(entry.data_solicitacao)}<svg viewBox="0 0 24 24" fill="none" width="10" height="10"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></div>
+        ${tsLine ? `<div class="te-tsline">${tsLine}</div>` : ''}
+      </div>
+      <span class="te-status" style="background:${STATUS_BG[st]};color:${clr};border:1px solid ${clr}40;">
+        ${esc(lbl)}
+      </span>
+      <button class="te-delete-btn" onclick="deleteAnalysis('${entry.solicitacao_id}', event)" title="Excluir esta análise">
+        <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10 11v6m4-6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      ${chevronSVG}
+    </div>
+    <div class="te-body" id="body-${eid}">
+      ${renderSolicitacao(sol, eid)}
+      ${renderRF(entry.receita_federal, eid)}
+      ${renderSerasa(sol, eid)}
+      ${renderIA(entry.analise_ia, entry.modelo_ia, ts, eid)}
+      ${renderDecisao(sol, dec, ts, eid)}
+      ${renderComite(sol, eid)}
+      ${renderExposicao(sol, eid)}
+      ${renderDocs(sol, eid)}
+    </div>
+  </div>`;
+}
+
+/* Linha de timestamps compacta no header da entry */
+function buildTimestampLine(ts, dataSol) {
+  const steps = [];
+  if (ts.solicitacao_criada_at || dataSol) steps.push(`Solic. ${fmtDate(ts.solicitacao_criada_at || dataSol)}`);
+  if (ts.rf_consultada_at)   steps.push(`RF ${fmtDateTime(ts.rf_consultada_at)}`);
+  if (ts.analise_ia_at)      steps.push(`IA ${fmtDateTime(ts.analise_ia_at)}`);
+  if (ts.decisao_at)         steps.push(`Decisão ${fmtDateTime(ts.decisao_at)}`);
+  return steps.join(' · ');
+}
+
+let _pendingDeleteId = null;
+
+function deleteAnalysis(solId, evt) {
+  evt.stopPropagation();
+  _pendingDeleteId = solId;
+  document.getElementById('del-modal-overlay').classList.add('open');
+}
+
+function closeDelModal() {
+  document.getElementById('del-modal-overlay').classList.remove('open');
+  _pendingDeleteId = null;
+}
+
+async function confirmDelAnalysis() {
+  if (!_pendingDeleteId) return;
+  const delId = _pendingDeleteId;
+  closeDelModal();
+  DB.solicitacoes.delete(delId);
+  await loadData();
+  // Re-renderiza painel do cliente selecionado (ou limpa se não tiver mais análises)
+  if (selectedCNPJ) {
+    const still = allClients.find(c => normCNPJ(c.cnpj) === selectedCNPJ);
+    if (still) selectClient(selectedCNPJ);
+    else {
+      selectedCNPJ = null;
+      document.getElementById('detail-panel').innerHTML =
+        `<div class="empty-state"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/></svg></div><div class="empty-title">Selecione um cliente</div><div class="empty-sub">Escolha um cliente na lista à esquerda.</div></div>`;
+      applyFilters();
+    }
+  }
+}
+
+function editEntryDate(solId, currentIsoDate, evt) {
+  evt.stopPropagation();
+  const span = evt.currentTarget;
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.value = currentIsoDate || new Date().toISOString().split('T')[0];
+  input.style.cssText = 'background:var(--purple-mid);border:1px solid rgba(139,92,246,.5);border-radius:5px;color:var(--text-primary);font-size:.7rem;padding:.1rem .3rem;width:130px;';
+  span.replaceWith(input);
+  input.focus();
+  const save = async () => {
+    if (input.value) {
+      const sol = DB.solicitacoes.getById(solId);
+      if (sol) DB.solicitacoes.update(solId, { dataSolicitacao: input.value });
+    }
+    await loadData();
+    if (selectedCNPJ) {
+      const still = allClients.find(c => normCNPJ(c.cnpj) === selectedCNPJ);
+      if (still) selectClient(selectedCNPJ);
+    }
+  };
+  input.addEventListener('blur',   save, { once: true });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = currentIsoDate; input.blur(); } });
+}
+
+function toggleEntry(eid) {
+  const body  = document.getElementById('body-' + eid);
+  const chev  = document.getElementById('chev-' + eid);
+  const open  = body.classList.contains('open');
+  body.classList.toggle('open', !open);
+  if (chev) chev.classList.toggle('open', !open);
+}
+
+/* ── Section toggle ─────────────────────────────────────────── */
+function makeSection(icon, title, content, eid, key) {
+  const sid = 'sec-' + eid + '-' + key;
+  return `
+  <div class="te-section">
+    <div class="te-sec-hdr" onclick="toggleSection('${sid}')">
+      <svg class="sec-icon" viewBox="0 0 24 24" fill="none">${icon}</svg>
+      <span class="te-sec-title">${title}</span>
+      <svg class="te-sec-chevron" id="schev-${sid}" viewBox="0 0 24 24" fill="none"><polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </div>
+    <div class="te-sec-body" id="${sid}">${content}</div>
+  </div>`;
+}
+
+function toggleSection(sid) {
+  const body = document.getElementById(sid);
+  const chev = document.getElementById('schev-' + sid);
+  const open = body.classList.contains('open');
+  body.classList.toggle('open', !open);
+  if (chev) chev.classList.toggle('open', !open);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 1 — DADOS DA SOLICITAÇÃO
+══════════════════════════════════════════════════════════════ */
+function renderSolicitacao(sol, eid) {
+  const icon = `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/>`;
+
+  const rows = [
+    ['Empresa',          sol.empresa],
+    ['CNPJ',             fmtCNPJ(sol.cnpj), 'mono'],
+    ['Fundação',         fmtDate(sol.fundacao)],
+    ['Segmento',         sol.segmento],
+    ['Produto / Serviço',sol.produto],
+    ['Ramo / CNAE',      sol.ramo],
+    ['Modal',            sol.modal],
+    ['Incoterms',        sol.incoterms],
+    ['Tipo de Operação', sol.tipoOp === 'encomenda' ? 'Encomenda' : sol.tipoOp === 'conta-ordem' ? 'Conta e Ordem' : sol.tipoOp],
+    ['Origens',          Array.isArray(sol.origens) ? sol.origens.join(', ') : sol.origens],
+    ['Volume Potencial', (sol.volPotencial ? 'USD ' + sol.volPotencial : '—')],
+    ['Volume 6 Meses',   (sol.vol6Meses ? 'USD ' + sol.vol6Meses : '—')],
+    ['Volume/Mês',       (sol.volMes ? (sol.volMesMoeda||'USD') + ' ' + sol.volMes : '—')],
+    ['Rentabilidade',    sol.rentabilidade ? sol.rentabilidade + '%' : '—'],
+    ['Custo ADM',        sol.custoAdm ? sol.custoAdm + '%' : '—'],
+    ['Desconto',         sol.desconto ? sol.desconto + '%' : '—'],
+  ].filter(([,v]) => v && v !== '—' && v !== 'undefined');
+
+  const limites = [
+    ['Exportador / FOB', sol.limiteExportador ? fmtMoney(sol.limiteExportador) : '—', 'green'],
+    ['Despesas Alfand.', sol.limiteDesp       ? fmtMoney(sol.limiteDesp)       : '—', ''],
+    ['Impostos Import.', sol.limiteImp        ? fmtMoney(sol.limiteImp)        : '—', ''],
+  ];
+
+  const prazos = [
+    ['Invoice',     (sol.prazoInvoice  ? sol.prazoInvoice  + ' dias' : '—')],
+    ['Pré-embarque',(sol.prazoEmbarque ? sol.prazoEmbarque + ' dias' : '—')],
+    ['Trânsito',    (sol.prazoTransit  ? sol.prazoTransit  + ' dias' : '—')],
+    ['Recebimento', (sol.prazoDesp     ? sol.prazoDesp               : '—')],
+  ];
+
+  let html = `
+  <div class="data-grid">
+    ${rows.map(([l,v,cls]) => `<div class="dg-item"><div class="dg-label">${l}</div><div class="dg-value ${cls||''}">${esc(v)}</div></div>`).join('')}
+  </div>
+
+  <div class="sec-sub-label">Limites Solicitados</div>
+  <table class="lim-table">
+    <thead><tr><th>Componente</th><th>Limite (R$)</th></tr></thead>
+    <tbody>
+      ${limites.map(([l,v,c]) => `<tr><td>${l}</td><td class="money ${c}">${v}</td></tr>`).join('')}
+    </tbody>
+  </table>
+
+  <div class="sec-sub-label" style="margin-top:.9rem;">Prazos Operacionais</div>
+  <div class="data-grid cols-4">
+    ${prazos.map(([l,v]) => `<div class="dg-item"><div class="dg-label">${l}</div><div class="dg-value">${v}</div></div>`).join('')}
+  </div>`;
+
+  if (sol.comentario) {
+    html += `<div class="sec-sub-label">Comentário do Solicitante</div>
+    <div style="font-size:.78rem;color:var(--text-muted);line-height:1.65;padding:.6rem .75rem;background:rgba(255,255,255,.025);border-radius:7px;">${esc(sol.comentario)}</div>`;
+  }
+
+  return makeSection(icon, 'Dados da Solicitação', html, eid, 'sol');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 2 — RECEITA FEDERAL
+══════════════════════════════════════════════════════════════ */
+function renderRF(rf, eid) {
+  const icon = `<rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`;
+
+  if (!rf) {
+    return makeSection(icon, 'Receita Federal', `<div class="doc-no-files">Consulta à Receita Federal não realizada ou dados não disponíveis.</div>`, eid, 'rf');
+  }
+
+  // Normaliza: a API retorna { status, data: {...} } — extrai o nível data se necessário
+  if (rf.status !== undefined && rf.data) rf = rf.data;
+
+  const sit    = rf.descricao_situacao_cadastral || rf.situacao || '—';
+  const sitClr = sit.toUpperCase() === 'ATIVA' ? 'green' : 'red';
+
+  const rows = [
+    ['Situação Cadastral', sit, sitClr],
+    ['Razão Social',       rf.razao_social || rf.nome || '—', ''],
+    ['Natureza Jurídica',  rf.natureza_juridica?.descricao || rf.natureza_juridica || '—', ''],
+    ['Porte',              rf.porte?.descricao || rf.porte || '—', ''],
+    ['Capital Social',     rf.capital_social ? 'R$ ' + Number(rf.capital_social).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—', ''],
+    ['Data Abertura',      rf.data_inicio_atividade ? fmtDate(rf.data_inicio_atividade) : '—', ''],
+    ['Simples Nacional',   rf.simples?.optante ? 'Sim' : (rf.simples?.optante === false ? 'Não' : '—'), ''],
+    ['MEI',                rf.simei?.optante  ? 'Sim' : (rf.simei?.optante  === false ? 'Não' : '—'), ''],
+  ].filter(([,v]) => v && v !== '—');
+
+  const ativPrincipal = rf.cnae_fiscal_descricao || rf.atividade_principal?.[0]?.text || '—';
+
+  const endereco = rf.estabelecimento
+    ? [rf.estabelecimento.logradouro, rf.estabelecimento.numero, rf.estabelecimento.complemento,
+       rf.estabelecimento.bairro, rf.estabelecimento.cidade?.nome || rf.estabelecimento.municipio,
+       rf.estabelecimento.estado, rf.estabelecimento.cep].filter(Boolean).join(', ')
+    : (rf.logradouro
+      ? [rf.logradouro, rf.numero, rf.complemento, rf.bairro, rf.municipio, rf.uf, rf.cep].filter(Boolean).join(', ')
+      : null);
+
+  const qsa = rf.qsa || rf.socios || [];
+
+  let html = `
+  <div class="data-grid">
+    ${rows.map(([l,v,c]) => `<div class="dg-item"><div class="dg-label">${l}</div><div class="dg-value ${c}">${esc(v)}</div></div>`).join('')}
+  </div>`;
+
+  if (ativPrincipal !== '—') {
+    html += `<div class="dg-item" style="margin-top:.5rem;"><div class="dg-label">Atividade Principal (CNAE)</div><div class="dg-value">${esc(ativPrincipal)}</div></div>`;
+  }
+
+  if (endereco) {
+    html += `<div class="dg-item" style="margin-top:.5rem;grid-column:1/-1;"><div class="dg-label">Endereço</div><div class="dg-value">${esc(endereco)}</div></div>`;
+  }
+
+  if (qsa.length) {
+    html += `<div class="sec-sub-label">Quadro Societário (QSA)</div>
+    <table class="qsa-table">
+      <thead><tr><th>Nome</th><th>Qualificação</th><th>Participação / Faixa Etária</th></tr></thead>
+      <tbody>
+        ${qsa.map(s => {
+          // BrasilAPI v1: nome_socio, descricao_qualificacao_socio (strings diretas)
+          // BrasilAPI v2 / outros: nome, qualificacao_socio.descricao (objeto aninhado)
+          const nome  = s.nome_socio || s.nome || s.name || '—';
+          const qual  = s.descricao_qualificacao_socio
+                     || s.qualificacao_socio?.descricao
+                     || s.qual || s.role || '—';
+          const part  = s.percentual_capital_social != null
+                      ? s.percentual_capital_social + '%'
+                      : (s.faixa_etaria || s.pais?.nome || '—');
+          return `<tr>
+            <td>${esc(nome)}</td>
+            <td>${esc(qual)}</td>
+            <td>${esc(part)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  return makeSection(icon, 'Receita Federal', html, eid, 'rf');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 2b — SERASA EXPERIAN
+══════════════════════════════════════════════════════════════ */
+function renderSerasa(sol, eid) {
+  const icon = `<ellipse cx="12" cy="5" rx="9" ry="3" stroke="currentColor" stroke-width="1.7"/><path d="M21 5v14a9 3 0 0 1-18 0V5" stroke="currentColor" stroke-width="1.7"/><path d="M3 12a9 3 0 0 0 18 0" stroke="currentColor" stroke-width="1.7"/>`;
+
+  const s = sol.serasa;
+  if (!s) {
+    return makeSection(icon, 'Serasa Experian', `<div class="doc-no-files">Consulta Serasa não realizada ou dados não disponíveis.</div>`, eid, 'serasa');
+  }
+
+  const riskLbl = { baixo: 'Risco Baixo', medio: 'Risco Médio', alto: 'Risco Alto', muito_alto: 'Risco Muito Alto' };
+  const riskCss = { baixo: 'green', medio: 'yellow', alto: 'red', muito_alto: 'red' }[s.risco] || 'yellow';
+  const recMap  = { prazo: 'Conceder a prazo', garantias: 'Exigir garantias', negar: 'Não conceder' };
+  const recCss  = { prazo: 'green', garantias: 'yellow', negar: 'red' }[s.recomendacaoVenda] || 'yellow';
+  const fmtPct  = v => (v != null) ? Number(v).toFixed(2) + '%' : '—';
+  const fmtBRL  = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR') : '—';
+  const dt      = s.consultadaEm ? fmtDate(s.consultadaEm) : '';
+
+  // ── Score header ────────────────────────────────────────────
+  let html = `
+  <div style="display:flex;align-items:center;gap:1.1rem;margin-bottom:.9rem;padding:.85rem 1rem;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);border-radius:10px;">
+    <div style="flex-shrink:0;text-align:center;min-width:60px;">
+      <div style="font-size:2.2rem;font-weight:900;color:var(--text-primary);line-height:1;">${s.score || '—'}</div>
+      <div style="font-size:.62rem;color:var(--text-faint);margin-top:.1rem;">/ 1000</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:.4rem;">
+      <span class="badge-pill ${riskCss}">${esc(riskLbl[s.risco] || s.risco || '—')}</span>
+      ${s.recomendacaoVenda ? `<span class="badge-pill ${recCss}">${esc(recMap[s.recomendacaoVenda] || s.recomendacaoVenda)}</span>` : ''}
+    </div>
+    ${dt ? `<div style="text-align:right;font-size:.68rem;color:var(--text-faint);flex-shrink:0;">Consultado em<br><strong style="color:var(--text-muted);">${dt}</strong></div>` : ''}
+  </div>`;
+
+  // ── KPIs ───────────────────────────────────────────────────
+  const kpis = [
+    ['Prob. Inadimplência', fmtPct(s.inadimplencia),     s.inadimplencia != null ? (s.inadimplencia < 3 ? 'green' : s.inadimplencia < 8 ? 'yellow' : 'red') : ''],
+    ['Honram Compromissos', fmtPct(s.honraCompromisos),  ''],
+    ['Limite PJ',           fmtBRL(s.limitePJ),           'green'],
+    ['Limite Mensal',       fmtBRL(s.limiteMensal),       ''],
+    ['Faturamento Est.',    fmtBRL(s.faturamentoEstimado),''],
+    ['Score Fraude',        s.scoreFraude != null ? s.scoreFraude + '/1000' : '—', ''],
+    ['Consultas/Mês',       s.consultasMes != null ? String(s.consultasMes) : '—', ''],
+    ['Consultas/Ano',       s.consultasAno != null ? String(s.consultasAno) : '—', ''],
+  ].filter(([,v]) => v && v !== '—');
+
+  if (kpis.length) {
+    html += `<div class="data-grid" style="margin-bottom:.85rem;">
+      ${kpis.map(([l,v,c]) => `<div class="dg-item"><div class="dg-label">${l}</div><div class="dg-value ${c}">${v}</div></div>`).join('')}
+    </div>`;
+  }
+
+  // ── Anotações ──────────────────────────────────────────────
+  const anotDefs = [
+    { key:'pefin',          label:'PEFIN' },
+    { key:'refin',          label:'REFIN' },
+    { key:'dividasVencidas',label:'Dívidas Vencidas' },
+    { key:'falencia',       label:'Falência/Recuperação' },
+    { key:'acoesJudiciais', label:'Ações Judiciais' },
+    { key:'protestos',      label:'Protestos' },
+    { key:'cheque',         label:'Cheque sem Fundo' },
+    { key:'sociosAnotacoes',label:'Sócios c/ Anotações' },
+    { key:'adminAnotacoes', label:'Adm. c/ Anotações' },
+  ];
+  const xSvg  = `<svg viewBox="0 0 24 24" fill="none" width="10" height="10" style="flex-shrink:0"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+  const okSvg = `<svg viewBox="0 0 24 24" fill="none" width="10" height="10" style="flex-shrink:0"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const badItems = anotDefs.filter(a => !!s[a.key]);
+  const okItems  = anotDefs.filter(a => !s[a.key]);
+
+  html += `<div class="sec-sub-label">Anotações Negativas</div>`;
+  if (badItems.length === 0) {
+    html += `<div style="display:flex;align-items:center;gap:.55rem;padding:.6rem .85rem;background:rgba(1,225,142,.06);border:1px solid rgba(1,225,142,.18);border-radius:7px;font-size:.77rem;color:var(--brand-neon-green);margin-bottom:.5rem;">
+      ${okSvg} Nenhuma anotação negativa — todos os ${anotDefs.length} tipos consultados estão limpos
+    </div>`;
+  } else {
+    html += `<div style="display:flex;align-items:center;gap:.55rem;padding:.5rem .8rem;background:var(--red-bg);border:1px solid rgba(239,68,68,.22);border-radius:7px;font-size:.77rem;color:var(--red);margin-bottom:.45rem;">
+      ${xSvg} ${badItems.length} ocorrência${badItems.length > 1 ? 's' : ''} detectada${badItems.length > 1 ? 's' : ''}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.5rem;">
+      ${badItems.map(a => `<span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;font-weight:600;padding:.25rem .6rem;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:6px;color:var(--red);">${xSvg}${esc(a.label)}</span>`).join('')}
+    </div>`;
+  }
+  if (okItems.length) {
+    html += `<div style="font-size:.7rem;color:var(--text-faint);display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin-top:.35rem;">
+      <span style="font-weight:700;text-transform:uppercase;letter-spacing:.3px;">Limpos:</span>
+      ${okItems.map(a => `<span style="display:inline-flex;align-items:center;gap:.25rem;padding:.18rem .45rem;background:rgba(1,225,142,.05);border-radius:5px;color:rgba(1,225,142,.65);">${okSvg}${esc(a.label)}</span>`).join('')}
+    </div>`;
+  }
+
+  return makeSection(icon, 'Serasa Experian', html, eid, 'serasa');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 3 — ANÁLISE DE INTELIGÊNCIA ARTIFICIAL
+══════════════════════════════════════════════════════════════ */
+function scoreGaugeSVG(score) {
+  const s = Math.max(0, Math.min(100, score || 0));
+  const r = 28, cx = 36, cy = 36;
+  const circ = 2 * Math.PI * r;
+  const filled = (s / 100) * circ;
+  const clr = s >= 70 ? '#01E18E' : s >= 45 ? '#f59e0b' : '#ef4444';
+  return `<svg width="72" height="72" viewBox="0 0 72 72">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="7"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${clr}" stroke-width="7"
+      stroke-linecap="round" stroke-dasharray="${filled.toFixed(1)},${circ.toFixed(1)}"
+      transform="rotate(-90 ${cx} ${cy})"/>
+    <text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="14" font-weight="800" fill="${clr}" font-family="inherit">${s}</text>
+  </svg>`;
+}
+
+function renderIA(ia, modelo, ts, eid) {
+  const icon = `<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`;
+
+  if (!ia) {
+    return makeSection(icon, 'Análise de IA', `<div class="doc-no-files">Análise de IA não realizada ou dados indisponíveis.</div>`, eid, 'ia');
+  }
+
+  const score = ia.score_credito ?? ia.score ?? null;
+  const classif = ia.classificacao_risco || ia.classificacao || '—';
+  const rec     = ia.recomendacao || '—';
+  const resumo  = ia.resumo || '';
+
+  const recClr = rec.toLowerCase().includes('aprovar') || rec.toLowerCase().includes('aprova') ? 'green'
+               : rec.toLowerCase().includes('negar') || rec.toLowerCase().includes('nega') ? 'red' : 'yellow';
+
+  const classifClr = classif.toLowerCase().includes('baixo') ? 'green'
+                   : classif.toLowerCase().includes('alto')  ? 'red'
+                   : classif.toLowerCase().includes('médio') || classif.toLowerCase().includes('medio') ? 'yellow' : 'purple';
+
+  const posArr = ia.pontos_positivos || [];
+  const atenArr = ia.pontos_atencao  || ia.pontos_de_atencao || [];
+  const alertArr = ia.alertas_criticos || [];
+
+  const limRec = ia.limites_recomendados || ia.limites || null;
+
+  const blocks = [
+    ['Análise Cadastral',       ia.analise_cadastral],
+    ['Análise Societária',      ia.analise_societaria],
+    ['Análise de Proporcionalidade', ia.analise_proporcionalidade],
+    ['Análise Operacional',     ia.analise_operacional],
+    ['Fundamentação',           ia.fundamentacao || ia.parecer],
+  ].filter(([,v]) => v);
+
+  let html = `
+  <!-- Score + badges -->
+  <div class="score-row">
+    <div class="score-gauge">${score !== null ? scoreGaugeSVG(score) : ''}</div>
+    <div class="score-meta">
+      <div><span class="badge-pill ${classifClr}">Risco: ${esc(classif)}</span></div>
+      <div><span class="badge-pill ${recClr}">Recomendação: ${esc(rec)}</span></div>
+      ${modelo ? `<div style="font-size:.67rem;color:var(--text-faint);">Modelo: ${esc(modelo)}</div>` : ''}
+      ${ts && ts.analise_ia_at ? `<div style="font-size:.62rem;color:rgba(255,255,255,.2);font-family:monospace;">Gerada em: ${fmtDateTime(ts.analise_ia_at)}</div>` : ''}
+      ${ts && ts.rf_consultada_at ? `<div style="font-size:.62rem;color:rgba(255,255,255,.2);font-family:monospace;">RF consultada em: ${fmtDateTime(ts.rf_consultada_at)}</div>` : ''}
+    </div>
+  </div>`;
+
+  if (resumo) {
+    html += `<div class="ai-resumo">${esc(resumo)}</div>`;
+  }
+
+  if (alertArr.length) {
+    html += `<div class="sec-sub-label">Alertas Críticos</div>`;
+    html += alertArr.map(a => `<div class="alerta-item">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      ${esc(a)}
+    </div>`).join('');
+  }
+
+  if (posArr.length || atenArr.length) {
+    html += `<div class="pontos-grid" style="margin-bottom:.7rem;">`;
+    if (posArr.length) {
+      html += posArr.map(p => `<div class="ponto-item"><span class="ponto-dot" style="background:var(--brand-neon-green);"></span>${esc(p)}</div>`).join('');
+    }
+    if (atenArr.length) {
+      html += atenArr.map(p => `<div class="ponto-item"><span class="ponto-dot" style="background:var(--yellow);"></span>${esc(p)}</div>`).join('');
+    }
+    html += `</div>`;
+  }
+
+  if (limRec) {
+    const limRows = [
+      ['Exportador / FOB', limRec.exportador_fob || limRec.exportador || limRec.fob || null],
+      ['Despesas Alfand.', limRec.despesas_alfandegarias || limRec.despesas || null],
+      ['Impostos Import.', limRec.impostos_importacao || limRec.impostos || null],
+    ].filter(([,v]) => v);
+
+    if (limRows.length) {
+      html += `<div class="sec-sub-label">Limites Recomendados pela IA</div>
+      <table class="lim-table">
+        <thead><tr><th>Componente</th><th>Limite Sugerido</th></tr></thead>
+        <tbody>${limRows.map(([l,v]) => `<tr><td>${l}</td><td class="money">${esc(v)}</td></tr>`).join('')}</tbody>
+      </table>`;
+    }
+  }
+
+  if (blocks.length) {
+    html += `<div class="sec-sub-label">Análise Detalhada</div>`;
+    html += blocks.map(([t,v]) => `<div class="ai-block">
+      <div class="ai-block-title">${t}</div>
+      <div class="ai-block-text">${esc(v)}</div>
+    </div>`).join('');
+  }
+
+  return makeSection(icon, 'Análise de Inteligência Artificial', html, eid, 'ia');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 4 — DECISÃO DO ANALISTA
+══════════════════════════════════════════════════════════════ */
+function renderDecisao(sol, dec, ts, eid) {
+  const icon = `<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  // Fonte de verdade: dec (decisao_analista do backend) tem prioridade sobre sol
+  // dec é preenchido quando o analista usa a tela de análise e clica Aprovar/Negar
+  const st            = dec.status          || sol.status           || '';
+  const limiteAprov   = dec.limiteAprovado  || sol.limiteAprovado   || '';
+  const limiteDesp    = dec.limiteDesp      || sol.limiteDesp       || '';
+  const limiteImp     = dec.limiteImp       || sol.limiteImp        || '';
+  const prazo         = dec.prazoAprovado   || sol.prazoAprovado    || '';
+  const analista      = dec.decisaoAnalista || sol.decisaoAnalista  || '';
+  const parecer       = dec.parecerTecnico  || sol.parecerTecnico   || '';
+  const obs           = dec.analistaObs     || sol.analistaObs      || '';
+  const decisao_at    = dec.decisao_at      || sol.decisao_at       || ts?.decisao_at || '';
+
+  if (!st || st === 'pendente' || !analista) {
+    return makeSection(icon, 'Parecer do Analista', `<div class="doc-no-files">Aguardando decisão do analista financeiro.</div>`, eid, 'dec');
+  }
+
+  const decIcons = {
+    aprovado:   `<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`,
+    negado:     `<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`,
+    em_analise: `<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>`,
+    em_comite:  `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`,
+  };
+
+  let html = `
+  <div class="dec-header ${st}">
+    <div class="dec-icon ${st}">
+      <svg viewBox="0 0 24 24" fill="none">${decIcons[st]||''}</svg>
+    </div>
+    <div style="flex:1;">
+      <div class="dec-status ${st}">${esc(STATUS_LABEL[st] || st)}</div>
+      <div class="dec-analista">${esc(analista)} · ${fmtDateTime(decisao_at)}</div>
+    </div>
+    ${limiteAprov ? `<div style="text-align:right;">
+      <div style="font-size:.67rem;color:var(--text-faint);">Limite aprovado</div>
+      <div style="font-size:.88rem;font-weight:700;color:var(--brand-neon-green);">${fmtMoney(limiteAprov)}</div>
+      ${prazo ? `<div style="font-size:.67rem;color:var(--text-faint);">${prazo} dias</div>` : ''}
+    </div>` : ''}
+  </div>`;
+
+  if (st === 'em_comite') {
+    html += `<div style="display:flex;align-items:center;gap:.65rem;padding:.65rem .85rem;margin-bottom:.7rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);border-radius:8px;font-size:.78rem;color:#f59e0b;line-height:1.5;">
+      <svg viewBox="0 0 24 24" fill="none" width="15" height="15" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Encaminhado para deliberação do <strong>Comitê de Crédito</strong>. Aguardando decisão final da diretoria.</span>
+      <a href="comite-credito.html" style="margin-left:auto;font-size:.72rem;font-weight:700;color:#f59e0b;text-decoration:none;white-space:nowrap;border:1px solid rgba(245,158,11,.35);border-radius:6px;padding:.25rem .65rem;">Ver Comitê →</a>
+    </div>`;
+  }
+
+  if (parecer) {
+    html += `<div class="parecer-box">
+      <div class="parecer-label">Parecer Técnico do Analista</div>
+      "${esc(parecer)}"
+    </div>`;
+  }
+
+  if (obs) {
+    html += `<div style="font-size:.78rem;color:var(--text-muted);padding:.55rem .7rem;background:rgba(255,255,255,.025);border-radius:7px;line-height:1.6;margin-bottom:.7rem;">
+      <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-faint);margin-bottom:.3rem;">Condições e Observações</div>
+      ${esc(obs)}
+    </div>`;
+  }
+
+  if (limiteAprov || limiteDesp || limiteImp) {
+    const toNum = v => v ? parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0 : 0;
+    const fob  = toNum(limiteAprov);
+    const desp = toNum(limiteDesp);
+    const imp  = toNum(limiteImp);
+    const tot  = fob + desp + imp;
+
+    html += `<div class="sec-sub-label" style="margin-top:.75rem;">Limites Aprovados</div>
+    <table class="lim-table">
+      <thead><tr><th>Componente</th><th>Valor Aprovado</th><th>Prazo</th></tr></thead>
+      <tbody>
+        <tr><td>Exportador / FOB</td><td class="money">${fmtMoney(limiteAprov)}</td><td>${prazo ? prazo + ' dias' : '—'}</td></tr>
+        <tr><td>Despesas Alfand.</td><td class="money">${fmtMoney(limiteDesp)}</td><td>${prazo ? prazo + ' dias' : '—'}</td></tr>
+        <tr><td>Impostos Import.</td><td class="money">${fmtMoney(limiteImp)}</td><td>${prazo ? prazo + ' dias' : '—'}</td></tr>
+        <tr class="total-row"><td><strong>Total Aprovado</strong></td><td class="money" colspan="2"><strong>${tot > 0 ? 'R$ ' + tot.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</strong></td></tr>
+      </tbody>
+    </table>`;
+  }
+
+  return makeSection(icon, 'Parecer do Analista', html, eid, 'dec');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 4b — COMITÊ DE CRÉDITO
+══════════════════════════════════════════════════════════════ */
+function renderComite(sol, eid) {
+  const icon = `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  const deliberacao = sol.deliberacaoComite;
+  const decisor     = sol.decisaoComite;
+  const at          = sol.comite_at;
+
+  if (!deliberacao && !decisor) {
+    return makeSection(icon, 'Comitê de Crédito', `<div class="doc-no-files">Processo não submetido ao Comitê de Crédito.</div>`, eid, 'comite');
+  }
+
+  const st    = sol.status || '';
+  const stCss = { aprovado: 'aprovado', negado: 'negado' }[st] || 'em_comite';
+  const stLbl = { aprovado: 'Aprovado pelo Comitê', negado: 'Negado pelo Comitê', em_comite: 'Em deliberação' }[st] || 'Deliberado';
+  const decIcon = st === 'aprovado'
+    ? `<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`
+    : st === 'negado'
+    ? `<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>`
+    : `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  let html = `
+  <div class="dec-header ${stCss}">
+    <div class="dec-icon ${stCss}">
+      <svg viewBox="0 0 24 24" fill="none">${decIcon}</svg>
+    </div>
+    <div style="flex:1;">
+      <div class="dec-status ${stCss}">${stLbl}</div>
+      <div class="dec-analista">${esc(decisor || '—')} · ${fmtDateTime(at)}</div>
+    </div>
+    ${sol.limiteAprovado ? `<div style="text-align:right;">
+      <div style="font-size:.67rem;color:var(--text-faint);">Limite final aprovado</div>
+      <div style="font-size:.88rem;font-weight:700;color:var(--brand-neon-green);">${fmtMoney(sol.limiteAprovado)}</div>
+      ${sol.prazoAprovado ? `<div style="font-size:.67rem;color:var(--text-faint);">${esc(sol.prazoAprovado)} dias</div>` : ''}
+    </div>` : ''}
+  </div>`;
+
+  if (deliberacao) {
+    html += `<div class="parecer-box">
+      <div class="parecer-label">Deliberação do Comitê</div>
+      "${esc(deliberacao)}"
+    </div>`;
+  }
+
+  return makeSection(icon, 'Comitê de Crédito', html, eid, 'comite');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 5 — EXPOSIÇÃO FINANCEIRA
+══════════════════════════════════════════════════════════════ */
+function renderExposicao(sol, eid) {
+  const icon = `<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const sid  = sol.id || '';
+
+  const isDecided  = ['aprovado','negado'].includes(sol.status);
+  const roParam    = isDecided ? '&readonly=1' : '';
+
+  const html = `
+  <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:.8rem;line-height:1.6;">
+    Simulação da exposição financeira da Vendemmia nos 3 ciclos de importação deste cliente, incluindo linha do tempo Gantt e curva de exposição acumulada.
+  </p>
+  ${isDecided ? `<div style="display:flex;align-items:center;gap:.55rem;padding:.5rem .8rem;background:rgba(1,225,142,.05);border:1px solid rgba(1,225,142,.15);border-radius:7px;font-size:.74rem;color:rgba(1,225,142,.8);margin-bottom:.6rem;">
+    <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
+    Modo somente leitura — processo ${sol.status === 'aprovado' ? 'aprovado' : 'negado'}, parâmetros bloqueados
+  </div>` : ''}
+  ${sid ? `<a href="exposicao.html?id=${esc(sid)}${roParam}" target="_blank" class="sim-link">
+    <svg viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Abrir Simulação de Exposição
+  </a>` : '<div class="doc-no-files">ID da solicitação não disponível para abrir simulação.</div>'}
+  ${sid ? `<a href="relatorio.html?id=${esc(sid)}" target="_blank" class="sim-link">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/></svg>
+    Gerar Relatório PDF
+  </a>` : ''}`;
+
+  return makeSection(icon, 'Exposição Financeira e Relatório', html, eid, 'exp');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 6 — DOCUMENTOS E ANEXOS
+══════════════════════════════════════════════════════════════ */
+function renderDocs(sol, eid) {
+  const icon = `<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  const cats = [
+    { key: 'balanco',  label: 'Balanço Patrimonial',              ico: `<path d="M3 3v18h18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="7 16 11 10 15 13 19 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>` },
+    { key: 'contrato', label: 'Contrato Social',                   ico: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/>` },
+    { key: 'dre',      label: 'DRE — Demonstrativo de Resultado', ico: `<line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="6" y1="20" x2="6" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>` },
+    { key: 'fat',      label: 'Faturamento / Extratos',            ico: `<rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><line x1="2" y1="10" x2="22" y2="10" stroke="currentColor" stroke-width="1.7"/>` },
+  ];
+
+  const docs   = sol.documentos || {};
+  let hasAny   = false;
+  const dlSvg  = `<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+
+  let html = '';
+  cats.forEach(cat => {
+    const files = docs[cat.key] || [];
+    html += `<div class="doc-category">
+      <div class="doc-cat-label">
+        <svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="color:var(--purple-light);flex-shrink:0;">${cat.ico}</svg>
+        ${cat.label}
+      </div>`;
+
+    if (!files.length) {
+      html += `<div class="doc-no-files">Nenhum arquivo anexado.</div>`;
+    } else {
+      hasAny = true;
+      files.forEach(f => {
+        const name    = typeof f === 'string' ? f : (f.name || 'arquivo');
+        const size    = f.size ? (f.size > 1048576 ? (f.size/1048576).toFixed(1)+' MB' : Math.round(f.size/1024)+' KB') : null;
+        const dataUrl = typeof f === 'object' ? (f.dataUrl || f.data_url || f.url || null) : null;
+        const dlHref  = dataUrl || (sol.id ? `${API_URL}/api/docs/${encodeURIComponent(sol.id)}/${cat.key}/${encodeURIComponent(name)}` : null);
+        html += `<div class="doc-file-item">
+          <svg viewBox="0 0 24 24" fill="none" style="width:15px;height:15px;color:var(--purple-light);flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/></svg>
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
+          ${size ? `<span class="doc-file-size">${size}</span>` : ''}
+          ${dlHref ? `<a href="${esc(dlHref)}" download="${esc(name)}" target="_blank" title="Baixar ${esc(name)}"
+            style="display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem;font-weight:600;padding:.2rem .5rem;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:5px;color:#c4b5fd;text-decoration:none;flex-shrink:0;transition:background .15s;"
+            onmouseover="this.style.background='rgba(139,92,246,.28)'" onmouseout="this.style.background='rgba(139,92,246,.15)'">${dlSvg} Baixar</a>` : ''}
+        </div>`;
+      });
+    }
+    html += `</div>`;
+  });
+
+  if (!hasAny) {
+    html += `<div class="doc-no-files" style="margin-top:.3rem;">Nenhum documento foi anexado a esta solicitação.</div>`;
+  }
+
+  if (sol.id) {
+    html += `<div style="margin-top:.75rem;display:flex;flex-wrap:wrap;gap:.5rem;">
+      <a href="analise-financeira.html?id=${esc(sol.id)}" target="_blank" class="sim-link">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="15 3 21 3 21 9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="10" y1="14" x2="21" y2="3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        Abrir Análise Completa
+      </a>
+    </div>`;
+  }
+
+  return makeSection(icon, 'Documentos e Anexos', html, eid, 'docs');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDelModal(); });
+loadData();
+</script>
+
+<!-- Modal exclusão análise -->
+<div id="del-modal-overlay" onclick="if(event.target===this)closeDelModal()">
+  <div class="del-modal-box">
+    <div class="del-modal-icon">
+      <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
+        <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M10 11v6m4-6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="del-modal-title">Excluir análise</div>
+    <div class="del-modal-sub">Esta análise será removida permanentemente do histórico. Esta ação não pode ser desfeita.</div>
+    <div class="del-modal-btns">
+      <button class="del-btn-cancel" onclick="closeDelModal()">Cancelar</button>
+      <button class="del-btn-confirm" onclick="confirmDelAnalysis()">Excluir</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

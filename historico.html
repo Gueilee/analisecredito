@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Histórico de Análises — Vendemmia</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <script src="db.js"></script>
+  <script src="components.js"></script>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    /* ── Toolbar ─────────────────────────────────────────── */
+    .toolbar {
+      display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+      margin-bottom: 1.4rem;
+    }
+    .search-wrap { flex: 1; min-width: 200px; position: relative; }
+    .search-wrap svg {
+      position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+      width: 15px; height: 15px; color: var(--text-faint); pointer-events: none;
+    }
+    .search-input {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm); padding: .62rem .85rem .62rem 2.4rem;
+      color: var(--text-primary); font-family: inherit; font-size: .85rem;
+      outline: none; transition: border-color .18s; box-sizing: border-box;
+    }
+    .search-input:focus { border-color: var(--purple-light); }
+    .search-input::placeholder { color: var(--text-faint); }
+
+    .filter-chips { display: flex; gap: .45rem; flex-wrap: wrap; }
+    .chip {
+      padding: .35rem .85rem; border-radius: 99px; font-size: .74rem; font-weight: 600;
+      border: 1px solid var(--glass-border); background: var(--input-bg);
+      color: var(--text-muted); cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .chip:hover { border-color: var(--purple-light); color: var(--text-primary); }
+    .chip.active { background: rgba(124,58,237,.18); border-color: var(--purple-light); color: var(--purple-light); }
+
+    /* ── Empty / loading ─────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: .75rem; padding: 4rem 2rem; color: var(--text-faint); text-align: center;
+      grid-column: 1 / -1;
+    }
+    .empty-state svg { width: 44px; height: 44px; opacity: .35; }
+    .empty-state p { font-size: .85rem; max-width: 280px; line-height: 1.6; margin: 0; }
+
+    /* ── Card grid ───────────────────────────────────────── */
+    .hist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── History card ────────────────────────────────────── */
+    .hist-card {
+      background: var(--purple-card); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); padding: 1.2rem 1.3rem;
+      display: flex; flex-direction: column; gap: .85rem;
+      cursor: pointer; transition: border-color .18s, transform .15s;
+    }
+    .hist-card:hover { border-color: var(--purple-light); transform: translateY(-2px); }
+    .hist-card-top { display: flex; align-items: center; gap: .9rem; }
+    .hist-avatar {
+      width: 44px; height: 44px; border-radius: 11px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--brand-deep-purple), var(--brand-pink));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem; font-weight: 800; color: #fff;
+    }
+    .hist-company { flex: 1; min-width: 0; }
+    .hist-name {
+      font-size: .88rem; font-weight: 700; color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hist-cnpj { font-size: .7rem; color: var(--text-faint); margin-top: .1rem; }
+
+    .score-circle {
+      width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      border: 2.5px solid;
+    }
+    .score-circle .sc-num { font-size: .9rem; font-weight: 800; line-height: 1; }
+    .score-circle .sc-lbl { font-size: .5rem; color: var(--text-faint); letter-spacing: .3px; text-transform: uppercase; }
+    .score-circle.high { border-color: var(--brand-neon-green); color: var(--brand-neon-green); }
+    .score-circle.mid  { border-color: #f59e0b; color: #f59e0b; }
+    .score-circle.low  { border-color: var(--red); color: var(--red); }
+    .score-circle.none { border-color: var(--glass-border); color: var(--text-faint); }
+
+    .hist-badges { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+    .class-chip {
+      font-size: .68rem; font-weight: 800; padding: .18rem .55rem; border-radius: 99px;
+    }
+    .class-chip.aaa { background: rgba(1,225,142,.14);  color: #01E18E; }
+    .class-chip.aa  { background: rgba(1,200,130,.1);   color: #01c882; }
+    .class-chip.a   { background: rgba(59,130,246,.12); color: #60a5fa; }
+    .class-chip.bb  { background: rgba(99,179,237,.1);  color: #90cdf4; }
+    .class-chip.b   { background: rgba(245,158,11,.1);  color: #f59e0b; }
+    .class-chip.cc  { background: rgba(249,115,22,.1);  color: #fb923c; }
+    .class-chip.c   { background: rgba(249,115,22,.12); color: #f97316; }
+    .class-chip.d   { background: var(--red-bg);        color: var(--red); }
+    .rec-chip {
+      font-size: .68rem; font-weight: 700; padding: .18rem .55rem; border-radius: 99px;
+    }
+    .rec-chip.aprovar { background: rgba(1,225,142,.1);  color: var(--brand-neon-green); }
+    .rec-chip.negar   { background: var(--red-bg);        color: var(--red); }
+    .rec-chip.revisar { background: var(--yellow-bg);     color: var(--yellow); }
+    .dec-chip {
+      font-size: .68rem; font-weight: 700; padding: .18rem .55rem; border-radius: 99px;
+      margin-left: auto;
+    }
+    .dec-chip.aprovado   { background: rgba(1,225,142,.1); color: var(--brand-neon-green); border: 1px solid rgba(1,225,142,.3); }
+    .dec-chip.negado     { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+    .dec-chip.em_analise { background: var(--yellow-bg); color: var(--yellow); border: 1px solid rgba(245,158,11,.3); }
+
+    .hist-resumo {
+      font-size: .77rem; color: var(--text-muted); line-height: 1.55;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .hist-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .69rem; color: var(--text-faint); margin-top: auto;
+      padding-top: .7rem; border-top: 1px solid rgba(255,255,255,.05);
+    }
+    .hist-footer a {
+      color: var(--purple-light); text-decoration: none; font-size: .69rem; font-weight: 600;
+    }
+    .hist-footer a:hover { text-decoration: underline; }
+
+    /* ── Modal ───────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.72);
+      z-index: 2000; display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-box {
+      background: var(--bg-primary); border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg); width: 100%; max-width: 760px;
+      max-height: 90vh; overflow-y: auto; padding: 1.8rem 2rem;
+      transform: translateY(24px); transition: transform .25s;
+    }
+    .modal-overlay.open .modal-box { transform: translateY(0); }
+    .modal-header {
+      display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.4rem; gap: 1rem;
+    }
+    .modal-title { font-size: 1.05rem; font-weight: 800; color: var(--text-primary); }
+    .modal-close {
+      background: none; border: none; cursor: pointer; color: var(--text-faint);
+      display: flex; align-items: center; justify-content: center; padding: .3rem;
+      border-radius: 6px; transition: color .15s, background .15s; flex-shrink: 0;
+    }
+    .modal-close:hover { color: var(--text-primary); background: rgba(255,255,255,.06); }
+    .modal-close svg { width: 18px; height: 18px; }
+
+    .modal-section {
+      margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .modal-sec-title {
+      font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+      color: var(--text-faint); margin-bottom: .65rem;
+    }
+    .modal-text { font-size: .82rem; color: var(--text-muted); line-height: 1.7; white-space: pre-wrap; }
+
+    .modal-score-row { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: .8rem; }
+    .modal-score-big { font-size: 2.8rem; font-weight: 900; line-height: 1; }
+    .modal-score-big.high { color: var(--brand-neon-green); }
+    .modal-score-big.mid  { color: #f59e0b; }
+    .modal-score-big.low  { color: var(--red); }
+    .modal-score-big.none { color: var(--text-faint); }
+
+    .info-grid-sm { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .5rem; }
+    .info-item-sm { background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: .55rem .7rem; }
+    .info-key-sm  { font-size: .62rem; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .4px; margin-bottom: .12rem; }
+    .info-val-sm  { font-size: .8rem; color: var(--text-primary); font-weight: 500; }
+    .info-val-sm.money { color: var(--brand-neon-green); }
+
+    /* ── Counter ─────────────────────────────────────────── */
+    .results-count { font-size: .74rem; color: var(--text-faint); margin-bottom: .9rem; }
+
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 700px) {
+      .hist-grid { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+<script>const session = DB.auth.requireAuth();</script>
+
+<div class="app-shell">
+  <aside class="sidebar"></aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1>Histórico de Análises</h1>
+      </div>
+    </header>
+
+    <main class="page-content">
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.7"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <input type="text" class="search-input" id="search-input" placeholder="Buscar por empresa ou CNPJ…" oninput="onSearch()" />
+        </div>
+        <div class="filter-chips">
+          <button class="chip active" data-filter="all"        onclick="setFilter('all')">Todas</button>
+          <button class="chip"        data-filter="aprovar"    onclick="setFilter('aprovar')">IA: Aprovar</button>
+          <button class="chip"        data-filter="negar"      onclick="setFilter('negar')">IA: Negar</button>
+          <button class="chip"        data-filter="revisar"    onclick="setFilter('revisar')">IA: Revisar</button>
+          <button class="chip"        data-filter="aprovado"   onclick="setFilter('aprovado')">Analista: Aprovado</button>
+          <button class="chip"        data-filter="negado"     onclick="setFilter('negado')">Analista: Negado</button>
+        </div>
+      </div>
+
+      <div class="results-count" id="results-count"></div>
+      <div class="hist-grid" id="hist-grid"></div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Modal de detalhe -->
+<div class="modal-overlay" id="modal" onclick="closeModalOnOverlay(event)">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<script>
+  const API_URL = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+  App.mount('historico');
+
+  let allEntries = [];
+  let activeFilter = 'all';
+  let searchTerm = '';
+  let searchTimer = null;
+
+  /* ── Carrega histórico do backend ─────────────────────── */
+  async function load() {
+    const grid = document.getElementById('hist-grid');
+    grid.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7" opacity=".3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" class="spin"/></svg><p>Carregando histórico…</p></div>`;
+    try {
+      const res = await fetch(`${API_URL}/api/historico?limit=500`, { credentials: 'include' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      allEntries = data.entries || [];
+      render();
+    } catch (e) {
+      grid.innerHTML = `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <p>Servidor offline ou sem histórico.<br/>Inicie o servidor FastAPI para visualizar análises salvas.</p>
+      </div>`;
+    }
+  }
+
+  /* ── Filtros ──────────────────────────────────────────── */
+  function setFilter(f) {
+    activeFilter = f;
+    document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.filter === f));
+    render();
+  }
+
+  function onSearch() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+      render();
+    }, 250);
+  }
+
+  function filtered() {
+    return allEntries.filter(e => {
+      if (searchTerm) {
+        const hay = ((e.empresa || '') + ' ' + (e.cnpj || '')).toLowerCase();
+        if (!hay.includes(searchTerm)) return false;
+      }
+      if (activeFilter === 'all') return true;
+      if (['aprovar', 'negar', 'revisar'].includes(activeFilter)) return e.recomendacao === activeFilter;
+      if (['aprovado', 'negado', 'em_analise'].includes(activeFilter)) {
+        const dec = (e.decisao_analista || {}).status;
+        return dec === activeFilter;
+      }
+      return true;
+    });
+  }
+
+  /* ── Helpers visuais ─────────────────────────────────── */
+  function scoreClass(s) {
+    if (s == null) return 'none';
+    return s >= 60 ? 'high' : s >= 35 ? 'mid' : 'low';
+  }
+
+  function clsChip(cls) {
+    if (!cls || cls === '—') return '';
+    return `<span class="class-chip ${cls.toLowerCase().replace(/\+/g, 'p')}">${cls}</span>`;
+  }
+
+  function recChip(rec) {
+    const map = { aprovar: 'Aprovar', negar: 'Negar', revisar: 'Revisar' };
+    if (!rec || !map[rec]) return '';
+    return `<span class="rec-chip ${rec}">${map[rec]}</span>`;
+  }
+
+  function decChip(dec) {
+    if (!dec || !dec.status) return '';
+    const map = { aprovado: 'Aprovado', negado: 'Negado', em_analise: 'Revisão' };
+    return `<span class="dec-chip ${dec.status}">${map[dec.status] || dec.status}</span>`;
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function initials(name) {
+    return (name || '??').split(' ').filter(w => w.length > 2).slice(0, 2).map(w => w[0].toUpperCase()).join('') || (name || '??').slice(0, 2).toUpperCase();
+  }
+
+  /* ── Renderiza lista de cards ─────────────────────────── */
+  function render() {
+    const list = filtered();
+    const cnt = document.getElementById('results-count');
+    cnt.textContent = list.length === 0 ? 'Nenhum resultado encontrado' :
+                      list.length === 1 ? '1 análise encontrada' :
+                      `${list.length} análises encontradas`;
+
+    const grid = document.getElementById('hist-grid');
+    if (!list.length) {
+      grid.innerHTML = `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.7"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <p>Nenhuma análise encontrada para este filtro.</p>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = list.map((e, i) => {
+      const sc = e.score;
+      const scCls = scoreClass(sc);
+      const dec = e.decisao_analista || {};
+      return `<div class="hist-card animate-in" style="animation-delay:${Math.min(i * 0.04, 0.4)}s" onclick="openModal('${e.id}')">
+        <div class="hist-card-top">
+          <div class="hist-avatar">${initials(e.empresa)}</div>
+          <div class="hist-company">
+            <div class="hist-name">${e.empresa || '—'}</div>
+            <div class="hist-cnpj">CNPJ: ${e.cnpj || '—'}</div>
+          </div>
+          <div class="score-circle ${scCls}">
+            <span class="sc-num">${sc != null ? sc : '—'}</span>
+            <span class="sc-lbl">score</span>
+          </div>
+        </div>
+        <div class="hist-badges">
+          ${clsChip(e.classificacao)}
+          ${recChip(e.recomendacao)}
+          ${decChip(dec)}
+        </div>
+        ${e.resumo_executivo ? `<div class="hist-resumo">${e.resumo_executivo}</div>` : ''}
+        <div class="hist-footer">
+          <span>${fmtDate(e.salvo_em)}</span>
+          ${e.solicitacao_id ? `<a href="analise-financeira.html?id=${e.solicitacao_id}" onclick="event.stopPropagation()">Ver análise →</a>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Modal de detalhe ─────────────────────────────────── */
+  async function openModal(id) {
+    const overlay = document.getElementById('modal');
+    const box = document.getElementById('modal-box');
+    const closeBtn = `<button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>`;
+    box.innerHTML = `<div class="modal-header"><div class="modal-title">Carregando…</div>${closeBtn}</div>`;
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    try {
+      const res = await fetch(`${API_URL}/api/historico/${id}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      renderModal(await res.json());
+    } catch {
+      box.querySelector('.modal-title').textContent = 'Erro ao carregar';
+      box.innerHTML += `<p style="color:var(--red);font-size:.85rem;margin-top:.5rem;">Não foi possível carregar o detalhe desta análise.</p>`;
+    }
+  }
+
+  function renderModal(d) {
+    const box = document.getElementById('modal-box');
+    const ai = d.analise_ia || {};
+    const rf = (d.receita_federal || {}).data || {};
+    const sc = ai.score;
+    const scCls = scoreClass(sc);
+    const dec = d.decisao_analista || {};
+
+    const iv = (k, v, cls = '') => {
+      const s = (v != null && v !== '') ? String(v) : '—';
+      return `<div class="info-item-sm"><div class="info-key-sm">${k}</div><div class="info-val-sm ${cls}">${s}</div></div>`;
+    };
+
+    const detailBlocks = [
+      { title: 'Análise Cadastral',            key: 'analise_cadastral' },
+      { title: 'Análise Societária',           key: 'analise_societaria' },
+      { title: 'Proporcionalidade do Crédito', key: 'analise_proporcionalidade' },
+      { title: 'Riscos Operacionais',          key: 'analise_operacional' },
+      { title: 'Fundamentação',                key: 'fundamentacao' },
+    ].filter(b => ai[b.key]);
+
+    const recLabels = { aprovar: 'Recomendação: APROVAR', negar: 'Recomendação: NEGAR', revisar: 'Recomendação: REVISAR' };
+    const decLabels = { aprovado: '✓ Aprovado', negado: '✗ Negado', em_analise: '↺ Revisão' };
+
+    box.innerHTML = `
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">${d.empresa || '—'}</div>
+          <div style="font-size:.72rem;color:var(--text-faint);margin-top:.18rem;">CNPJ: ${d.cnpj || '—'} &nbsp;·&nbsp; Salvo em ${fmtDate(d.salvo_em)}</div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">
+          <svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <!-- Score ──────────────────────────────────────────── -->
+      <div class="modal-sec-title">Score e Classificação</div>
+      <div class="modal-score-row">
+        <div class="modal-score-big ${scCls}">${sc != null ? sc : '—'}</div>
+        <div style="display:flex;flex-direction:column;gap:.4rem;">
+          ${ai.classificacao ? `<span class="class-chip ${(ai.classificacao || 'd').toLowerCase().replace(/\+/g, 'p')}" style="font-size:.78rem;padding:.25rem .75rem;">${ai.classificacao}</span>` : ''}
+          ${ai.recomendacao ? `<span class="rec-chip ${ai.recomendacao}" style="font-size:.75rem;padding:.2rem .65rem;">${recLabels[ai.recomendacao] || ai.recomendacao}</span>` : ''}
+        </div>
+        ${dec.status ? `<div style="margin-left:auto;text-align:right;">
+          <div style="font-size:.62rem;color:var(--text-faint);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.4px;">Decisão do Analista</div>
+          <span class="dec-chip ${dec.status}" style="font-size:.78rem;padding:.25rem .75rem;">${decLabels[dec.status] || dec.status}</span>
+        </div>` : ''}
+      </div>
+      ${ai.resumo_executivo ? `<p style="font-size:.83rem;color:var(--text-muted);line-height:1.65;margin:.4rem 0 0;">${ai.resumo_executivo}</p>` : ''}
+
+      <!-- Limites ─────────────────────────────────────────── -->
+      ${ai.limite_recomendado_exportador || ai.exposicao_total_recomendada ? `
+      <div class="modal-section">
+        <div class="modal-sec-title">Limites Recomendados</div>
+        <div class="info-grid-sm">
+          ${iv('Exportador', ai.limite_recomendado_exportador, 'money')}
+          ${iv('Despesas', ai.limite_recomendado_desp, 'money')}
+          ${iv('Impostos', ai.limite_recomendado_imp, 'money')}
+          ${iv('Exposição Total', ai.exposicao_total_recomendada, 'money')}
+          ${iv('Prazo', ai.prazo_recomendado ? ai.prazo_recomendado + ' dias' : null)}
+        </div>
+      </div>` : ''}
+
+      <!-- Receita Federal ─────────────────────────────────── -->
+      ${rf.razao_social ? `
+      <div class="modal-section">
+        <div class="modal-sec-title">Receita Federal</div>
+        <div class="info-grid-sm">
+          ${iv('Situação', rf.descricao_situacao_cadastral)}
+          ${iv('Abertura', rf.data_inicio_atividade)}
+          ${iv('Capital Social', rf.capital_social != null ? 'R$ ' + Number(rf.capital_social).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : null, 'money')}
+          ${iv('Porte', rf.descricao_porte)}
+          ${iv('Natureza Jurídica', rf.descricao_natureza_juridica)}
+          ${iv('CNAE', rf.cnae_fiscal_descricao)}
+          ${iv('Simples Nacional', rf.opcao_pelo_simples ? 'Sim' : 'Não')}
+          ${iv('MEI', rf.opcao_pelo_mei ? 'Sim' : 'Não')}
+        </div>
+      </div>` : ''}
+
+      <!-- Pontos positivos / atenção ─────────────────────── -->
+      ${(ai.pontos_positivos?.length || ai.pontos_atencao?.length) ? `
+      <div class="modal-section">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div>
+            <div class="modal-sec-title">Pontos Positivos</div>
+            ${(ai.pontos_positivos || []).map(p => `<div style="font-size:.78rem;color:var(--text-muted);padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.04);line-height:1.4;">✓ ${p}</div>`).join('') || '<span style="font-size:.76rem;color:var(--text-faint);">Nenhum</span>'}
+          </div>
+          <div>
+            <div class="modal-sec-title">Pontos de Atenção</div>
+            ${(ai.pontos_atencao || []).map(p => `<div style="font-size:.78rem;color:var(--text-muted);padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.04);line-height:1.4;">⚠ ${p}</div>`).join('') || '<span style="font-size:.76rem;color:var(--text-faint);">Nenhum</span>'}
+          </div>
+        </div>
+      </div>` : ''}
+
+      <!-- Alertas críticos ────────────────────────────────── -->
+      ${(ai.alertas_criticos || []).length ? `
+      <div class="modal-section">
+        <div class="modal-sec-title">Alertas Críticos</div>
+        ${(ai.alertas_criticos || []).map(a => `<div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:7px;padding:.55rem .8rem;font-size:.78rem;color:#fca5a5;margin-bottom:.4rem;line-height:1.45;">⚠ ${a}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- Análise detalhada ───────────────────────────────── -->
+      ${detailBlocks.length ? `
+      <div class="modal-section">
+        <div class="modal-sec-title">Análise Detalhada</div>
+        ${detailBlocks.map(b => `<div style="margin-bottom:.8rem;">
+          <div style="font-size:.71rem;font-weight:600;color:var(--text-secondary);margin-bottom:.25rem;">${b.title}</div>
+          <div class="modal-text">${ai[b.key]}</div>
+        </div>`).join('')}
+      </div>` : ''}
+
+      <!-- Decisão analista (detalhes) ────────────────────── -->
+      ${dec.status && (dec.limiteAprovado || dec.analistaObs) ? `
+      <div class="modal-section">
+        <div class="modal-sec-title">Detalhes da Decisão</div>
+        <div class="info-grid-sm">
+          ${dec.limiteAprovado ? iv('Limite Aprovado', dec.limiteAprovado, 'money') : ''}
+          ${dec.prazoAprovado  ? iv('Prazo', dec.prazoAprovado + ' dias') : ''}
+          ${dec.decisaoAnalista ? iv('Analista', dec.decisaoAnalista) : ''}
+          ${dec.decisao_at ? iv('Decidido em', fmtDate(dec.decisao_at)) : ''}
+        </div>
+        ${dec.analistaObs ? `<div style="background:var(--input-bg);border:1px solid var(--glass-border);border-radius:7px;padding:.65rem .85rem;font-size:.78rem;color:var(--text-muted);margin-top:.5rem;line-height:1.55;">${dec.analistaObs}</div>` : ''}
+      </div>` : ''}
+
+      <!-- Link para análise original ─────────────────────── -->
+      ${d.solicitacao_id ? `
+      <div style="margin-top:1.4rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.06);text-align:right;">
+        <a href="analise-financeira.html?id=${d.solicitacao_id}" class="btn btn-secondary btn-sm" style="text-decoration:none;">
+          Ver Análise Completa →
+        </a>
+      </div>` : ''}
+    `;
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function closeModalOnOverlay(e) {
+    if (e.target === document.getElementById('modal')) closeModal();
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  load();
+</script>
+</body>
+</html>
