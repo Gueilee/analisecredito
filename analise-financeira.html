@@ -774,7 +774,7 @@
               <div class="fin-actions">
                 <button class="btn-fin-extract" id="btn-fin-extract" onclick="triggerFinExtract()">
                   <svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Extrair via IA
+                  Extrair Dados
                 </button>
                 <label id="btn-fin-upload-manual" class="btn-fin-extract" style="display:none;cursor:pointer;" title="Selecionar arquivos manualmente">
                   <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -819,14 +819,14 @@
 
             <div class="fin-hint">
               Campos em itálico são calculados automaticamente a partir dos dados inseridos — você pode substituí-los digitando diretamente.
-              Clique em <strong>Extrair via IA</strong> para enviar os PDFs/Excel dos balanços e ter os campos preenchidos automaticamente.
+              Clique em <strong>Extrair Dados</strong> para enviar os PDFs/Excel dos balanços e ter os campos preenchidos automaticamente.
             </div>
           </div>
 
           <!-- Pré-análise IA (oculto até análise rodar) -->
           <div class="card animate-in delay-2" id="ai-card" style="display:none;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-              <div class="card-title">Pré-análise por IA</div>
+              <div class="card-title">Pré-análise do Sistema</div>
               <div style="font-size:.69rem;color:var(--text-faint);" id="ai-model-lbl"></div>
             </div>
 
@@ -906,7 +906,7 @@
 
           <!-- Limites da IA (aparece após análise) -->
           <div class="card" id="limits-card" style="display:none;">
-            <div class="card-title" style="margin-bottom:.8rem;">Limites Recomendados pela IA</div>
+            <div class="card-title" style="margin-bottom:.8rem;">Limites Recomendados pelo Sistema</div>
             <div id="limits-content"></div>
           </div>
 
@@ -1335,7 +1335,7 @@
       `<span class="rec-pill ${rec}"><svg viewBox="0 0 24 24" fill="none">${rm.icon}</svg>${rm.label}</span>`;
 
     document.getElementById('score-resumo').textContent = an.resumo_executivo || '';
-    document.getElementById('ai-model-lbl').textContent = 'Gerado por ' + (data.modelo_ia || 'Claude AI');
+    document.getElementById('ai-model-lbl').textContent = '';
 
     // Pontos
     const pSVG  = `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -2048,7 +2048,7 @@
         if (res.status === 404) {
           // Docs não estão no servidor — mostra banner e botão de upload manual
           btn.disabled = false;
-          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair via IA`;
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair Dados`;
           const banner = document.getElementById('docs-missing-banner');
           const manualBtn = document.getElementById('btn-fin-upload-manual');
           if (banner)    { banner.style.display = 'flex'; }
@@ -2062,7 +2062,7 @@
       } catch(e) { showToast('Erro: ' + e.message, 'error'); }
       finally {
         btn.disabled = false;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair via IA`;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair Dados`;
       }
     } else {
       document.getElementById('fin-file-input').click();
@@ -2102,7 +2102,7 @@
     } catch(e) { showToast('Erro: ' + e.message, 'error'); }
     finally {
       btn.disabled = false;
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair via IA`;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair Dados`;
       document.getElementById('fin-file-input').value = '';
     }
   }
