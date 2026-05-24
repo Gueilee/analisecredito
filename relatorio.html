@@ -76,7 +76,7 @@
       padding: 22px 32px 0;
       display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
     }
-    .doc-header-logo { height: 40px; max-width: 160px; object-fit: contain; }
+    .doc-header-logo { height: 65px; max-width: 240px; object-fit: contain; }
     .doc-header-right { text-align: right; }
     .doc-header-title { font-size: 20px; font-weight: 900; color: #5b21b6; letter-spacing: -.5px; line-height: 1.1; }
     .doc-header-sub   { font-size: 9px; color: #9ca3af; margin-top: 3px; }
@@ -554,7 +554,12 @@ function fmtMoney(v) {
 }
 function fmtDate(iso) {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleDateString('pt-BR'); } catch { return iso; }
+  try {
+    // Parse "YYYY-MM-DD" as local to avoid UTC off-by-one in UTC-3
+    const s = String(iso), p = s.split('T')[0].split('-');
+    const d = p.length === 3 ? new Date(+p[0], +p[1]-1, +p[2]) : new Date(s);
+    return d.toLocaleDateString('pt-BR');
+  } catch { return iso; }
 }
 function fmtDateTime(iso) {
   if (!iso) return '—';
@@ -1061,7 +1066,89 @@ const FIN_GROUPS = [
 /* ════════════════════════════════════════════════════
    DETALHAMENTO POR CICLO — HTML TABLE FOR PDF
 ════════════════════════════════════════════════════ */
-function buildDetailTableHTML(cycles, P) {
+function buildDetailTableHTML(cycles, P, solObj) {
+  const SEC_ROW = 'background:#1e1b4b;color:white;font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;border:1px solid #1e1b4b;';
+  const LBL_TD  = 'padding:4px 8px;font-size:8.5px;font-weight:600;color:#4b5563;background:#f9fafb;border:1px solid #e5e7eb;white-space:nowrap;min-width:90px;';
+  const CELL    = 'text-align:center;padding:4px 5px;border:1px solid #e5e7eb;font-size:8px;';
+  const EMPTY   = `<td style="${CELL}color:#d1d5db;">—</td>`;
+  const secHead = `
+  <div class="sec-head page-break" style="background:linear-gradient(135deg,#0f172a,#1e1b4b);margin-top:4px;">
+    <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke="currentColor" stroke-width="1.5"/></svg>
+    3b. Detalhamento por Ciclo — Fluxo de Caixa
+  </div>`;
+
+  /* ── XLS-based table (espelho do exposicao.html) ───────────── */
+  const _sim = (solObj||{}).xlsSimulacao?.stages;
+  const _brF = v => parseFloat(String(v||'0').replace(/\./g,'').replace(',','.')) || 0;
+  const _hasXLS = _sim && Object.values(_sim).some(v => _brF(v.fob||'')+_brF(v.di||'')+_brF(v.fat||'')+_brF(v.rec||'')>0);
+
+  if (_hasXLS) {
+    const XLS_KEYS   = ['pedido','pront','bl','transit','desemb','pagexp','fat','recvdm'];
+    const XLS_LABELS = ['PEDIDO','PRONT.','BL','TRANSP.','DESEMB.','PG.EXP.','FATUR.','RECEB. VDM'];
+    const XLS_CLR    = ['#6366f1','#7c3aed','#3b82f6','#f59e0b','#06b6d4','#f43f5e','#8b5cf6','#01E18E'];
+
+    const fobC = XLS_KEYS.map(k => -_brF((_sim[k]||{}).fob||''));
+    const diC  = XLS_KEYS.map(k => -_brF((_sim[k]||{}).di ||''));
+    const fatC = XLS_KEYS.map(k =>  _brF((_sim[k]||{}).fat||''));
+    const recC = XLS_KEYS.map(k =>  _brF((_sim[k]||{}).rec||''));
+
+    const _PAG=5, _DES=4, _RCV=7;
+    let _run=0;
+    const _cfSeq = XLS_KEYS.map((_,i) => { if(i!==_PAG) _run+=fobC[i]+diC[i]+recC[i]; return _run; });
+    const cfCum  = _cfSeq.slice();
+    cfCum[_PAG]  = _cfSeq[_RCV] + fobC[_DES] + diC[_PAG] + recC[_PAG];
+
+    const fatTot = fatC.reduce((s,v)=>s+v,0);
+    const expCrd = XLS_KEYS.map((_,i)=>{ const cr=recC.slice(0,i+1).reduce((s,v)=>s+v,0); const e=cr-fatTot; return e<0?e:0; });
+
+    const fmtV  = v => { if(!v) return '—'; const a=Math.abs(Math.round(v)); return (v<0?'-R$ ':'R$ ')+a.toLocaleString('pt-BR'); };
+    const fmtCF = v => { if(v===0) return 'R$ 0'; const a=Math.abs(Math.round(v)); return (v<0?'-R$ ':'R$ ')+a.toLocaleString('pt-BR'); };
+
+    const thCols = XLS_KEYS.map((k,i)=>`<th style="background:${XLS_CLR[i]};color:white;padding:4px 5px;font-size:7px;font-weight:800;text-align:center;border:1px solid rgba(0,0,0,.1);white-space:nowrap;">${XLS_LABELS[i]}</th>`).join('');
+
+    const mkRow = (lbl, arr, clrFn) =>
+      `<tr><td style="${LBL_TD}">${lbl}</td>${arr.map(v=>v?`<td style="${CELL}color:${clrFn(v)};font-weight:700;text-align:right;white-space:nowrap;">${fmtV(v)}</td>`:EMPTY).join('')}</tr>`;
+
+    // Linhas de tempo se ciclos disponíveis
+    let timingRows = '';
+    if (cycles && cycles.length > 0) {
+      const c = cycles[0];
+      const gsD = k => ({pedido:c.d0,pront:c.dPrepDone,bl:c.dBL,transit:c.dReg,desemb:c.dDesemb,pagexp:c.dPagExp,fat:c.dFat,recvdm:c.dRec})[k];
+      const ds  = XLS_KEYS.map(k => gsD(k));
+      const rDt = ds.map(d => `<td style="${CELL}color:#374151;white-space:nowrap;">${d?d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</td>`).join('');
+      const rEt = XLS_KEYS.map((_,i)=>{ if(!i)return EMPTY; const pr=ds[i-1],cr=ds[i]; if(!pr||!cr)return EMPTY; const d=Math.round((cr-pr)/86400000); return d>0?`<td style="${CELL}color:#374151;">${d}d</td>`:EMPTY; }).join('');
+      const rAc = XLS_KEYS.map((_,i)=>{ const d=ds[i]; if(!d||!ds[0])return EMPTY; return `<td style="${CELL}color:#374151;">${Math.round((d-ds[0])/86400000)}d</td>`; }).join('');
+      timingRows = `<tr><td colspan="9" style="${SEC_ROW}">Tempo</td></tr>
+        <tr><td style="${LBL_TD}">Dias Etapa</td>${rEt}</tr>
+        <tr><td style="${LBL_TD}">Dias Acum.</td>${rAc}</tr>
+        <tr><td style="${LBL_TD}">Data</td>${rDt}</tr>`;
+    }
+
+    return secHead + `
+    <div style="margin-bottom:12px;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-family:inherit;font-size:8px;">
+          <thead><tr>
+            <th style="padding:4px 8px;font-size:7.5px;background:#f3f4f6;border:1px solid #e5e7eb;text-align:left;min-width:90px;"></th>
+            ${thCols}
+          </tr></thead>
+          <tbody>
+            <tr><td colspan="9" style="${SEC_ROW}">Fluxo Financeiro</td></tr>
+            ${mkRow('PAGTO. FOB',   fobC, v=>v<0?'#dc2626':'#374151')}
+            ${mkRow('DESP + IMP',   diC,  v=>v<0?'#d97706':'#374151')}
+            ${mkRow('FAT. CLIENTE', fatC, v=>v>0?'#7c3aed':'#374151')}
+            ${mkRow('RECEB. VDM',   recC, v=>v>0?'#059669':'#374151')}
+            <tr><td colspan="9" style="${SEC_ROW}">Posição</td></tr>
+            <tr><td style="${LBL_TD}">FLUXO CAIXA FINAN.</td>${cfCum.map(v=>`<td style="${CELL}color:${v<0?'#dc2626':v>0?'#059669':'#9ca3af'};font-weight:700;text-align:right;white-space:nowrap;">${fmtCF(v)}</td>`).join('')}</tr>
+            <tr><td style="${LBL_TD}">EXP. SEGURO CRÉD.</td>${expCrd.map(v=>v<0?`<td style="${CELL}color:#dc2626;font-weight:700;text-align:right;white-space:nowrap;">${fmtV(v)}</td>`:EMPTY).join('')}</tr>
+            ${timingRows}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  /* ── Fallback: abordagem por ciclos ────────────────────────── */
   if (!cycles || cycles.length === 0 || !P) return '';
 
   const CYC_COLORS = ['#a855f7','#60a5fa','#22d3ee'];
@@ -1541,7 +1628,7 @@ function render() {
         </div>
         ${_ganttSvg}
       </div>`;
-      if (_gCycles.length > 0) html += buildDetailTableHTML(_gCycles, _gP);
+      if (_gCycles.length > 0) html += buildDetailTableHTML(_gCycles, _gP, sol);
     } else {
       html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
         Limites de crédito não definidos — gráfico de exposição indisponível.
@@ -1797,7 +1884,7 @@ function render() {
   html += `
   <div class="sec-head page-break">
     <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    8. Análise gerada por IA
+    8. Análise gerada pelo Sistema
   </div>`;
 
   if (an.score !== undefined) {
@@ -1857,7 +1944,7 @@ function render() {
     }
   } else {
     html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
-      Análise por IA ainda não realizada para esta solicitação.
+      Análise pelo Sistema ainda não realizada para esta solicitação.
     </div>`;
   }
 
@@ -1902,11 +1989,27 @@ function render() {
       </div>`;
     }
 
-    if (sol.analistaObs) {
+    if (sol.validadeDias) {
+      const _vDias = parseInt(sol.validadeDias, 10);
+      const _vAt   = sol.decisao_at;
+      let _vLabel = '', _vColor = '#059669', _vBg = '#f0fdf4', _vBorder = '#bbf7d0', _vExp = '';
+      if (_vAt) {
+        const _exp = new Date(_vAt); _exp.setDate(_exp.getDate() + _vDias);
+        const _today = new Date(); _today.setHours(0,0,0,0); _exp.setHours(0,0,0,0);
+        const _diff = Math.round((_exp - _today) / 86400000);
+        _vExp = _exp.toLocaleDateString('pt-BR');
+        if (_diff < 0)   { _vLabel = 'VENCIDO';                                   _vColor='#dc2626'; _vBg='#fff5f5'; _vBorder='#fecaca'; }
+        else if (_diff<=30){ _vLabel = `VENCENDO EM ${_diff} DIA${_diff!==1?'S':''}`; _vColor='#d97706'; _vBg='#fffbeb'; _vBorder='#fde68a'; }
+        else             { _vLabel = 'ATIVO';                                       _vColor='#059669'; _vBg='#f0fdf4'; _vBorder='#bbf7d0'; }
+      }
       html += `
       <div class="avoid-break" style="margin-bottom:14px;">
-        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;margin-bottom:5px;">Condições e Observações</div>
-        <div style="font-size:10.5px;color:#374151;line-height:1.65;">${esc(sol.analistaObs)}</div>
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;margin-bottom:6px;">Validade da Análise</div>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:${_vBg};border:1px solid ${_vBorder};border-radius:6px;padding:6px 12px;">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><circle cx="12" cy="12" r="10" stroke="${_vColor}" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="${_vColor}" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span style="font-size:10px;font-weight:800;color:${_vColor};letter-spacing:.4px;">${_vLabel}</span>
+          ${_vExp ? `<span style="font-size:9px;color:${_vColor};opacity:.8;">· ${_vDias} dias · válido até ${_vExp}</span>` : `<span style="font-size:9px;color:${_vColor};opacity:.8;">· ${_vDias} dias</span>`}
+        </div>
       </div>`;
     }
 
