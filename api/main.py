@@ -47,6 +47,50 @@ DOCS_DIR.mkdir(exist_ok=True)
 BACKUPS_DIR = Path(__file__).parent / "backups"
 BACKUPS_DIR.mkdir(exist_ok=True)
 
+# ── Turso / libSQL ────────────────────────────────────────────────────────────
+_TURSO_URL   = os.getenv("TURSO_URL",   "")
+_TURSO_TOKEN = os.getenv("TURSO_TOKEN", "")
+
+
+def _turso_ok() -> bool:
+    return bool(_TURSO_URL and _TURSO_TOKEN)
+
+
+def _turso_http() -> str:
+    return _TURSO_URL.replace("libsql://", "https://")
+
+
+async def _turso(stmts: list) -> dict:
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados Turso não configurado.")
+    url = f"{_turso_http()}/v2/pipeline"
+    payload = {"requests": [{"type": "execute", "stmt": s} for s in stmts] + [{"type": "close"}]}
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(url, json=payload, headers={"Authorization": f"Bearer {_TURSO_TOKEN}"})
+    r.raise_for_status()
+    return r.json()
+
+
+async def _turso_query(sql: str, args: list | None = None) -> list[dict]:
+    stmt: dict = {"sql": sql}
+    if args:
+        stmt["args"] = [{"type": "null"} if a is None else {"type": "text", "value": str(a)} for a in args]
+    result = await _turso([stmt])
+    res  = result["results"][0]["response"]["result"]
+    cols = [c["name"] for c in res["cols"]]
+    return [
+        dict(zip(cols, [v.get("value") if v.get("type") != "null" else None for v in row]))
+        for row in res["rows"]
+    ]
+
+
+async def _turso_exec(sql: str, args: list | None = None) -> None:
+    stmt: dict = {"sql": sql}
+    if args:
+        stmt["args"] = [{"type": "null"} if a is None else {"type": "text", "value": str(a)} for a in args]
+    await _turso([stmt])
+
+
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Vendemmia Credit API",
@@ -67,7 +111,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -955,6 +999,126 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
         "bureau_fonte": "BrasilAPI / Receita Federal",
         "modelo_ia": "claude-sonnet-4-6",
     }
+
+
+# ── CRUD Solicitações ────────────────────────────────────────────────────────
+
+@app.get("/api/solicitacoes")
+async def sol_list(current_user=Depends(_get_current_user)):
+    rows = await _turso_query(
+        "SELECT id, status, created_at, updated_at, created_by, data FROM solicitacoes ORDER BY created_at DESC"
+    )
+    items = []
+    for row in rows:
+        try:
+            d = json.loads(row["data"] or "{}")
+        except Exception:
+            d = {}
+        d["id"]        = row["id"]
+        d["status"]    = row["status"]
+        d["createdAt"] = row["created_at"]
+        d["updatedAt"] = row["updated_at"]
+        try:
+            d["created_by"] = json.loads(row["created_by"] or "null")
+        except Exception:
+            pass
+        if _record_visible_to(d, current_user):
+            items.append(d)
+    return {"items": items}
+
+
+@app.post("/api/solicitacoes", status_code=201)
+async def sol_create(request: Request, current_user=Depends(_get_current_user)):
+    body       = await request.json()
+    sol_id     = body.get("id") or str(uuid.uuid4())
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID inválido")
+    status     = body.get("status", "pendente")
+    created_at = body.get("createdAt") or datetime.utcnow().isoformat()
+    updated_at = body.get("updatedAt") or created_at
+    created_by = json.dumps({
+        "id": current_user.get("sub"), "email": current_user.get("email"), "name": current_user.get("name")
+    })
+    body["id"]        = sol_id
+    body["createdAt"] = created_at
+    body["updatedAt"] = updated_at
+    await _turso_exec(
+        "INSERT OR REPLACE INTO solicitacoes (id, status, created_at, updated_at, created_by, data) VALUES (?,?,?,?,?,?)",
+        [sol_id, status, created_at, updated_at, created_by, json.dumps(body, ensure_ascii=False)],
+    )
+    return {"ok": True, "id": sol_id}
+
+
+@app.get("/api/solicitacoes/stats")
+async def sol_stats(current_user=Depends(_get_current_user)):
+    rows   = await _turso_query("SELECT status, COUNT(*) as cnt FROM solicitacoes GROUP BY status")
+    counts = {"total": 0, "aprovado": 0, "negado": 0, "em_analise": 0, "pendente": 0, "em_comite": 0}
+    for row in rows:
+        st  = row["status"] or "pendente"
+        cnt = int(row["cnt"] or 0)
+        counts["total"] += cnt
+        if st in counts:
+            counts[st] = cnt
+    return counts
+
+
+@app.get("/api/solicitacoes/{sol_id}")
+async def sol_get(sol_id: str, current_user=Depends(_get_current_user)):
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID inválido")
+    rows = await _turso_query(
+        "SELECT id, status, created_at, updated_at, created_by, data FROM solicitacoes WHERE id=?", [sol_id]
+    )
+    if not rows:
+        raise HTTPException(404, "Solicitação não encontrada")
+    row = rows[0]
+    try:
+        d = json.loads(row["data"] or "{}")
+    except Exception:
+        d = {}
+    d["id"]        = row["id"]
+    d["status"]    = row["status"]
+    d["createdAt"] = row["created_at"]
+    d["updatedAt"] = row["updated_at"]
+    if not _record_visible_to(d, current_user):
+        raise HTTPException(403, "Acesso negado")
+    return d
+
+
+@app.put("/api/solicitacoes/{sol_id}")
+async def sol_update(sol_id: str, request: Request, current_user=Depends(_get_current_user)):
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID inválido")
+    body       = await request.json()
+    status     = body.get("status", "pendente")
+    updated_at = body.get("updatedAt") or datetime.utcnow().isoformat()
+    created_at = body.get("createdAt") or updated_at
+    existing   = await _turso_query("SELECT created_by, created_at FROM solicitacoes WHERE id=?", [sol_id])
+    if existing:
+        created_by = existing[0]["created_by"]
+        created_at = existing[0]["created_at"] or created_at
+    else:
+        created_by = json.dumps({
+            "id": current_user.get("sub"), "email": current_user.get("email"), "name": current_user.get("name")
+        })
+    body["id"]        = sol_id
+    body["updatedAt"] = updated_at
+    await _turso_exec(
+        "INSERT OR REPLACE INTO solicitacoes (id, status, created_at, updated_at, created_by, data) VALUES (?,?,?,?,?,?)",
+        [sol_id, status, created_at, updated_at, created_by, json.dumps(body, ensure_ascii=False)],
+    )
+    return {"ok": True}
+
+
+@app.delete("/api/solicitacoes/{sol_id}", status_code=204)
+async def sol_delete(sol_id: str, current_user=Depends(_get_current_user)):
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID inválido")
+    if not _user_can_decide(current_user):
+        raise HTTPException(403, "Apenas analistas podem excluir solicitações")
+    await _turso_exec("DELETE FROM solicitacoes WHERE id=?", [sol_id])
+    from fastapi.responses import Response as _R
+    return _R(status_code=204)
 
 
 # ── Admin: Backup e Exportação ────────────────────────────────────────────────

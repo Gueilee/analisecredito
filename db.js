@@ -1,157 +1,51 @@
 /* ═══════════════════════════════════════════════════════
-   VENDEMMIA — Análise de Crédito  |  Data Layer (localStorage)
+   VENDEMMIA — Análise de Crédito  |  Data Layer
+   Bridge cache: leitura síncrona via localStorage,
+   escrita dispara API em background (fire-and-forget).
    ═══════════════════════════════════════════════════════ */
 
 const DB = (() => {
 
-  const KEYS = {
-    SOLICITACOES: 'vd_solicitacoes',
-    SESSION:      'vd_session',
-    USERS:        'vd_users',
-    DB_VERSION:   'vd_db_version',
-    DELETED_IDS:  'vd_deleted_ids',
+  /* ── HELPERS ────────────────────────────────────────── */
+  const uid     = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const now     = () => new Date().toISOString();
+  const fmt     = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+  const fmtDate  = (iso) => (!iso ? '—' : new Date(iso).toLocaleDateString('pt-BR'));
+  const fmtMoney = (val) => {
+    if (!val) return '—';
+    const n = parseFloat(String(val).replace(/\./g, '').replace(',', '.'));
+    return isNaN(n) ? val : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   };
 
-  const DB_VERSION = 4;
+  const read  = (key) => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; } };
+  const write = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
 
-  /* ── HELPERS ────────────────────────────────────────── */
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const KEYS = {
+    SESSION:     'vd_session',
+    SOL_CACHE:   'vd_sol_cache',
+    DELETED_IDS: 'vd_deleted_ids',
+    SOL_LEGACY:  'vd_solicitacoes',
+  };
 
-  const now = () => new Date().toISOString();
+  const _apiBase = () => window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+  const _fetch   = (path, opts = {}) => fetch(_apiBase() + path, { credentials: 'include', ...opts });
 
   const _trackDeleted = (id) => {
     const arr = read(KEYS.DELETED_IDS) || [];
     if (!arr.includes(id)) { arr.push(id); write(KEYS.DELETED_IDS, arr); }
   };
 
-  const fmt = (iso) => {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const fmtDate = (iso) => {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('pt-BR');
-  };
-
-  const read = (key) => {
-    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
-  };
-
-  const write = (key, val) => localStorage.setItem(key, JSON.stringify(val));
-
-  /* Usuários gerenciados pelo backend (api/users.json + bcrypt).
-     Limpa quaisquer usuários com senha em texto plano que possam ter ficado. */
-  const clearLegacyUsers = () => {
-    const users = read(KEYS.USERS);
-    if (users) localStorage.removeItem(KEYS.USERS);
-  };
-
-  /* CNPJs removidos em migrações anteriores */
-  const FAKE_CNPJS = [
-    '12.345.678/0001-99',
-    '23.456.789/0001-11',
-    '34.567.890/0001-22',
-    '45.678.901/0001-33',
-    '56.789.012/0001-44',
-    '67.890.123/0001-55',
-    '78.901.234/0001-66',
-  ];
-
-  /* CNPJs dos dados de exemplo removidos na migração v4 */
-  const SEED_CNPJS_V4 = [
-    '36.519.537/0002-90',  // A.R.Z Indústria de Luminárias
-    '08.601.690/0001-??',  // Acrilsul
-  ];
-
-  const seedSolicitacoes = () => {
-    if (read(KEYS.SOLICITACOES)) return;
-    write(KEYS.SOLICITACOES, []);
-  };
-
-  /* ── SEED CLIENTES REAIS (dados.xlsx) ───────────────── */
-  const seedClientesReais = () => {
-    const currentVersion = read(KEYS.DB_VERSION) || 0;
-    if (currentVersion >= DB_VERSION) return;
-
-    let list = read(KEYS.SOLICITACOES) || [];
-
-    // Backup defensivo antes de qualquer migração
-    if (list.length > 0) {
-      try { localStorage.setItem('vd_solicitacoes_backup_v' + currentVersion, JSON.stringify(list)); } catch (_) {}
-    }
-
-    // v3: remover clientes fictícios de demo
-    list = list.filter(s => !FAKE_CNPJS.includes(s.cnpj));
-
-    // v4: remover dados de exemplo que foram inseridos pelo seed anterior
-    list = list.filter(s => !SEED_CNPJS_V4.includes(s.cnpj));
-
-    // v4: migrar campos do formato antigo para o novo
-    list = list.map(s => {
-      const upd = { ...s };
-
-      // Prazo Invoice
-      if (upd.prazoInvoice !== undefined && upd.prazoInvoiceData === undefined) {
-        delete upd.prazoInvoice;
-        upd.prazoInvoiceData    = '';
-        upd.prazoPrepEmbarque   = upd.prazoPrepEmbarque   ?? 10;
-        upd.prazoEmbarque       = parseInt(upd.prazoEmbarque) || 10;
-        upd.prazoTransit        = parseInt(upd.prazoTransit)  || 30;
-        upd.prazoDesembaraco    = upd.prazoDesembaraco    ?? 2;
-        upd.prazoFaturamento    = upd.prazoFaturamento    ?? 3;
-        upd.prazoPagtoVendemmia = upd.prazoPagtoVendemmia ?? 60;
-      }
-
-      // qtdEmbarquesMes1/2/3/4 → qtdEmbarques
-      if (upd.qtdEmbarquesMes1 !== undefined && upd.qtdEmbarques === undefined) {
-        upd.qtdEmbarques = [upd.qtdEmbarquesMes1, upd.qtdEmbarquesMes2, upd.qtdEmbarquesMes3, upd.qtdEmbarquesMes4]
-          .filter(Boolean).join(', ') || '';
-        delete upd.qtdEmbarquesMes1;
-        delete upd.qtdEmbarquesMes2;
-        delete upd.qtdEmbarquesMes3;
-        delete upd.qtdEmbarquesMes4;
-      }
-
-      // exportadores (array) → exportador (string)
-      if (Array.isArray(upd.exportadores) && upd.exportador === undefined) {
-        upd.exportador = upd.exportadores.filter(Boolean).join(', ') || '';
-        delete upd.exportadores;
-      }
-
-      // pagtoExportadores (array) → pagtoExportadorParcelas
-      if (Array.isArray(upd.pagtoExportadores) && upd.pagtoExportadorParcelas === undefined) {
-        upd.pagtoExportadorParcelas = {};
-        delete upd.pagtoExportadores;
-      }
-
-      // prazosExportador — removido no novo formato
-      if (upd.prazosExportador !== undefined) delete upd.prazosExportador;
-
-      // tipoAnalise
-      if (!upd.tipoAnalise) upd.tipoAnalise = 'trade';
-
-      // clienteIntegradoMultiplos
-      if (upd.clienteIntegradoMultiplos === undefined) upd.clienteIntegradoMultiplos = [];
-
-      return upd;
-    });
-
-    write(KEYS.SOLICITACOES, list);
-    write(KEYS.DB_VERSION, DB_VERSION);
-  };
-
   /* ── AUTH ───────────────────────────────────────────── */
-  const _apiBase = () => window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
-
   const auth = {
     async login(email, password) {
       try {
-        const resp = await fetch(`${_apiBase()}/api/auth/login`, {
+        const resp = await _fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ email, password }),
         });
         const data = await resp.json();
@@ -171,57 +65,103 @@ const DB = (() => {
       }
     },
     async logout() {
-      try {
-        await fetch(`${_apiBase()}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-      } catch (_) {}
+      try { await _fetch('/api/auth/logout', { method: 'POST' }); } catch (_) {}
       localStorage.removeItem(KEYS.SESSION);
     },
-    getSession() { return read(KEYS.SESSION); },
+    getSession()  { return read(KEYS.SESSION); },
     requireAuth() {
       if (!read(KEYS.SESSION)) { window.location.href = 'login.html'; return null; }
       return read(KEYS.SESSION);
     },
   };
 
-  /* ── SOLICITAÇÕES CRUD ──────────────────────────────── */
+  /* ── SOLICITAÇÕES (localStorage bridge cache + API) ─── */
   const solicitacoes = {
-    getAll() {
-      return (read(KEYS.SOLICITACOES) || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Pré-populado do cache local ao carregar (síncrono)
+    _cache: (() => {
+      try { return JSON.parse(localStorage.getItem(KEYS.SOL_CACHE) || 'null') || null; }
+      catch { return null; }
+    })(),
+
+    _saveCache() {
+      try { localStorage.setItem(KEYS.SOL_CACHE, JSON.stringify(this._cache)); } catch {}
     },
-    getById(id) {
-      return (read(KEYS.SOLICITACOES) || []).find(s => s.id === id) || null;
+
+    async sync() {
+      try {
+        const r = await _fetch('/api/solicitacoes');
+        if (r.ok) {
+          const d = await r.json();
+          this._cache = d.items || [];
+          this._saveCache();
+          localStorage.removeItem(KEYS.SOL_LEGACY); // remove localStorage legado após sync
+        } else if (r.status === 401) {
+          this._cache = [];
+        }
+      } catch {
+        // Fallback: usa dados legados do localStorage se API falhar
+        if (!this._cache) {
+          const legacy = read(KEYS.SOL_LEGACY);
+          this._cache = legacy || [];
+        }
+      }
     },
+
+    getAll()    { return (this._cache || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); },
+    getById(id) { return (this._cache || []).find(s => s.id === id) || null; },
+
     create(data) {
-      const list = read(KEYS.SOLICITACOES) || [];
       const session = read(KEYS.SESSION);
       const record = {
         ...data,
-        id:              uid(),
+        id:              data.id || uid(),
         status:          data.status || 'pendente',
         solicitante:     session?.userId || 'u1',
         solicitanteNome: session?.name   || 'Usuário',
         createdAt:       now(),
         updatedAt:       now(),
       };
-      list.unshift(record);
-      write(KEYS.SOLICITACOES, list);
+      if (!this._cache) this._cache = [];
+      this._cache.unshift(record);
+      this._saveCache();
+      _fetch('/api/solicitacoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record),
+      }).catch(() => {});
       return record;
     },
+
     update(id, data) {
-      const list = read(KEYS.SOLICITACOES) || [];
-      const idx  = list.findIndex(s => s.id === id);
-      if (idx === -1) return null;
-      list[idx] = { ...list[idx], ...data, id, updatedAt: now() };
-      write(KEYS.SOLICITACOES, list);
-      return list[idx];
+      if (!this._cache) this._cache = [];
+      const idx = this._cache.findIndex(s => s.id === id);
+      let updated;
+      if (idx !== -1) {
+        updated = { ...this._cache[idx], ...data, id, updatedAt: now() };
+        this._cache[idx] = updated;
+      } else {
+        updated = { ...data, id, updatedAt: now() };
+        this._cache.push(updated);
+      }
+      this._saveCache();
+      _fetch(`/api/solicitacoes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      }).catch(() => {});
+      return updated;
     },
+
     delete(id) {
-      const list = read(KEYS.SOLICITACOES) || [];
-      const next = list.filter(s => s.id !== id);
-      write(KEYS.SOLICITACOES, next);
+      if (!this._cache) return false;
+      const prev = this._cache.length;
+      this._cache = this._cache.filter(s => s.id !== id);
+      this._saveCache();
       _trackDeleted(id);
-      return next.length < list.length;
+      _fetch(`/api/solicitacoes/${id}`, { method: 'DELETE' }).catch(() => {});
+      return this._cache.length < prev;
     },
+
     getStats() {
       const all    = solicitacoes.getAll();
       const counts = { total: all.length, aprovado: 0, negado: 0, em_analise: 0, pendente: 0, em_comite: 0 };
@@ -229,7 +169,7 @@ const DB = (() => {
       all.forEach(s => {
         if (counts[s.status] !== undefined) counts[s.status]++;
         if (s.status === 'aprovado' && s.limiteAprovado) {
-          const n = parseFloat(s.limiteAprovado.replace(/\./g,'').replace(',','.')) || 0;
+          const n = parseFloat(s.limiteAprovado.replace(/\./g, '').replace(',', '.')) || 0;
           volumeTotal += n;
         }
       });
@@ -240,34 +180,25 @@ const DB = (() => {
   };
 
   /* ── LABEL HELPERS ──────────────────────────────────── */
-  const statusLabel = { aprovado: 'Aprovado', negado: 'Negado', em_analise: 'Em Análise', pendente: 'Pendente', novo: 'Novo', em_comite: 'Em Comitê' };
-  const statusBadge = { aprovado: 'aprovado', negado: 'negado', em_analise: 'em-analise', pendente: 'pendente', novo: 'novo', em_comite: 'em-comite' };
-
-  const modalLabel = { aereo: 'Aéreo', maritimo: 'Marítimo', rodoviario: 'Rodoviário', multimodal: 'Multimodal' };
+  const statusLabel    = { aprovado: 'Aprovado', negado: 'Negado', em_analise: 'Em Análise', pendente: 'Pendente', novo: 'Novo', em_comite: 'Em Comitê' };
+  const statusBadge    = { aprovado: 'aprovado', negado: 'negado', em_analise: 'em-analise', pendente: 'pendente', novo: 'novo', em_comite: 'em-comite' };
+  const modalLabel     = { aereo: 'Aéreo', maritimo: 'Marítimo', rodoviario: 'Rodoviário', multimodal: 'Multimodal' };
   const integradoLabel = { logistica: 'Logística', trade: 'Trade', armazem: 'Armazém', multiplos: 'Múltiplos' };
-  const tipoOpLabel = { encomenda: 'Encomenda', 'conta-ordem': 'Conta e Ordem', gestao: 'Gestão' };
-
-  const fmtMoney = (val) => {
-    if (!val) return '—';
-    const n = parseFloat(String(val).replace(/\./g,'').replace(',','.'));
-    if (isNaN(n)) return val;
-    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-  };
-
-  /* ── INIT ───────────────────────────────────────────── */
-  const init = () => { clearLegacyUsers(); seedSolicitacoes(); seedClientesReais(); };
-
-  init();
+  const tipoOpLabel    = { encomenda: 'Encomenda', 'conta-ordem': 'Conta e Ordem', gestao: 'Gestão' };
 
   const deletedIds = {
     getAll() { return new Set(read(KEYS.DELETED_IDS) || []); },
     add(id)  { _trackDeleted(id); },
   };
 
+  // Inicia sync com a API (Promise pública — páginas de lista esperam por ela)
+  const ready = solicitacoes.sync();
+
   return {
     auth,
     solicitacoes,
     deletedIds,
+    ready,
     utils: { uid, now, fmt, fmtDate, fmtMoney, statusLabel, statusBadge, modalLabel, integradoLabel, tipoOpLabel },
   };
 })();

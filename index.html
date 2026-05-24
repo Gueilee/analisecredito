@@ -897,7 +897,7 @@
     setTimeout(() => showToast(_msg, 'success'), 120);
   }
 
-  load();
+  DB.ready.then(() => load());
 </script>
 </body>
 </html>
