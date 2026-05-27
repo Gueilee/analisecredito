@@ -27,6 +27,8 @@ const App = (() => {
       `<svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
     clientes:
       `<svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/></svg>`,
+    usuarios:
+      `<svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
     relatorios:
       `<svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="6" y1="20" x2="6" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
     historico:
@@ -63,13 +65,18 @@ const App = (() => {
 
   /* ── RBAC helpers ─────────────────────────────────────── */
   const _DECISION_ROLES = ['Financeiro', 'Administrador', 'Admin', 'Diretor'];
+  const _ADMIN_ROLES    = ['Administrador', 'Admin'];
   function _canDecide(session) {
     return session && _DECISION_ROLES.some(r => (session.role || '').includes(r));
+  }
+  function _isAdmin(session) {
+    return session && _ADMIN_ROLES.some(r => (session.role || '').includes(r));
   }
 
   /* ── HTML do sidebar completo ─────────────────────────── */
   function buildSidebar(page, session, c) {
     const showDecisionItems = _canDecide(session);
+    const showAdminItems    = _isAdmin(session);
     return `
       <div class="sidebar-logo">
         <a href="index.html" title="Ir para o Dashboard" style="display:block;line-height:0;">
@@ -90,7 +97,8 @@ const App = (() => {
         ${showDecisionItems ? navItem(ICO.negadas,   'Negadas',   'solicitacoes.html?status=negado',   page === 'negado',   badge(c.negado,   ' red'))   : ''}
 
         <span class="nav-section-label">Gestão</span>
-        ${navItem(ICO.clientes, 'Consulta', 'clientes.html', page === 'clientes')}
+        ${navItem(ICO.clientes,  'Consulta',  'clientes.html',  page === 'clientes')}
+        ${showAdminItems ? navItem(ICO.usuarios, 'Usuários', 'usuarios.html', page === 'usuarios') : ''}
       </nav>
 
       <div class="sidebar-footer">

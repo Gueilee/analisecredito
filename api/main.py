@@ -1417,6 +1417,166 @@ async def notify_email(
     return {"ok": True}
 
 
+# ── Admin: Gestão de Usuários ─────────────────────────────────────────────────
+
+def _welcome_html_api(name: str, url: str) -> str:
+    logo_url = os.getenv("ALLOWED_ORIGINS", "https://analisecredito.vendemmia.dev.br").split(",")[0].strip() + "/logo.png"
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f8;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f8;padding:40px 0;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);">
+      <tr><td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:32px 40px;">
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td><img src="{logo_url}" alt="Vendemmia" height="48" style="height:48px;max-width:200px;object-fit:contain;display:block;" /></td>
+          <td align="right" style="color:rgba(255,255,255,.5);font-size:11px;letter-spacing:.5px;text-transform:uppercase;vertical-align:bottom;">Análise de Crédito</td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="background:linear-gradient(90deg,#4f46e5,#7c3aed);padding:20px 40px;">
+        <p style="margin:0;color:#fff;font-size:20px;font-weight:700;">Bem-vindo ao sistema!</p>
+        <p style="margin:6px 0 0;color:rgba(255,255,255,.75);font-size:13px;">Sua conta foi criada. Defina sua senha para começar.</p>
+      </td></tr>
+      <tr><td style="padding:36px 40px 28px;">
+        <p style="margin:0 0 16px;font-size:16px;color:#1e1b4b;font-weight:700;">Olá, {name}!</p>
+        <p style="margin:0 0 12px;font-size:14px;color:#555;line-height:1.7;">
+          Você foi cadastrado no <strong>Sistema de Análise de Crédito da Vendemmia</strong>.
+          Clique no botão abaixo para definir sua senha e ativar seu acesso.
+        </p>
+        <p style="margin:0 0 28px;font-size:13px;color:#888;">O link é <strong>válido por 24 horas</strong>.</p>
+        <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+          <tr><td style="border-radius:12px;background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 4px 14px rgba(79,70,229,.4);">
+            <a href="{url}" style="display:inline-block;padding:16px 40px;color:#fff;text-decoration:none;font-size:15px;font-weight:700;border-radius:12px;">Definir minha senha</a>
+          </td></tr>
+        </table>
+        <p style="margin:0;font-size:12px;word-break:break-all;"><a href="{url}" style="color:#6366f1;">{url}</a></p>
+      </td></tr>
+      <tr><td style="padding:20px 40px;background:#f9f9fb;border-top:1px solid #ebebeb;text-align:center;">
+        <p style="margin:0;font-size:11px;color:#aaa;">Sistema interno Vendemmia &middot; Não responda este e-mail</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table></body></html>"""
+
+
+async def _create_welcome_token_and_send(name: str, email: str) -> bool:
+    await _ensure_reset_tables()
+    token      = secrets.token_urlsafe(32)
+    expires_at = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+    await _turso_exec(
+        "INSERT INTO password_reset_tokens (token, email, expires_at, used) VALUES (?,?,?,0)",
+        [token, email, expires_at],
+    )
+    base_url = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")[0].strip()
+    link     = f"{base_url}/login.html?reset={token}&welcome=1"
+    html     = _welcome_html_api(name, link)
+    await _send_email(
+        "Bem-vindo ao Sistema de Análise de Crédito — Vendemmia",
+        html, [email],
+        from_name="Vendemmia Análise de Crédito",
+    )
+    return True
+
+
+@app.get("/api/admin/users")
+async def admin_list_users(current_user=Depends(_require_admin)):
+    rows = await _turso_query(
+        "SELECT id, name, email, role, avatar, hashed_password, created_at, updated_at FROM users ORDER BY name"
+    )
+    return [
+        {
+            "id":         r["id"],
+            "name":       r["name"],
+            "email":      r["email"],
+            "role":       r["role"],
+            "avatar":     r["avatar"],
+            "ativo":      bool(r.get("hashed_password")),
+            "created_at": r.get("created_at"),
+            "updated_at": r.get("updated_at"),
+        }
+        for r in rows
+    ]
+
+
+class UserCreateRequest(BaseModel):
+    name:  str
+    email: str
+    role:  str
+
+
+@app.post("/api/admin/users", status_code=201)
+async def admin_create_user(body: UserCreateRequest, current_user=Depends(_require_admin)):
+    email = body.email.strip().lower()
+    name  = body.name.strip()
+    role  = body.role.strip()
+
+    existing = await _turso_query("SELECT id FROM users WHERE email=?", [email])
+    if existing:
+        raise HTTPException(400, "Já existe um usuário com este e-mail.")
+
+    uid     = "u_" + secrets.token_urlsafe(8)
+    avatar  = (name[:2]).upper()
+    now_iso = datetime.utcnow().isoformat()
+    await _turso_exec(
+        "INSERT INTO users (id, name, email, hashed_password, role, avatar, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+        [uid, name, email, "", role, avatar, now_iso, now_iso],
+    )
+
+    email_sent = False
+    if _SMTP_HOST:
+        try:
+            await _create_welcome_token_and_send(name, email)
+            email_sent = True
+        except Exception:
+            pass
+
+    return {"ok": True, "id": uid, "email_sent": email_sent}
+
+
+class UserUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+
+
+@app.put("/api/admin/users/{user_id}")
+async def admin_update_user(user_id: str, body: UserUpdateRequest, current_user=Depends(_require_admin)):
+    rows = await _turso_query("SELECT id, name, role, avatar FROM users WHERE id=?", [user_id])
+    if not rows:
+        raise HTTPException(404, "Usuário não encontrado.")
+    u       = rows[0]
+    name    = (body.name or u["name"]).strip()
+    role    = (body.role or u["role"]).strip()
+    avatar  = (name[:2]).upper()
+    now_iso = datetime.utcnow().isoformat()
+    await _turso_exec(
+        "UPDATE users SET name=?, role=?, avatar=?, updated_at=? WHERE id=?",
+        [name, role, avatar, now_iso, user_id],
+    )
+    return {"ok": True}
+
+
+@app.delete("/api/admin/users/{user_id}", status_code=204)
+async def admin_delete_user(user_id: str, current_user=Depends(_require_admin)):
+    if current_user.get("sub") == user_id:
+        raise HTTPException(400, "Você não pode excluir sua própria conta.")
+    existing = await _turso_query("SELECT id FROM users WHERE id=?", [user_id])
+    if not existing:
+        raise HTTPException(404, "Usuário não encontrado.")
+    await _turso_exec("DELETE FROM users WHERE id=?", [user_id])
+
+
+@app.post("/api/admin/users/{user_id}/resend-welcome")
+async def admin_resend_welcome(user_id: str, current_user=Depends(_require_admin)):
+    rows = await _turso_query("SELECT name, email FROM users WHERE id=?", [user_id])
+    if not rows:
+        raise HTTPException(404, "Usuário não encontrado.")
+    u = rows[0]
+    if not _SMTP_HOST:
+        raise HTTPException(503, "E-mail não configurado no servidor.")
+    await _create_welcome_token_and_send(u["name"], u["email"])
+    return {"ok": True}
+
+
 # ── Endpoints de análise ──────────────────────────────────────────────────────
 
 @app.get("/api/health")
