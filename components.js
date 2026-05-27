@@ -65,7 +65,7 @@ const App = (() => {
 
   /* ── RBAC helpers ─────────────────────────────────────── */
   const _DECISION_ROLES = ['Financeiro', 'Administrador', 'Admin', 'Diretor'];
-  const _ADMIN_ROLES    = ['Administrador', 'Admin'];
+  const _ADMIN_ROLES    = ['Administrador', 'Admin', 'Diretor'];
   function _canDecide(session) {
     return session && _DECISION_ROLES.some(r => (session.role || '').includes(r));
   }

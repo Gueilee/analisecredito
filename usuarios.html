@@ -150,7 +150,7 @@
 <body>
 <script>
   const session = DB.auth.requireAuth();
-  if (!session || !['Administrador','Admin'].some(r => (session.role||'').includes(r))) {
+  if (!session || !['Administrador','Admin','Diretor'].some(r => (session.role||'').includes(r))) {
     window.location.href = 'index.html';
   }
 </script>

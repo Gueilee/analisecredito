@@ -200,13 +200,13 @@ def _record_visible_to(record: dict, user: dict) -> bool:
     return cb.get("id") == user.get("sub")
 
 
-_ROLES_ADMIN = {"Administrador", "Admin"}
+_ROLES_ADMIN = {"Administrador", "Admin", "Diretor"}
 
 
 async def _require_admin(current_user=Depends(_get_current_user)):
     role = current_user.get("role", "")
     if not any(r in role for r in _ROLES_ADMIN):
-        raise HTTPException(403, "Acesso negado — apenas Administradores")
+        raise HTTPException(403, "Acesso negado — apenas Administradores e Diretores")
     return current_user
 
 
