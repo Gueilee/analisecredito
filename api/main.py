@@ -762,6 +762,7 @@ CNPJ informado: {req.cnpj}
     exp_str = f"R$ {exp_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
     tempo_mercado = calc_tempo_mercado(req.fundacao) if req.fundacao else "Não informado"
+    obs_analista = f"## OBSERVAÇÕES DO ANALISTA\n{req.comentario}" if req.comentario else ""
 
     return f"""Você é um analista de crédito sênior especializado em empresas importadoras no Brasil,
 trabalhando na Vendemmia — empresa de logística de importação (Trading/Account).
@@ -847,7 +848,7 @@ Diretrizes de pontuação (orientativas):
 - Situação INAPTA ou BAIXADA: score ≤ 15, recomendação obrigatoriamente "negar"
 - Sócio único + empresa < 1 ano: alerta crítico
 - Exposição > 3× volume mensal declarado: alerta crítico
-{('## OBSERVAÇÕES DO ANALISTA\n' + req.comentario) if req.comentario else ''}
+{obs_analista}
 """
 
 
