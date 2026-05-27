@@ -241,6 +241,12 @@
       color: var(--text-muted);
       text-decoration: none;
       transition: color .2s;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1;
     }
 
     .forgot:hover { color: var(--pink); }
@@ -507,8 +513,8 @@
     <!-- ── View: Nova senha (link do e-mail) ──── -->
     <div id="view-reset" class="view">
       <div class="header">
-        <h1>Criar nova senha</h1>
-        <p>Escolha uma senha segura para sua conta.</p>
+        <h1 id="reset-title">Criar nova senha</h1>
+        <p id="reset-subtitle">Escolha uma senha segura para sua conta.</p>
       </div>
       <form class="form" onsubmit="handleResetConfirm(event)">
         <div class="field">
@@ -549,11 +555,20 @@
     if (el) { el.classList.add('active'); lucide.createIcons(); }
   }
 
-  /* ── Init: detecta ?reset=TOKEN na URL ─────────────── */
+  /* ── Init: detecta ?reset=TOKEN e ?welcome=1 na URL ── */
   (function init() {
     lucide.createIcons();
-    const token = new URLSearchParams(window.location.search).get('reset');
-    if (token) showView('view-reset');
+    const params  = new URLSearchParams(window.location.search);
+    const token   = params.get('reset');
+    const welcome = params.get('welcome') === '1';
+    if (token) {
+      if (welcome) {
+        document.getElementById('reset-title').textContent    = 'Primeiro acesso';
+        document.getElementById('reset-subtitle').textContent = 'Defina sua senha para ativar sua conta.';
+        document.getElementById('btn-reset-confirm').textContent = 'Ativar minha conta';
+      }
+      showView('view-reset');
+    }
   })();
 
   /* ── Toggle senha ──────────────────────────────────── */
