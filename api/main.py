@@ -220,15 +220,31 @@ class LoginRequest(BaseModel):
 @app.post("/api/auth/login")
 @limiter.limit("10/minute")
 async def auth_login(request: Request, response: Response, body: LoginRequest):
-    users = _load_users()
-    if not users:
-        raise HTTPException(503, detail="Sistema não configurado. Execute: python create_user.py")
-    user = next((u for u in users if u.get("email", "").lower() == body.email.strip().lower()), None)
+    user = None
+    if _turso_ok():
+        try:
+            rows = await _turso_query(
+                "SELECT id, name, email, hashed_password, role, avatar FROM users WHERE email=?",
+                [body.email.strip().lower()],
+            )
+            if rows:
+                user = rows[0]
+        except Exception:
+            pass
+
+    # Fallback to local users.json if Turso is not working/configured or if the user is not found in the DB (for initial migration or fallback)
+    if not user:
+        users = _load_users()
+        user = next((u for u in users if u.get("email", "").lower() == body.email.strip().lower()), None)
+
     await asyncio.sleep(0.3)  # delay fixo para prevenir timing attacks
 
-    # Senha: verifica override no Turso (reset) antes do hash original
-    password_hash = user.get("hashed_password", "") if user else ""
-    if user and _turso_ok():
+    if not user:
+        raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
+
+    password_hash = user.get("hashed_password", "")
+    # Check password override from user_passwords table if user came from local fallback file
+    if user.get("id") and not password_hash and _turso_ok():
         try:
             pw_rows = await _turso_query(
                 "SELECT hashed_password FROM user_passwords WHERE email=?",
@@ -239,8 +255,9 @@ async def auth_login(request: Request, response: Response, body: LoginRequest):
         except Exception:
             pass
 
-    if not user or not _pwd_ctx.verify(body.password, password_hash):
+    if not password_hash or not _pwd_ctx.verify(body.password, password_hash):
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
+
     token = _create_token({
         "sub":   user["id"],
         "email": user["email"],
@@ -306,8 +323,21 @@ async def auth_reset_request(request: Request, body: ResetRequestModel):
     await _ensure_reset_tables()
     email = body.email.strip().lower()
 
-    users = _load_users()
-    user  = next((u for u in users if u.get("email", "").lower() == email), None)
+    user = None
+    if _turso_ok():
+        try:
+            rows = await _turso_query(
+                "SELECT name, email FROM users WHERE email=?",
+                [email],
+            )
+            if rows:
+                user = rows[0]
+        except Exception:
+            pass
+
+    if not user:
+        users = _load_users()
+        user  = next((u for u in users if u.get("email", "").lower() == email), None)
 
     # Responde sempre ok para não revelar se o e-mail existe
     if not user or not _SMTP_HOST:
@@ -395,6 +425,11 @@ async def auth_reset_confirm(request: Request, body: ResetConfirmModel):
     new_hash = _pwd_ctx.hash(body.password)
     now_iso  = datetime.utcnow().isoformat()
 
+    # Update both the users table and the user_passwords table
+    await _turso_exec(
+        "UPDATE users SET hashed_password=?, updated_at=? WHERE email=?",
+        [new_hash, now_iso, email],
+    )
     await _turso_exec(
         "INSERT OR REPLACE INTO user_passwords (email, hashed_password, updated_at) VALUES (?,?,?)",
         [email, new_hash, now_iso],
@@ -407,10 +442,50 @@ async def auth_reset_confirm(request: Request, body: ResetConfirmModel):
 
 
 # ── E-mail ────────────────────────────────────────────────────────────────────
-_SMTP_HOST     = os.getenv("SMTP_HOST", "")
-_SMTP_PORT     = int(os.getenv("SMTP_PORT", "587"))
-_SMTP_USER     = os.getenv("SMTP_USER", "")
-_SMTP_PASS     = os.getenv("SMTP_PASS", "")
+import urllib.parse
+
+_MAILER_DSN = os.getenv("MAILER_DSN", "")
+_MAILER_FROM = os.getenv("MAILER_FROM", "")
+
+_SMTP_HOST = ""
+_SMTP_PORT = 587
+_SMTP_USER = ""
+_SMTP_PASS = ""
+_SMTP_ENCRYPTION = "tls"
+
+if _MAILER_DSN:
+    try:
+        _parsed = urllib.parse.urlparse(_MAILER_DSN)
+        _q = urllib.parse.parse_qs(_parsed.query)
+        
+        # Check query parameters first
+        _user = _q.get("username", [None])[0]
+        _password = _q.get("password", [None])[0]
+        _encryption = _q.get("encryption", [None])[0]
+        
+        # Fallback to standard URL auth
+        if not _user and _parsed.username:
+            _user = urllib.parse.unquote(_parsed.username)
+        if not _password and _parsed.password:
+            _password = urllib.parse.unquote(_parsed.password)
+            
+        _SMTP_HOST = _parsed.hostname or ""
+        _SMTP_PORT = _parsed.port or (465 if _parsed.scheme == "smtps" else 587)
+        _SMTP_USER = _user or ""
+        _SMTP_PASS = _password or ""
+        _SMTP_ENCRYPTION = (_encryption or ("ssl" if _parsed.scheme == "smtps" or _SMTP_PORT == 465 else "tls")).lower()
+    except Exception:
+        pass
+
+# Fallback to individual SMTP_* variables if MAILER_DSN was not set or didn't provide host
+if not _SMTP_HOST:
+    _SMTP_HOST = os.getenv("SMTP_HOST", "")
+    _SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    _SMTP_USER = os.getenv("SMTP_USER", "")
+    _SMTP_PASS = os.getenv("SMTP_PASS", "")
+    _SMTP_ENCRYPTION = "tls"  # default standard fallback
+
+_FROM_EMAIL = _MAILER_FROM or _SMTP_USER or "noreply@vendemmia.com.br"
 _NOTIFY_EMAILS = [e.strip() for e in os.getenv("NOTIFY_EMAILS", "").split(",") if e.strip()]
 
 _STATUS_LABEL = {
@@ -463,10 +538,10 @@ def _email_html(headline: str, color: str, rows: list) -> str:
 
 
 async def _send_email(subject: str, html: str, to: list, from_name: str = "", from_email: str = "") -> None:
-    if not (_SMTP_HOST and _SMTP_USER and _SMTP_PASS and to):
+    if not (_SMTP_HOST and to):
         return
 
-    sender_email = from_email or _SMTP_USER
+    sender_email = from_email or _FROM_EMAIL
     sender_label = f"{from_name} <{sender_email}>" if from_name else sender_email
 
     def _do():
@@ -475,11 +550,21 @@ async def _send_email(subject: str, html: str, to: list, from_name: str = "", fr
         msg["From"]    = sender_label
         msg["To"]      = ", ".join(to)
         msg.attach(MIMEText(html, "html", "utf-8"))
-        with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT, timeout=20) as s:
-            s.ehlo()
-            s.starttls()
-            s.login(_SMTP_USER, _SMTP_PASS)
-            s.sendmail(_SMTP_USER, to, msg.as_string())
+        
+        if _SMTP_ENCRYPTION == "ssl":
+            with smtplib.SMTP_SSL(_SMTP_HOST, _SMTP_PORT, timeout=20) as s:
+                if _SMTP_USER:
+                    s.login(_SMTP_USER, _SMTP_PASS)
+                s.sendmail(sender_email, to, msg.as_string())
+        else:
+            with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT, timeout=20) as s:
+                s.ehlo()
+                if _SMTP_ENCRYPTION == "tls":
+                    s.starttls()
+                    s.ehlo()
+                if _SMTP_USER:
+                    s.login(_SMTP_USER, _SMTP_PASS)
+                s.sendmail(sender_email, to, msg.as_string())
 
     try:
         await asyncio.to_thread(_do)

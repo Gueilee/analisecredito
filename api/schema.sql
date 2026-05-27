@@ -46,3 +46,16 @@ CREATE INDEX IF NOT EXISTS idx_ana_cnpj    ON analises(cnpj);
 CREATE INDEX IF NOT EXISTS idx_ana_status  ON analises(status);
 CREATE INDEX IF NOT EXISTS idx_ana_created ON analises(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ana_by      ON analises(json_extract(created_by, '$.id'));
+
+-- ── 4. Usuários do sistema (migrado do users.json) ───────────────────────────
+CREATE TABLE IF NOT EXISTS users (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    email           TEXT NOT NULL UNIQUE,
+    hashed_password TEXT NOT NULL,
+    role            TEXT NOT NULL DEFAULT 'Operações',
+    avatar          TEXT,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

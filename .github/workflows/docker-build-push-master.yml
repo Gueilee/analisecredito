@@ -1,0 +1,75 @@
+name: Build and Push Docker Image to Azure Container Registry
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Copiar Dockerfile.prod para Dockerfile
+        run: cp Dockerfile.prod Dockerfile
+
+      - name: Preencher variáveis sensíveis no .env.docker.prod
+        run: |
+          escape() {
+            printf '%s\n' "$1" | sed -e 's/[\/&]/\\&/g'
+          }
+
+          ANTHROPIC_API_KEY_ESCAPED=$(escape "${{ secrets.ENV_PROD_ANTHROPIC_API_KEY }}")
+          TURSO_TOKEN_ESCAPED=$(escape "${{ secrets.ENV_PROD_TURSO_TOKEN }}")
+          APP_SECRET_KEY_ESCAPED=$(escape "${{ secrets.ENV_PROD_APP_SECRET_KEY }}")
+          MAILER_DSN_ESCAPED=$(escape "${{ secrets.AZURE_SMTP_MAILER_DSN }}")
+
+          sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY_ESCAPED|g" .env.docker.prod
+          sed -i "s|^TURSO_TOKEN=.*|TURSO_TOKEN=$TURSO_TOKEN_ESCAPED|g" .env.docker.prod
+          sed -i "s|^APP_SECRET_KEY=.*|APP_SECRET_KEY=$APP_SECRET_KEY_ESCAPED|g" .env.docker.prod
+          sed -i "s|^MAILER_DSN=.*|MAILER_DSN=$MAILER_DSN_ESCAPED|g" .env.docker.prod
+
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: vdmprod.azurecr.io
+          username: ${{ vars.AZURE_ACR_USERNAME_PROD }}
+          password: ${{ secrets.AZURE_ACR_PASSWORD_PROD }}
+
+      - name: Build Docker image
+        run: docker build -t vedemmia-analise-credito .
+
+      - name: Tag Docker image
+        run: docker tag vedemmia-analise-credito vdmprod.azurecr.io/samples/vedemmia-analise-credito
+
+      - name: Push Docker image to Azure Container Registry
+        run: docker push vdmprod.azurecr.io/samples/vedemmia-analise-credito
+
+      - name: Recriar container no Portainer
+        run: |
+          TOKEN=$(curl -k -s -X POST "https://191.233.21.33:9000/api/auth" \
+            -H "Content-Type: application/json" \
+            -d '{"Username":"${{ vars.PORTAINER_USER_PROD }}","Password":"${{ secrets.PORTAINER_PASS_PROD }}"}' \
+            | grep -o '"jwt":"[^\"]*"' | cut -d':' -f2 | sed 's/["}]//g')
+          CONTAINER_ID=$(curl -k -s -X GET "https://191.233.21.33:9000/api/endpoints/3/docker/v1.41/containers/json?all=true&filters=%7B%22name%22%3A%5B%22vedemmia-analise-credito%22%5D%7D" \
+            -H "Authorization: Bearer $TOKEN" \
+            | grep -o '"Id":"[^"]*"' | head -n1 | cut -d':' -f2 | sed 's/"//g')
+          curl -k -X POST "https://191.233.21.33:9000/api/docker/3/containers/$CONTAINER_ID/recreate" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"PullImage":true}'
+
+      - name: Remover imagens Docker não utilizadas
+        run: |
+          TOKEN=$(curl -k -s -X POST "https://191.233.21.33:9000/api/auth" \
+            -H "Content-Type: application/json" \
+            -d '{"Username":"${{ vars.PORTAINER_USER_PROD }}","Password":"${{ secrets.PORTAINER_PASS_PROD }}"}' \
+            | grep -o '"jwt":"[^\"]*"' | cut -d':' -f2 | sed 's/["}]//g')
+          curl -k -X POST "https://191.233.21.33:9000/api/endpoints/3/docker/images/prune" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json"
