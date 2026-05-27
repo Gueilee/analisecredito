@@ -249,10 +249,10 @@ def send_welcome_email(name: str, email: str) -> bool:
 
 
 _ROLES = [
-    ("Operações",     "Cria e envia análises; vê apenas seus próprios registros"),
-    ("Financeiro",    "Aprova / nega crédito; vê todos os registros (RBAC + RLS completo)"),
-    ("Administrador", "Acesso total — equivalente a Financeiro + gestão de usuários"),
-    ("Diretor",       "Acesso total com perfil de diretoria"),
+    ("Operações",     "Cria, envia e edita análises; faz consultas na tela de Consulta"),
+    ("Financeiro",    "Aprova / nega crédito; faz consultas na tela de Consulta"),
+    ("Administrador", "Acesso total em todas as telas, funções e criação de usuários"),
+    ("Diretor",       "Acesso total com perfil de diretoria (sem tela de criação de usuários)"),
 ]
 
 
