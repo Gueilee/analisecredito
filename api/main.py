@@ -1087,6 +1087,42 @@ async def atualizar_decisao(hist_id: str, body: Dict[str, Any], current_user=Dep
         "UPDATE analises SET data=?, status=?, updated_at=? WHERE id=?",
         [json.dumps(data, ensure_ascii=False), decisao_payload["status"] or data.get("status", "pendente"), now_iso, hist_id],
     )
+
+    # Disparo automático de e-mail ao solicitante quando a análise é finalizada
+    sol_id = data.get("solicitacao_id")
+    if sol_id and _SMTP_HOST:
+        try:
+            sol_rows = await _turso_query(
+                "SELECT created_by FROM solicitacoes WHERE id=?", [sol_id]
+            )
+            if sol_rows:
+                cb = json.loads(sol_rows[0].get("created_by") or "{}")
+                solicitante_email = cb.get("email", "")
+                solicitante_nome  = cb.get("name", "Solicitante")
+                if solicitante_email:
+                    empresa  = data.get("empresa", "—")
+                    cnpj     = data.get("cnpj", "")
+                    st_lbl   = _STATUS_LABEL.get(decisao_payload["status"] or "", decisao_payload["status"] or "—")
+                    color    = _STATUS_COLOR.get(decisao_payload["status"] or "", "#6366f1")
+                    now_str  = datetime.now().strftime("%d/%m/%Y às %H:%M")
+                    subject  = f"[Análise Concluída] {empresa} — {st_lbl}"
+                    html     = _email_html(f"Análise de Crédito: {st_lbl}", color, [
+                        ("Empresa",   empresa),
+                        ("CNPJ",      cnpj),
+                        ("Status",    st_lbl),
+                        ("Analista",  current_user.get("name", "—")),
+                        ("Limite",    decisao_payload.get("limiteAprovado") or ""),
+                        ("Prazo",     (decisao_payload.get("prazoAprovado") + " dias") if decisao_payload.get("prazoAprovado") else ""),
+                        ("Data/hora", now_str),
+                    ])
+                    asyncio.create_task(_send_email(
+                        subject, html, [solicitante_email],
+                        from_name=current_user.get("name", ""),
+                        from_email=current_user.get("email", ""),
+                    ))
+        except Exception:
+            pass  # não bloqueia a resposta se o e-mail falhar
+
     return {"ok": True, "decisao_at": decisao_at}
 
 
@@ -1485,6 +1521,26 @@ async def sol_create(request: Request, current_user=Depends(_get_current_user)):
         "INSERT OR REPLACE INTO solicitacoes (id, status, created_at, updated_at, created_by, data) VALUES (?,?,?,?,?,?)",
         [sol_id, status, created_at, updated_at, created_by, json.dumps(body, ensure_ascii=False)],
     )
+
+    # Disparo automático de e-mail para os analistas ao criar nova solicitação
+    if _NOTIFY_EMAILS:
+        empresa     = body.get("empresa") or body.get("nomeEmpresa") or body.get("razaoSocial") or "—"
+        cnpj        = body.get("cnpj") or ""
+        solicitante = current_user.get("name", "—")
+        now_str     = datetime.now().strftime("%d/%m/%Y às %H:%M")
+        subject     = f"[Nova Solicitação] {empresa}"
+        html        = _email_html("Nova Solicitação de Crédito", "#6366f1", [
+            ("Empresa",     empresa),
+            ("CNPJ",        cnpj),
+            ("Solicitante", solicitante),
+            ("Data/hora",   now_str),
+        ])
+        asyncio.create_task(_send_email(
+            subject, html, _NOTIFY_EMAILS,
+            from_name=solicitante,
+            from_email=current_user.get("email", ""),
+        ))
+
     return {"ok": True, "id": sol_id}
 
 
