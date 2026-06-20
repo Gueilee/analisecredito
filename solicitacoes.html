@@ -268,10 +268,59 @@
       color: var(--text-muted);
     }
 
+    /* ── Scroll do conteúdo principal ───────────────────── */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.8rem;
+    }
+
+    /* ── Paginação ───────────────────────────────────────── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+    }
+    .page-btn {
+      min-width: 32px;
+      height: 32px;
+      padding: 0 .55rem;
+      border-radius: 8px;
+      border: 1px solid var(--glass-border);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: .78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+    }
+    .page-btn:hover:not(:disabled) {
+      border-color: var(--purple-accent);
+      color: var(--text-primary);
+      background: rgba(66,44,118,.15);
+    }
+    .page-btn.active {
+      background: rgba(66,44,118,.45);
+      border-color: var(--purple-accent);
+      color: #fff;
+      font-weight: 700;
+    }
+    .page-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .page-ellipsis {
+      color: var(--text-faint);
+      font-size: .78rem;
+      padding: 0 .15rem;
+      user-select: none;
+    }
+
     /* ── Topbar customização ─────────────────────────────── */
     .topbar-greeting { font-size: .78rem; color: var(--brand-neon-green); font-weight: 500; margin-bottom: .12rem; }
     .topbar-title h1 { font-size: 1.05rem; }
-      </style>
+  </style>
 </head>
 <body>
 <script>const session = DB.auth.requireAuth();</script>
@@ -313,7 +362,7 @@
             class="search-input"
             id="search-input"
             placeholder="Buscar por empresa, CNPJ ou responsável…"
-            oninput="renderTable()"
+            oninput="currentPage=1; renderTable()"
           />
         </div>
         <a href="nova-solicitacao.html" class="btn-new">
@@ -367,7 +416,7 @@
         </div>
         <div class="table-footer">
           <span id="result-count">0 resultados</span>
-          <a href="nova-solicitacao.html" class="btn-new" style="padding:.4rem .9rem;font-size:.76rem;">+ Nova Análise</a>
+          <div class="pagination" id="pagination"></div>
         </div>
       </div>
 
@@ -381,117 +430,164 @@
   App.initUser();
   App.greeting('topbar-greeting');
 
-  /* ── Estado + URL param ────────────────────────────── */
-  const urlStatus = new URLSearchParams(location.search).get('status');
+  /* ── Estado ─────────────────────────────────────────── */
+  const urlStatus   = new URLSearchParams(location.search).get('status');
   let currentFilter = urlStatus || 'pendente';
+  let currentPage   = 1;
+  const PAGE_SIZE   = 10;
 
   function setFilter(status) {
     currentFilter = status;
+    currentPage   = 1;
     document.querySelectorAll('.filter-tab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.status === status);
     });
     renderTable();
   }
 
-  /* ── Render ────────────────────────────────── */
+  function goToPage(p) {
+    currentPage = p;
+    renderTable();
+    const mc = document.querySelector('.main-content');
+    if (mc) mc.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ── Render ─────────────────────────────────────────── */
   function renderTable() {
     const query = (document.getElementById('search-input').value || '').toLowerCase().trim();
     const all   = DB.solicitacoes.getAll();
 
     /* contagens para as abas */
-    const counts = { todos: all.length, pendente: 0, em_analise: 0, em_comite: 0, aprovado: 0, negado: 0 };
-    all.forEach(s => { if (counts[s.status] !== undefined) counts[s.status]++; });
-    Object.entries(counts).forEach(([k, v]) => {
+    const cnts = { todos: all.length, pendente: 0, em_analise: 0, em_comite: 0, aprovado: 0, negado: 0 };
+    all.forEach(s => { if (cnts[s.status] !== undefined) cnts[s.status]++; });
+    Object.entries(cnts).forEach(([k, v]) => {
       const el = document.getElementById('count-' + k);
       if (el) el.textContent = v;
     });
 
-    /* filtro */
+    /* filtro + busca */
     let rows = all;
     if (currentFilter !== 'todos') rows = rows.filter(s => s.status === currentFilter);
     if (query) rows = rows.filter(s =>
       (s.empresa || '').toLowerCase().includes(query) ||
-      (s.cnpj || '').toLowerCase().includes(query) ||
+      (s.cnpj    || '').toLowerCase().includes(query) ||
       (s.solicitanteNome || '').toLowerCase().includes(query)
     );
 
+    const totalRows  = rows.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start    = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = rows.slice(start, start + PAGE_SIZE);
+
     const tbody = document.getElementById('table-body');
     const empty = document.getElementById('empty-state');
-    const countEl = document.getElementById('result-count');
-    countEl.textContent = rows.length + (rows.length === 1 ? ' resultado' : ' resultados');
+    const cntEl = document.getElementById('result-count');
+    const pgEl  = document.getElementById('pagination');
 
-    if (!rows.length) {
+    if (!totalRows) {
       tbody.innerHTML = '';
       empty.style.display = '';
+      cntEl.textContent   = '0 resultados';
+      pgEl.innerHTML      = '';
       return;
     }
     empty.style.display = 'none';
 
-    tbody.innerHTML = rows.map(s => {
+    const end = Math.min(start + PAGE_SIZE, totalRows);
+    cntEl.textContent = 'Mostrando ' + (start + 1) + '–' + end + ' de ' + totalRows;
+
+    tbody.innerHTML = pageRows.map(s => {
       const statusKey  = DB.utils.statusBadge[s.status] || 'pendente';
       const statusText = DB.utils.statusLabel[s.status]  || s.status;
       const modal      = DB.utils.modalLabel[s.modal]    || s.modal || '—';
       const data       = DB.utils.fmtDate(s.dataSolicitacao || s.createdAt);
 
-      return `<tr>
-        <td>
-          <span class="empresa-name">${s.empresa || '—'}</span>
-          <span class="empresa-cnpj">${s.cnpj || '—'}</span>
-        </td>
-        <td>${s.segmento || '—'}</td>
-        <td>${modal}</td>
-        <td>${s.solicitanteNome || '—'}</td>
-        <td style="white-space:nowrap;">${data}</td>
-        <td>
-          <span class="badge ${statusKey}">${statusText}</span>
-          ${s.validadeDias ? DB.utils.validadeBadgeHtml(s) : ''}
-        </td>
-        <td>
-          <div class="actions" style="justify-content:center;">
-            <a href="analise-financeira.html?id=${s.id}" class="btn-action" title="Análise Financeira" style="color:var(--purple-light);border-color:rgba(124,58,237,.35);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            </a>
-            <a href="consultar.html?id=${s.id}" class="btn-action" title="Visualizar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </a>
-            <a href="nova-solicitacao.html?id=${s.id}" class="btn-action" title="Editar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </a>
-            ${(() => {
+      return '<tr>' +
+        '<td>' +
+          '<span class="empresa-name">' + (s.empresa || '—') + '</span>' +
+          '<span class="empresa-cnpj">'  + (s.cnpj    || '—') + '</span>' +
+        '</td>' +
+        '<td>' + (s.segmento || '—') + '</td>' +
+        '<td>' + modal + '</td>' +
+        '<td>' + (s.solicitanteNome || '—') + '</td>' +
+        '<td style="white-space:nowrap;">' + data + '</td>' +
+        '<td>' +
+          '<span class="badge ' + statusKey + '">' + statusText + '</span>' +
+          (s.validadeDias ? DB.utils.validadeBadgeHtml(s) : '') +
+        '</td>' +
+        '<td>' +
+          '<div class="actions" style="justify-content:center;">' +
+            '<a href="analise-financeira.html?id=' + s.id + '" class="btn-action" title="Análise Financeira" style="color:var(--purple-light);border-color:rgba(124,58,237,.35);">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' +
+            '</a>' +
+            '<a href="consultar.html?id=' + s.id + '" class="btn-action" title="Visualizar">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+            '</a>' +
+            '<a href="nova-solicitacao.html?id=' + s.id + '" class="btn-action" title="Editar">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+            '</a>' +
+            (function() {
               if (!s.validadeDias) return '';
-              const _vs = DB.utils.calcValidadeStatus(s);
+              var _vs = DB.utils.calcValidadeStatus(s);
               if (!_vs || _vs.days > 30) return '';
-              return `<button onclick="reabrirSolicitacao('${s.id}')" class="btn-action" title="Reabrir para Reanálise" style="color:#ef4444;border-color:rgba(239,68,68,.35);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>
-              </button>`;
-            })()}
-          </div>
-        </td>
-      </tr>`;
+              return '<button onclick="reabrirSolicitacao(\'' + s.id + '\')" class="btn-action" title="Reabrir para Reanálise" style="color:#ef4444;border-color:rgba(239,68,68,.35);">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>' +
+                '</button>';
+            })() +
+          '</div>' +
+        '</td>' +
+      '</tr>';
     }).join('');
+
+    /* ── Controles de paginação ─────────────────────────── */
+    if (totalPages <= 1) { pgEl.innerHTML = ''; return; }
+
+    var ICO_PREV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="15 18 9 12 15 6"/></svg>';
+    var ICO_NEXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="9 18 15 12 9 6"/></svg>';
+
+    var pages = [];
+    if (totalPages <= 7) {
+      for (var i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      for (var i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+
+    pgEl.innerHTML =
+      '<button class="page-btn nav" onclick="goToPage(' + (currentPage - 1) + ')"' + (currentPage === 1 ? ' disabled' : '') + '>' + ICO_PREV + '</button>' +
+      pages.map(function(p) {
+        if (p === '...') return '<span class="page-ellipsis">…</span>';
+        return '<button class="page-btn' + (p === currentPage ? ' active' : '') + '" onclick="goToPage(' + p + ')">' + p + '</button>';
+      }).join('') +
+      '<button class="page-btn nav" onclick="goToPage(' + (currentPage + 1) + ')"' + (currentPage === totalPages ? ' disabled' : '') + '>' + ICO_NEXT + '</button>';
   }
 
   function reabrirSolicitacao(solId) {
-    const _sol = DB.solicitacoes.getById(solId);
-    const _vs  = _sol ? DB.utils.calcValidadeStatus(_sol) : null;
-    const _msg = _vs?.days < 0 ? 'vencida' : 'vencendo';
-    if (!confirm(`Reabrir para reanálise?\n\nA análise de "${_sol?.empresa || ''}" está ${_msg}. Todo o parecer, limites e decisão do Comitê serão apagados.\n\nConfirmar?`)) return;
+    var _sol = DB.solicitacoes.getById(solId);
+    var _vs  = _sol ? DB.utils.calcValidadeStatus(_sol) : null;
+    var _msg = (_vs && _vs.days < 0) ? 'vencida' : 'vencendo';
+    if (!confirm('Reabrir para reanálise?\n\nA análise de "' + (_sol ? _sol.empresa : '') + '" está ' + _msg + '. Todo o parecer, limites e decisão do Comitê serão apagados.\n\nConfirmar?')) return;
     DB.solicitacoes.update(solId, {
-      status:             'pendente',
-      parecerTecnico:     '',
-      limiteAprovado:     '',
-      prazoAprovado:      '',
-      validadeDias:       null,
-      decisaoAnalista:    '',
-      decisao_at:         '',
-      deliberacaoComite:  '',
-      decisaoComite:      '',
-      comite_at:          '',
+      status:            'pendente',
+      parecerTecnico:    '',
+      limiteAprovado:    '',
+      prazoAprovado:     '',
+      validadeDias:      null,
+      decisaoAnalista:   '',
+      decisao_at:        '',
+      deliberacaoComite: '',
+      decisaoComite:     '',
+      comite_at:         '',
     });
     window.location.href = 'analise-financeira.html?id=' + solId;
   }
 
-  DB.ready.then(() => setFilter(currentFilter));
+  DB.ready.then(function() { setFilter(currentFilter); });
 </script>
 </body>
 </html>
