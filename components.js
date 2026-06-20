@@ -1,12 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    VENDEMMIA — Análise de Crédito  |  Component System
    Fonte única de verdade para sidebar, navegação e badges.
-
-   ARQUITETURA SAAS — ROADMAP:
-   ├── Fase 1 (atual):  localStorage via db.js
-   ├── Fase 2 (próxima): substituir DB.* por fetch('/api/...') em db.js
-   │                     — o resto do sistema não muda
-   └── Fase 3 (produção): FastAPI + PostgreSQL + JWT + multi-tenant
    ═══════════════════════════════════════════════════════════════ */
 
 const App = (() => {
@@ -29,15 +23,15 @@ const App = (() => {
       `<svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/></svg>`,
     usuarios:
       `<svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
-    relatorios:
-      `<svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="6" y1="20" x2="6" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
-    historico:
-      `<svg viewBox="0 0 24 24" fill="none"><path d="M3 3v5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><polyline points="12 7 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
     comite:
       `<svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     logout:
       `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+    chevron:
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
   };
+
+  const _STORAGE_KEY_COLLAPSED = 'vd_sidebar_collapsed';
 
   /* ── Contagens em tempo real do banco ─────────────────── */
   function counts() {
@@ -60,7 +54,7 @@ const App = (() => {
 
   function navItem(icon, label, href, active, badgeHtml = '', disabled = false) {
     const cls = 'nav-item' + (active ? ' active' : '') + (disabled ? ' disabled' : '');
-    return `<a href="${href}" class="${cls}">${icon}${label}${badgeHtml}</a>`;
+    return `<a href="${href}" class="${cls}" title="${label}">${icon}<span class="nav-label">${label}</span>${badgeHtml}</a>`;
   }
 
   /* ── RBAC helpers ─────────────────────────────────────── */
@@ -82,6 +76,14 @@ const App = (() => {
         <a href="index.html" title="Ir para o Dashboard" style="display:block;line-height:0;">
           <img src="logo.png" alt="Vendemmia Análise de Crédito" class="sidebar-logo-img" />
         </a>
+        <div class="sidebar-logo-mark">V</div>
+        <button
+          class="sidebar-toggle"
+          onclick="App.toggleSidebar()"
+          title="Recolher/expandir menu"
+          aria-label="Alternar menu lateral">
+          ${ICO.chevron}
+        </button>
       </div>
 
       <nav class="sidebar-nav">
@@ -102,7 +104,7 @@ const App = (() => {
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-card">
+        <div class="user-card" title="${session.name || ''}">
           <div class="user-avatar">${session.avatar || '??'}</div>
           <div class="user-info">
             <div class="user-name">${session.name || '—'}</div>
@@ -110,11 +112,11 @@ const App = (() => {
           </div>
           <button
             onclick="DB.auth.logout().then(() => { window.location.href='login.html'; })"
-            style="background:none;border:none;cursor:pointer;color:var(--text-faint);padding:0;display:flex;align-items:center;gap:.35rem;transition:color .15s;"
+            style="background:none;border:none;cursor:pointer;color:var(--text-faint);padding:0;display:flex;align-items:center;gap:.35rem;transition:color .15s;flex-shrink:0;"
             onmouseover="this.style.color='rgba(255,255,255,.55)'" onmouseout="this.style.color='var(--text-faint)'"
             title="Sair">
             ${ICO.logout}
-            <span style="font-size:.72rem;font-weight:600;letter-spacing:.2px;">Sair</span>
+            <span class="logout-label" style="font-size:.72rem;font-weight:600;letter-spacing:.2px;">Sair</span>
           </button>
         </div>
       </div>`;
@@ -124,23 +126,28 @@ const App = (() => {
      API PÚBLICA
      ══════════════════════════════════════════════════════════ */
 
-  /**
-   * Monta o sidebar no elemento <aside class="sidebar"> da página.
-   * @param {string} page  — chave da página ativa:
-   *   'dashboard' | 'solicitacoes' | 'nova' | 'em_analise' | 'aprovado' | 'negado'
-   */
   let _activePage = 'solicitacoes';
+
+  function _applyCollapsedState() {
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+    if (localStorage.getItem(_STORAGE_KEY_COLLAPSED) === '1') {
+      sidebar.classList.add('collapsed');
+    } else {
+      sidebar.classList.remove('collapsed');
+    }
+  }
 
   function _renderSidebar() {
     const sidebar = document.querySelector('.sidebar');
     if (!sidebar) return;
     sidebar.innerHTML = buildSidebar(_activePage, DB.auth.getSession() || {}, counts());
+    _applyCollapsedState();
   }
 
   function mount(page) {
     _activePage = page;
     _renderSidebar();
-    // Após sync com a API, re-renderiza com contagens corretas (corrige race condition)
     if (DB && DB.ready) DB.ready.then(_renderSidebar);
   }
 
@@ -148,10 +155,13 @@ const App = (() => {
     _renderSidebar();
   }
 
-  /**
-   * Preenche elementos de saudação com base no horário.
-   * @param {string} id — id do elemento (ex: 'topbar-greeting')
-   */
+  function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+    const isNowCollapsed = sidebar.classList.toggle('collapsed');
+    localStorage.setItem(_STORAGE_KEY_COLLAPSED, isNowCollapsed ? '1' : '0');
+  }
+
   function greeting(id) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -162,10 +172,6 @@ const App = (() => {
     el.textContent = period + nome + ' 👋';
   }
 
-  /**
-   * Popula elementos de usuário na topbar com dados da sessão.
-   * @param {{ avatar?, name?, role?, topbarName? }} ids — mapa de IDs de elementos
-   */
   function initUser(ids = {}) {
     const s   = DB.auth.getSession() || {};
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
@@ -174,11 +180,6 @@ const App = (() => {
     if (ids.role)     set(ids.role,      s.role);
   }
 
-  /**
-   * Dispara notificação por e-mail via backend (fire-and-forget).
-   * @param {'nova_solicitacao'|'analista_decisao'|'comite_decisao'} event
-   * @param {object} data — campos do evento (empresa, cnpj, status, etc.)
-   */
   function notifyEmail(event, data) {
     const base = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
     fetch(`${base}/api/notify/email`, {
@@ -189,6 +190,6 @@ const App = (() => {
     }).catch(() => {});
   }
 
-  return { mount, refreshNav, greeting, initUser, notifyEmail };
+  return { mount, refreshNav, greeting, initUser, notifyEmail, toggleSidebar };
 
 })();
