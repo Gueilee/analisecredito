@@ -95,6 +95,8 @@ const DB = (() => {
           this._cache = d.items || [];
           this._saveCache();
           localStorage.removeItem(KEYS.SOL_LEGACY); // remove localStorage legado após sync
+          // Atualiza badges do sidebar com contagens corretas pós-sync
+          if (typeof App !== 'undefined' && App.refreshNav) App.refreshNav();
         } else if (r.status === 401) {
           this._cache = [];
         }
