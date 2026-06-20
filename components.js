@@ -131,17 +131,21 @@ const App = (() => {
    */
   let _activePage = 'solicitacoes';
 
-  function mount(page) {
-    _activePage = page;
+  function _renderSidebar() {
     const sidebar = document.querySelector('.sidebar');
     if (!sidebar) return;
-    const session = DB.auth.getSession() || {};
-    const c       = counts();
-    sidebar.innerHTML = buildSidebar(page, session, c);
+    sidebar.innerHTML = buildSidebar(_activePage, DB.auth.getSession() || {}, counts());
+  }
+
+  function mount(page) {
+    _activePage = page;
+    _renderSidebar();
+    // Após sync com a API, re-renderiza com contagens corretas (corrige race condition)
+    if (DB && DB.ready) DB.ready.then(_renderSidebar);
   }
 
   function refreshNav() {
-    mount(_activePage);
+    _renderSidebar();
   }
 
   /**
