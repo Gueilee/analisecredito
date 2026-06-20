@@ -77,14 +77,14 @@ const App = (() => {
           <img src="logo.png" alt="Vendemmia Análise de Crédito" class="sidebar-logo-img" />
         </a>
         <div class="sidebar-logo-mark">V</div>
-        <button
-          class="sidebar-toggle"
-          onclick="App.toggleSidebar()"
-          title="Recolher/expandir menu"
-          aria-label="Alternar menu lateral">
-          ${ICO.chevron}
-        </button>
       </div>
+      <button
+        class="sidebar-toggle"
+        onclick="App.toggleSidebar()"
+        title="Recolher/expandir menu"
+        aria-label="Alternar menu lateral">
+        ${ICO.chevron}
+      </button>
 
       <nav class="sidebar-nav">
         <span class="nav-section-label">Principal</span>

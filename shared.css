@@ -120,7 +120,7 @@ input[type="number"]::-webkit-outer-spin-button {
   position: relative;
   z-index: 10;
   transition: width .28s cubic-bezier(.4, 0, .2, 1);
-  overflow: visible;
+  overflow: visible; /* necessário para o botão toggle sobressair à direita */
 }
 
 .sidebar-logo {
@@ -131,6 +131,7 @@ input[type="number"]::-webkit-outer-spin-button {
   border-bottom: 1px solid rgba(140,105,220,.22);
   flex-shrink: 0;
   position: relative;
+  overflow: hidden;
 }
 
 .sidebar-logo::after {
