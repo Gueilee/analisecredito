@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Solicitações — Análise de Crédito | Vendemmia</title>
   <link rel="icon" type="image/png" href="favicon.png" />
-  <script src="db.js?v=5"></script>
-  <script src="components.js?v=5"></script>
+  <script src="db.js?v=6"></script>
+  <script src="components.js?v=6"></script>
   <link rel="stylesheet" href="shared.css" />
   <style>
     /* ── Page layout ─────────────────────────────────────── */
@@ -500,7 +500,7 @@
     tbody.innerHTML = pageRows.map(s => {
       const statusKey  = DB.utils.statusBadge[s.status] || 'pendente';
       const statusText = DB.utils.statusLabel[s.status]  || s.status;
-      const perfil     = DB.utils.integradoLabel[s.integrado] || s.segmento || '—';
+      const perfil     = DB.utils.integradoLabel[s.clienteIntegrado || s.integrado] || s.segmento || '—';
       const operacao   = DB.utils.tipoOpLabel[s.tipoOperacao] || DB.utils.modalLabel[s.modal] || s.modal || '—';
       const data       = DB.utils.fmtDate(s.dataSolicitacao || s.createdAt);
 

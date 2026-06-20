@@ -185,7 +185,7 @@ const DB = (() => {
   const statusLabel    = { aprovado: 'Aprovado', negado: 'Negado', em_analise: 'Em Análise', pendente: 'Pendente', novo: 'Novo', em_comite: 'Em Comitê' };
   const statusBadge    = { aprovado: 'aprovado', negado: 'negado', em_analise: 'em-analise', pendente: 'pendente', novo: 'novo', em_comite: 'em-comite' };
   const modalLabel     = { aereo: 'Aéreo', maritimo: 'Marítimo', rodoviario: 'Rodoviário', multimodal: 'Multimodal' };
-  const integradoLabel = { logistica: 'Logística', trade: 'Trade', armazem: 'Armazém', multiplos: 'Múltiplos' };
+  const integradoLabel = { transporte: 'Transporte', logistica: 'Transporte', trade: 'Trade', armazem: 'Armazém', multiplos: 'Múltiplos' };
   const tipoOpLabel    = { encomenda: 'Encomenda', 'conta-ordem': 'Conta e Ordem', gestao: 'Gestão' };
 
   function calcValidadeStatus(solObj) {
