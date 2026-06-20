@@ -10,9 +10,9 @@
   <link rel="stylesheet" href="shared.css?v=8" />
   <style>
     /* ── Layout grid ──────────────────────────────────── */
-    .content-grid { display: grid; grid-template-columns: 1fr 300px; gap: 1.2rem; }
-    .content-left  { display: flex; flex-direction: column; gap: 1.2rem; min-width: 0; }
-    .content-right { display: flex; flex-direction: column; gap: 1.2rem; }
+    .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 1.2rem; }
+    .content-left  { display: flex; flex-direction: column; gap: 1.2rem; min-width: 0; overflow: hidden; }
+    .content-right { display: flex; flex-direction: column; gap: 1.2rem; min-width: 0; }
 
     /* ── KPI cards ───────────────────────────────────── */
     .kpi-grid {
@@ -217,10 +217,11 @@
     .bar-fill.dim { background: linear-gradient(to top, #1e1440, #2d1f55); opacity: .7; }
 
     /* ── Table column widths ─────────────────────────── */
-    #main-table thead th:nth-child(1) { width: 40%; }
-    #main-table thead th:nth-child(2) { min-width: 90px;  white-space: nowrap; }
-    #main-table thead th:nth-child(3) { min-width: 130px; white-space: nowrap; }
-    #main-table thead th:nth-child(4) { min-width: 90px;  white-space: nowrap; }
+    #main-table thead th:nth-child(1) { width: 38%; }
+    #main-table thead th:nth-child(2) { min-width: 88px;  white-space: nowrap; }
+    #main-table thead th:nth-child(3) { min-width: 110px; white-space: nowrap; }
+    #main-table thead th:nth-child(4) { min-width: 88px;  white-space: nowrap; }
+    #main-table thead th:nth-child(5) { min-width: 120px; white-space: nowrap; }
     #main-table tbody td:nth-child(n+2) { white-space: nowrap; }
 
     /* ── Row actions ─────────────────────────────────── */
@@ -397,7 +398,7 @@
                     <th>Data</th>
                     <th>Solicitante</th>
                     <th>Status</th>
-                    <th style="width:100px;text-align:right;">Ações</th>
+                    <th style="text-align:right;">Ações</th>
                   </tr>
                 </thead>
                 <tbody id="table-body">
