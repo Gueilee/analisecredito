@@ -87,14 +87,14 @@ const App = (() => {
       <nav class="sidebar-nav">
         <span class="nav-section-label">Principal</span>
         ${navItem(ICO.dashboard,    'Dashboard',    'index.html',            page === 'dashboard')}
-        ${navItem(ICO.solicitacoes, 'Solicitações', 'solicitacoes.html',     page === 'solicitacoes', badge(c.total, 'yellow'))}
+        ${navItem(ICO.solicitacoes, 'Solicitações', 'solicitacoes.html',     page === 'solicitacoes')}
         ${navItem(ICO.nova,         'Nova Análise', 'nova-solicitacao.html', page === 'nova')}
 
         <span class="nav-section-label">Análise</span>
-        ${navItem(ICO.emAnalise, 'Em Análise', 'solicitacoes.html?status=em_analise', page === 'em_analise', badge(c.emAnalise))}
-        ${showDecisionItems ? navItem(ICO.comite, 'Comitê de Crédito', 'comite-credito.html', page === 'comite', badge(c.emComite, ' yellow')) : ''}
-        ${showDecisionItems ? navItem(ICO.aprovadas, 'Aprovadas', 'solicitacoes.html?status=aprovado', page === 'aprovado', badge(c.aprovado, ' green')) : ''}
-        ${showDecisionItems ? navItem(ICO.negadas,   'Negadas',   'solicitacoes.html?status=negado',   page === 'negado',   badge(c.negado,   ' red'))   : ''}
+        ${navItem(ICO.emAnalise, 'Em Análise',       'solicitacoes.html?status=em_analise', page === 'em_analise')}
+        ${showDecisionItems ? navItem(ICO.comite,    'Comitê de Crédito', 'comite-credito.html',              page === 'comite')   : ''}
+        ${showDecisionItems ? navItem(ICO.aprovadas, 'Aprovadas',         'solicitacoes.html?status=aprovado', page === 'aprovado') : ''}
+        ${showDecisionItems ? navItem(ICO.negadas,   'Negadas',           'solicitacoes.html?status=negado',   page === 'negado')   : ''}
 
         <span class="nav-section-label">Gestão</span>
         ${navItem(ICO.clientes,  'Consulta',  'clientes.html',  page === 'clientes')}
