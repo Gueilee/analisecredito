@@ -1341,6 +1341,47 @@
                               oninput="updateRentHint()"></textarea>
                   </div>
 
+                  <!-- Segregação por ICMS -->
+                  <div style="margin-top:.6rem;">
+                    <label style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;
+                                  font-size:.8rem;color:var(--text-secondary);user-select:none;">
+                      <input type="checkbox" id="rent-icms-toggle"
+                             onchange="toggleRentICMS(this.checked)"
+                             style="accent-color:var(--purple-accent)" />
+                      Segregar rentabilidade por alíquota de ICMS
+                    </label>
+
+                    <div id="rent-icms-block" style="display:none;margin-top:.55rem;padding:.6rem .75rem;
+                         background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.18);
+                         border-radius:8px;">
+                      <div style="font-size:.68rem;font-weight:700;color:var(--text-faint);
+                                  text-transform:uppercase;letter-spacing:.4px;margin-bottom:.45rem;">
+                        Para cada alíquota de ICMS, defina a rentabilidade mínima esperada
+                      </div>
+                      <!-- cabeçalho colunas -->
+                      <div style="display:grid;grid-template-columns:140px 1fr 26px;gap:.4rem;
+                                  margin-bottom:.3rem;padding:0 .1rem;">
+                        <span style="font-size:.62rem;font-weight:700;color:var(--text-faint);
+                                     text-transform:uppercase;letter-spacing:.4px;">Alíquota ICMS</span>
+                        <span style="font-size:.62rem;font-weight:700;color:var(--text-faint);
+                                     text-transform:uppercase;letter-spacing:.4px;">Rentabilidade (%)</span>
+                        <span></span>
+                      </div>
+                      <div id="rent-icms-list" style="display:flex;flex-direction:column;gap:.35rem;"></div>
+                      <button type="button" onclick="addRentICMSRow()"
+                        style="margin-top:.5rem;display:inline-flex;align-items:center;gap:.35rem;
+                               padding:.28rem .6rem;background:rgba(139,92,246,.09);
+                               border:1px dashed rgba(139,92,246,.35);border-radius:6px;
+                               color:var(--purple-accent);font-size:.72rem;font-weight:600;
+                               cursor:pointer;transition:all .15s;"
+                        onmouseover="this.style.background='rgba(139,92,246,.18)'"
+                        onmouseout="this.style.background='rgba(139,92,246,.09)'">
+                        <svg viewBox="0 0 24 24" fill="none" width="10" height="10"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                        Adicionar Alíquota
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- preview ao vivo -->
                   <div id="rent-hint" class="form-hint"
                        style="min-height:1.1rem;margin-top:.4rem;"></div>
@@ -3695,6 +3736,74 @@
     updateRentHint();
   }
 
+  /* ── Rentabilidade por ICMS ─────────────────────────── */
+  const ICMS_SUGESTOES = ['4%','7%','12%','18%','Isento','Reduzido 7,5%','ST'];
+
+  function toggleRentICMS(checked) {
+    const block = document.getElementById('rent-icms-block');
+    if (!block) return;
+    block.style.display = checked ? '' : 'none';
+    if (checked && !document.getElementById('rent-icms-list')?.children.length) {
+      addRentICMSRow();
+    }
+    updateRentHint();
+  }
+
+  function addRentICMSRow(icms = '', pct = '') {
+    const list = document.getElementById('rent-icms-list');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:140px 1fr 26px;gap:.4rem;align-items:center;';
+    const sugestoes = ICMS_SUGESTOES.map(s => `<option value="${s}">${s}</option>`).join('');
+    row.innerHTML = `
+      <input type="text" class="input" list="icms-datalist" placeholder="Ex: 12%, 4%, ST…"
+        value="${icms}" style="padding:.38rem .55rem;font-size:.8rem;height:32px;"
+        oninput="updateRentHint()" title="Alíquota de ICMS" />
+      <div class="input-wrap" style="margin:0;">
+        <input type="number" class="input has-suffix" step="0.01" min="0" max="100"
+          placeholder="0,00" value="${pct}"
+          style="padding:.38rem .55rem;font-size:.8rem;height:32px;padding-right:1.6rem;"
+          oninput="updateRentHint()" />
+        <span class="input-suffix" style="font-size:.75rem;">%</span>
+      </div>
+      <button type="button" onclick="removeRentICMSRow(this)" title="Remover"
+        style="width:26px;height:26px;border-radius:5px;border:1px solid rgba(239,68,68,.3);
+               background:rgba(239,68,68,.08);color:rgba(239,68,68,.8);font-size:1rem;line-height:1;
+               cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+               transition:all .15s;"
+        onmouseover="this.style.background='rgba(239,68,68,.18)'"
+        onmouseout="this.style.background='rgba(239,68,68,.08)'">×</button>
+    `;
+    list.appendChild(row);
+    // garante datalist existe
+    if (!document.getElementById('icms-datalist')) {
+      const dl = document.createElement('datalist');
+      dl.id = 'icms-datalist';
+      dl.innerHTML = sugestoes;
+      document.body.appendChild(dl);
+    }
+  }
+
+  function removeRentICMSRow(btn) {
+    const row = btn.closest('div[style*="grid-template-columns:140px"]');
+    if (row) { row.remove(); updateRentHint(); }
+  }
+
+  function getRentICMS() {
+    const list = document.getElementById('rent-icms-list');
+    if (!list) return [];
+    const toggled = document.getElementById('rent-icms-toggle')?.checked;
+    if (!toggled) return [];
+    const result = [];
+    list.querySelectorAll('div[style*="grid-template-columns:140px"]').forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      const icms = (inputs[0]?.value || '').trim();
+      const pct  = (inputs[1]?.value || '').trim();
+      if (icms || pct) result.push({ icms, pct });
+    });
+    return result;
+  }
+
   function parseRentabilidade() {
     const pct       = parseFloat(document.getElementById('rentabilidade')?.value) || 0;
     const base      = document.getElementById('rent-base')?.value || 'CIF';
@@ -3711,9 +3820,10 @@
 
     const texto = buildRentText(pct, baseLabel, temMin, minNum, porLabel, obs);
 
+    const icmsRows = getRentICMS();
     return { pct, base, baseLabel, baseOutro,
              temMinimo: temMin, minimoValor: minNum, minimoPor: por, minimoPorLabel: porLabel,
-             obs, texto };
+             obs, icmsSegregado: icmsRows.length > 0, rentabilidadeICMS: icmsRows, texto };
   }
 
   function buildRentText(pct, baseLabel, temMin, minNum, porLabel, obs) {
@@ -3732,8 +3842,16 @@
     const hint = document.getElementById('rent-hint');
     if (!hint) return;
     const r = parseRentabilidade();
-    if (!r.pct) { hint.innerHTML = ''; return; }
-    hint.innerHTML = `<span style="color:var(--green)">✓ ${r.texto}</span>`;
+    if (!r.pct && !r.rentabilidadeICMS?.length) { hint.innerHTML = ''; return; }
+    let html = r.pct ? `<span style="color:var(--green)">✓ ${r.texto}</span>` : '';
+    if (r.rentabilidadeICMS?.length) {
+      const icmsParts = r.rentabilidadeICMS
+        .filter(row => row.icms || row.pct)
+        .map(row => `<span style="background:rgba(139,92,246,.15);border-radius:4px;padding:.1rem .35rem;font-size:.72rem;">${row.icms || '?'}: ${row.pct || 0}%</span>`)
+        .join(' ');
+      if (icmsParts) html += `<span style="color:var(--text-muted);margin-left:.5rem;">ICMS → ${icmsParts}</span>`;
+    }
+    hint.innerHTML = html;
   }
 
   function toggleCustoFin(radio) {
@@ -3800,6 +3918,7 @@
       rentabilidade:        v('rentabilidade'),
       rentabilidadeParsed:  parseRentabilidade(),
       rentabilidadeObs:     parseRentabilidade().texto,
+      rentabilidadeICMS:    getRentICMS(),
       incoterms:        v('incoterms'),
       tipoOp:           r('tipo-op'),
       exportador:       v('exportador'),
@@ -4029,6 +4148,15 @@
           }
         }
         if (rp.obs) set('rent-obs', rp.obs);
+        updateRentHint();
+      }
+      // Restaurar segregação ICMS
+      const _icmsRows = d.rentabilidadeICMS || (d.rentabilidadeParsed?.rentabilidadeICMS) || [];
+      if (_icmsRows.length) {
+        const tog = document.getElementById('rent-icms-toggle');
+        if (tog) { tog.checked = true; toggleRentICMS(true); }
+        const _list = document.getElementById('rent-icms-list');
+        if (_list) { _list.innerHTML = ''; _icmsRows.forEach(row => addRentICMSRow(row.icms || '', row.pct || '')); }
         updateRentHint();
       }
       csSetValue('incoterms-cs', d.incoterms); chk('tipo-op', d.tipoOp);

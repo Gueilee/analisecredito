@@ -1225,7 +1225,14 @@
       iv('Volume/mês', sol.volMes ? sol.volMes + ' ' + (sol.volMesMoeda||'') : '—'),
       iv('Potencial', sol.volPotencial ? sol.volPotencial + ' ' + (sol.volPotencialMoeda||'') : '—'),
       iv('Trânsito', sol.prazoTransit ? sol.prazoTransit + ' dias' : '—'),
-      iv('Rentabilidade', sol.rentabilidade ? sol.rentabilidade + '%' : '—'),
+      iv('Rentabilidade', (() => {
+        const base = sol.rentabilidade ? sol.rentabilidade + '%' : '';
+        const icms = Array.isArray(sol.rentabilidadeICMS) && sol.rentabilidadeICMS.length
+          ? sol.rentabilidadeICMS.filter(r => r.icms || r.pct).map(r => `${r.icms||'?'}: ${r.pct||0}%`).join(' | ')
+          : '';
+        if (base && icms) return `${base} (ICMS → ${icms})`;
+        return base || icms || '';
+      })()),
       iv('Solicitante', sol.solicitanteNome),
       iv('Data', DB.utils.fmtDate(sol.dataSolicitacao || sol.createdAt)),
     ].join('');
