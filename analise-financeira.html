@@ -2227,7 +2227,13 @@
           showToast('Selecione os arquivos de Balanço/DRE para continuar.', 'warning');
           return;
         }
-        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          const msg = e.detail || `HTTP ${res.status}`;
+          if (res.status === 402) throw new Error('Saldo insuficiente na API de IA. Acesse console.anthropic.com/settings/billing para adicionar créditos.');
+          if (res.status === 503) throw new Error('API de IA sobrecarregada. Aguarde alguns segundos e tente novamente.');
+          throw new Error(msg);
+        }
         const ex = await res.json();
         await _applyExtraction(ex);
       } catch(e) { showToast('Erro: ' + e.message, 'error'); }
@@ -2250,7 +2256,13 @@
       form.append('empresa', sol.empresa || ''); form.append('cnpj', sol.cnpj || '');
       Array.from(files).forEach(f => form.append('files', f));
       const res = await fetch(`${API_URL}/api/extract-financials`, { method: 'POST', credentials: 'include', body: form });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        const msg = e.detail || `HTTP ${res.status}`;
+        if (res.status === 402) throw new Error('Saldo insuficiente na API de IA. Acesse console.anthropic.com/settings/billing para adicionar créditos.');
+        if (res.status === 503) throw new Error('API de IA sobrecarregada. Aguarde alguns segundos e tente novamente.');
+        throw new Error(msg);
+      }
       const ex = await res.json();
       await _applyExtraction(ex);
       // Esconde banner e botão manual após extração bem-sucedida

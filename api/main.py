@@ -1323,12 +1323,25 @@ Regras obrigatórias:
 
     content.append({"type": "text", "text": prompt})
 
-    resp = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2000,
-        messages=[{"role": "user", "content": content}],
-        extra_headers={"anthropic-beta": "pdfs-2024-09-25"},
-    )
+    try:
+        resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": content}],
+            extra_headers={"anthropic-beta": "pdfs-2024-09-25"},
+        )
+    except Exception as exc:
+        err_str = str(exc)
+        if "credit balance is too low" in err_str or "insufficient_quota" in err_str:
+            raise HTTPException(
+                402,
+                "Saldo insuficiente na API de IA. Acesse console.anthropic.com/settings/billing para adicionar créditos."
+            )
+        if "invalid_api_key" in err_str or "authentication_error" in err_str:
+            raise HTTPException(401, "Chave de API da IA inválida. Verifique ANTHROPIC_API_KEY no servidor.")
+        if "overloaded" in err_str or "529" in err_str:
+            raise HTTPException(503, "API de IA sobrecarregada. Aguarde alguns segundos e tente novamente.")
+        raise HTTPException(502, f"Erro na IA: {exc}")
 
     extracted = _extract_json(resp.content[0].text)
     if not extracted:
