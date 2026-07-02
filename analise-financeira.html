@@ -2767,7 +2767,8 @@ function _updateSerasaBureau() {
   el.textContent = 'Score ' + sol.serasa.score + ' · ' + label;
   el.style.color = color;
   if (icon) icon.className = 'bureau-icon ok';
-  const btnUpload = document.querySelector('.btn-serasa-upload');
+  // Usa o pai do serasa-bureau-sub para não capturar o botão da Receita Federal
+  const btnUpload = el?.parentElement?.querySelector('.btn-serasa-upload');
   if (btnUpload) btnUpload.style.display = 'none';
 }
 
