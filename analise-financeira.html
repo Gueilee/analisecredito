@@ -1064,6 +1064,8 @@
       document.getElementById('rf-icon').className = 'bureau-icon ok';
       document.getElementById('rf-status').textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
       if (_rfd.razao_social) renderRF(_rfd);
+      const _bRf = document.getElementById('btn-rf-consult');
+      if (_bRf) _bRf.style.display = 'none';
     }
 
     // Se já tem análise salva, exibir
@@ -1220,6 +1222,8 @@
         document.getElementById('rf-icon').className  = 'bureau-icon ok';
         document.getElementById('rf-status').textContent = 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK');
         if (rfd.razao_social) renderRF(rfd);
+        const _bRf = document.getElementById('btn-rf-consult');
+        if (_bRf) _bRf.style.display = 'none';
         DB.solicitacoes.update(sol.id, { rf_data: rf, rf_consultada_at: agora });
         sol = DB.solicitacoes.getById(sol.id);
         showToast('Receita Federal consultada com sucesso!', 'success');
@@ -1355,6 +1359,8 @@
           document.getElementById('rf-icon').className  = 'bureau-icon ok';
           document.getElementById('rf-status').textContent = 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK');
           renderRF(rfd);
+          const _bRf = document.getElementById('btn-rf-consult');
+          if (_bRf) _bRf.style.display = 'none';
         }
 
         const aiMsg = data.ai_error || '';
@@ -1456,6 +1462,8 @@
     if (rf.status === 'ok') {
       document.getElementById('rf-icon').className = 'bureau-icon ok';
       document.getElementById('rf-status').textContent = 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK');
+      const _bRf = document.getElementById('btn-rf-consult');
+      if (_bRf) _bRf.style.display = 'none';
     } else {
       document.getElementById('rf-icon').className = 'bureau-icon error';
       document.getElementById('rf-status').textContent = rf.error || 'Erro na consulta';
