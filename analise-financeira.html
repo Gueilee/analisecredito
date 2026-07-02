@@ -1200,7 +1200,7 @@
     };
 
     try {
-      btn.innerHTML = spin + ' Gerando Análise…';
+      btn.innerHTML = spin + ' Consultando Receita Federal…';
 
       const res = await fetch(`${API_URL}/api/analyze`, {
         method: 'POST',
@@ -1219,17 +1219,60 @@
       }
 
       const data = await res.json();
-      const analise_ia_at = new Date().toISOString();
+      const agora = new Date().toISOString();
 
-      // Salva no localStorage com timestamps precisos
-      // Safety net: garante em_analise se ainda estiver pendente
+      // ── Resultado Receita Federal (sempre presente) ──────────────────────
+      const rf = data.cnpj_data || {};
+      if (rf.status === 'ok') {
+        document.getElementById('rf-icon').className = 'bureau-icon ok';
+        document.getElementById('rf-status').textContent = 'Consulta realizada com sucesso';
+      } else if (rf.status === 'not_found') {
+        document.getElementById('rf-icon').className = 'bureau-icon error';
+        document.getElementById('rf-status').textContent = 'CNPJ não encontrado na Receita Federal';
+      } else if (rf.status === 'timeout') {
+        document.getElementById('rf-icon').className = 'bureau-icon error';
+        document.getElementById('rf-status').textContent = 'Timeout — Receita Federal indisponível';
+      } else if (rf.status === 'error' || rf.status === 'invalid') {
+        document.getElementById('rf-icon').className = 'bureau-icon error';
+        document.getElementById('rf-status').textContent = rf.error || 'Erro na consulta';
+      }
+
+      // ── Resultado IA ─────────────────────────────────────────────────────
+      if (data.ai_error) {
+        // IA falhou, mas RF pode ter funcionado — não contamina o card de RF
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Iniciar Análise`;
+        document.getElementById('trigger-sub').textContent = 'IA indisponível — tente novamente';
+
+        const aiMsg = data.ai_error || '';
+        let toastMsg;
+        if (aiMsg.includes('crédito') || aiMsg.includes('credit') || aiMsg.includes('billing')) {
+          toastMsg = 'Saldo da API de IA insuficiente. Acesse console.anthropic.com/settings/billing para adicionar créditos.';
+        } else if (aiMsg.includes('inválida') || aiMsg.includes('authentication')) {
+          toastMsg = 'Chave de API da IA inválida. Verifique a configuração do servidor.';
+        } else {
+          toastMsg = 'Erro na IA: ' + aiMsg;
+        }
+        showToast(toastMsg, 'error');
+
+        // Salva resultado parcial (só RF) para não perder a consulta
+        if (rf.status === 'ok') {
+          DB.solicitacoes.update(sol.id, { analise: data, rf_consultada_at: agora });
+          sol = DB.solicitacoes.getById(sol.id);
+        }
+        return;
+      }
+
+      // ── Sucesso completo (RF + IA) ───────────────────────────────────────
+      btn.innerHTML = spin + ' Gerando Análise…';
+
       const statusUpdate = sol.status === 'pendente' ? { status: 'em_analise' } : {};
       DB.solicitacoes.update(sol.id, {
         ...statusUpdate,
         analise:          data,
-        analise_at:       analise_ia_at,
+        analise_at:       agora,
         analise_modelo:   data.modelo_ia || 'claude-sonnet-4-6',
-        rf_consultada_at: analise_ia_at,
+        rf_consultada_at: agora,
       });
       sol = DB.solicitacoes.getById(sol.id);
       if (statusUpdate.status) {
@@ -1246,20 +1289,19 @@
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          solicitacao_id:       sol.id,
-          empresa:              sol.empresa || '',
-          cnpj:                 sol.cnpj || '',
-          status_solicitacao:   sol.status || '',
-          solicitante:          sol.solicitanteNome || '',
-          data_solicitacao:     sol.dataSolicitacao || sol.createdAt || '',
-          dados_solicitacao:    sol,
-          receita_federal:      data.cnpj_data || {},
-          analise_ia:           data.analysis || {},
-          modelo_ia:            data.modelo_ia || 'claude-sonnet-4-6',
-          // Timestamps de cada etapa
+          solicitacao_id:        sol.id,
+          empresa:               sol.empresa || '',
+          cnpj:                  sol.cnpj || '',
+          status_solicitacao:    sol.status || '',
+          solicitante:           sol.solicitanteNome || '',
+          data_solicitacao:      sol.dataSolicitacao || sol.createdAt || '',
+          dados_solicitacao:     sol,
+          receita_federal:       data.cnpj_data || {},
+          analise_ia:            data.analysis || {},
+          modelo_ia:             data.modelo_ia || 'claude-sonnet-4-6',
           solicitacao_criada_at: sol.createdAt || sol.dataSolicitacao || '',
-          rf_consultada_at:      analise_ia_at,
-          analise_ia_at:         analise_ia_at,
+          rf_consultada_at:      agora,
+          analise_ia_at:         agora,
         }),
       }).then(r => r.ok ? r.json() : null).then(h => {
         if (h && h.id) {
@@ -1273,10 +1315,11 @@
       document.getElementById('trigger-sub').textContent = 'Última análise: ' + new Date().toLocaleString('pt-BR');
 
     } catch (e) {
+      // Erros de rede / autenticação / servidor — RF também falhou
       btn.disabled = false;
       btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Iniciar Análise`;
       document.getElementById('rf-icon').className = 'bureau-icon error';
-      document.getElementById('rf-status').textContent = 'Erro: ' + e.message;
+      document.getElementById('rf-status').textContent = 'Falha na comunicação com o servidor';
 
       const msg = e.message || '';
       let toast;

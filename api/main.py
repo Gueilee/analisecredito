@@ -1585,52 +1585,75 @@ async def health():
     return {"status": "ok", "version": "2.0.0", "ai_configured": bool(key) and key not in ("sua-chave-aqui", "")}
 
 
+@app.get("/api/receita/{cnpj}")
+@limiter.limit("30/minute")
+async def get_receita(request: Request, cnpj: str, current_user=Depends(_get_current_user)):
+    """Consulta isolada à Receita Federal via BrasilAPI — independente da IA."""
+    return await fetch_receita(cnpj)
+
+
 @app.post("/api/analyze")
 @limiter.limit("30/minute")
 async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_get_current_user)):
-    client = Anthropic(api_key=_load_key())
-
-    # 1. Consulta Receita Federal
+    # 1. Consulta Receita Federal — sempre executada, nunca bloqueia a resposta
     receita = await fetch_receita(req.cnpj)
 
-    # 2. Gera análise com Claude
-    prompt = build_prompt(req, receita)
-    try:
-        msg = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = msg.content[0].text
-    except Exception as exc:
-        raise HTTPException(500, f"Erro ao chamar Claude API: {exc}")
+    # 2. Tenta análise com Claude — falha de forma isolada
+    key = _load_key()
+    analysis: Optional[Dict[str, Any]] = None
+    ai_error: Optional[str] = None
 
-    # 3. Extrai JSON com três estratégias em cascata
-    analysis = _extract_json(raw)
-    if analysis is None:
-        analysis = {
-            "score": 0,
-            "classificacao": "—",
-            "recomendacao": "revisar",
-            "resumo_executivo": raw,
-            "pontos_positivos": [],
-            "pontos_atencao": [],
-            "alertas_criticos": ["Erro ao processar resposta da IA — revise manualmente"],
-            "fundamentacao": raw,
-            "analise_cadastral": "",
-            "analise_societaria": "",
-            "analise_proporcionalidade": "",
-            "analise_operacional": "",
-            "limite_recomendado_exportador": "—",
-            "limite_recomendado_desp": "—",
-            "limite_recomendado_imp": "—",
-            "exposicao_total_recomendada": "—",
-            "prazo_recomendado": 30,
-        }
+    if not key:
+        ai_error = "ANTHROPIC_API_KEY não configurada no servidor."
+    else:
+        prompt = build_prompt(req, receita)
+        try:
+            client = Anthropic(api_key=key)
+            msg = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = msg.content[0].text
+
+            # 3. Extrai JSON com três estratégias em cascata
+            analysis = _extract_json(raw)
+            if analysis is None:
+                analysis = {
+                    "score": 0,
+                    "classificacao": "—",
+                    "recomendacao": "revisar",
+                    "resumo_executivo": raw,
+                    "pontos_positivos": [],
+                    "pontos_atencao": [],
+                    "alertas_criticos": ["Erro ao processar resposta da IA — revise manualmente"],
+                    "fundamentacao": raw,
+                    "analise_cadastral": "",
+                    "analise_societaria": "",
+                    "analise_proporcionalidade": "",
+                    "analise_operacional": "",
+                    "limite_recomendado_exportador": "—",
+                    "limite_recomendado_desp": "—",
+                    "limite_recomendado_imp": "—",
+                    "exposicao_total_recomendada": "—",
+                    "prazo_recomendado": 30,
+                }
+
+        except Exception as exc:
+            err_str = str(exc)
+            if "credit balance is too low" in err_str or "insufficient_quota" in err_str:
+                ai_error = "Saldo insuficiente na API da IA. Acesse console.anthropic.com/settings/billing para adicionar créditos."
+            elif "invalid_api_key" in err_str or "authentication_error" in err_str:
+                ai_error = "Chave de API da IA inválida. Verifique a variável ANTHROPIC_API_KEY no servidor."
+            elif "overloaded" in err_str or "529" in err_str:
+                ai_error = "API da IA sobrecarregada. Aguarde alguns segundos e tente novamente."
+            else:
+                ai_error = f"Erro na IA: {exc}"
 
     return {
         "cnpj_data": receita,
         "analysis": analysis,
+        "ai_error": ai_error,
         "bureau_fonte": "BrasilAPI / Receita Federal",
         "modelo_ia": "claude-sonnet-4-6",
     }
