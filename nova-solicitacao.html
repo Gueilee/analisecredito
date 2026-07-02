@@ -1129,11 +1129,23 @@
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label" for="desconto">2.6 Desconto Comercial (%)</label>
-                  <div class="input-wrap">
-                    <input id="desconto" class="input has-suffix" type="number" step="0.01" min="0" max="100" placeholder="0,00" />
-                    <span class="input-suffix">%</span>
+                  <label class="form-label">2.6 Desconto Comercial por Alíquota</label>
+                  <div style="font-size:.71rem;color:var(--text-faint);margin-bottom:.5rem;">Cada alíquota pode ter um percentual de desconto diferente.</div>
+                  <!-- Cabeçalho das colunas -->
+                  <div style="display:grid;grid-template-columns:1fr 80px 26px;gap:.35rem;margin-bottom:.25rem;padding:0 .1rem;">
+                    <span style="font-size:.62rem;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.4px;">Alíquota / Categoria</span>
+                    <span style="font-size:.62rem;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.4px;">Desconto</span>
+                    <span></span>
                   </div>
+                  <div id="descontos-list" style="display:flex;flex-direction:column;gap:.35rem;"></div>
+                  <button type="button" onclick="addDescontoRow()"
+                    style="margin-top:.5rem;display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .65rem;background:rgba(139,92,246,.09);border:1px dashed rgba(139,92,246,.35);border-radius:6px;color:var(--purple-accent);font-size:.73rem;font-weight:600;cursor:pointer;transition:all .15s;"
+                    onmouseover="this.style.background='rgba(139,92,246,.18)'" onmouseout="this.style.background='rgba(139,92,246,.09)'">
+                    <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                    Adicionar Alíquota
+                  </button>
+                  <!-- campo hidden mantido para compatibilidade com registros antigos -->
+                  <input type="hidden" id="desconto" />
                 </div>
 
                 <div class="form-group">
@@ -3130,6 +3142,46 @@
     if (typeof updateSummary === 'function') updateSummary();
   }
 
+  /* ── Desconto Comercial por Alíquota ────────────────── */
+  function addDescontoRow(aliquota = '', percentual = '') {
+    const list = document.getElementById('descontos-list');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 80px 26px;gap:.35rem;align-items:center;';
+    row.innerHTML = `
+      <input type="text" class="input" placeholder="Ex: II 4%, DTA, IPI…" value="${aliquota}"
+        style="padding:.38rem .55rem;font-size:.8rem;height:32px;"
+        title="Alíquota ou categoria de desconto" />
+      <div class="input-wrap" style="margin:0;">
+        <input type="number" class="input has-suffix" step="0.01" min="0" max="100" placeholder="0,00"
+          value="${percentual}" style="padding:.38rem .55rem;font-size:.8rem;height:32px;padding-right:1.6rem;" />
+        <span class="input-suffix" style="font-size:.75rem;">%</span>
+      </div>
+      <button type="button" onclick="removeDescontoRow(this)" title="Remover linha"
+        style="width:26px;height:26px;border-radius:5px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.08);color:rgba(239,68,68,.8);font-size:1rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;"
+        onmouseover="this.style.background='rgba(239,68,68,.18)'" onmouseout="this.style.background='rgba(239,68,68,.08)'">×</button>
+    `;
+    list.appendChild(row);
+  }
+
+  function removeDescontoRow(btn) {
+    const row = btn.closest('div[style*="grid-template-columns"]');
+    if (row) row.remove();
+  }
+
+  function getDescontos() {
+    const list = document.getElementById('descontos-list');
+    if (!list) return [];
+    const result = [];
+    list.querySelectorAll('div[style*="grid-template-columns"]').forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      const aliquota   = (inputs[0]?.value || '').trim();
+      const percentual = (inputs[1]?.value || '').trim();
+      if (aliquota || percentual) result.push({ aliquota, percentual });
+    });
+    return result;
+  }
+
   /* ── Simulação Financeira — helpers ─────────────────── */
   /* ── Parcelas de Pagamento / Recebimento (3.1.6) ────── */
   function addSimParcel(listId, mode, opts) {
@@ -3738,7 +3790,8 @@
       qtdEmbarques:     v('qtd-embarques'),
       modal:            r('modal'),
       origens:          v('origens'),
-      desconto:         v('desconto'),
+      descontos:        getDescontos(),
+      desconto:         (() => { const ds = getDescontos(); return ds.length ? ds.map(d => d.aliquota ? `${d.aliquota}: ${d.percentual}%` : `${d.percentual}%`).filter(s => s !== '%').join(' | ') : ''; })(),
       custoFin:         r('custo-fin'),
       custoFinDesc:     r('custo-fin') === 'sim' ? (v('custo-fin-desc') || '') : '',
       cessao:           r('cessao'),
@@ -3911,7 +3964,27 @@
       set('vol-potencial', d.volPotencial); set('vol-6meses', d.vol6Meses);
       set('vol-mes', d.volMes); set('qtd-embarques', d.qtdEmbarques);
       chk('modal', d.modal); setOrigensTags(d.origens);
-      set('desconto', d.desconto); chk('custo-fin', d.custoFin);
+      // Restore desconto rows: use descontos array if available, else parse legacy string
+      (function() {
+        const list = document.getElementById('descontos-list');
+        if (!list) return;
+        list.innerHTML = '';
+        if (d.descontos && d.descontos.length) {
+          d.descontos.forEach(row => addDescontoRow(row.aliquota || '', row.percentual || ''));
+        } else if (d.desconto) {
+          // legacy: "II 4%: 1.8% | DTA: 0.5%" or just "1.8"
+          d.desconto.split('|').map(s => s.trim()).filter(Boolean).forEach(seg => {
+            const colonIdx = seg.lastIndexOf(':');
+            if (colonIdx > -1) {
+              addDescontoRow(seg.slice(0, colonIdx).trim(), seg.slice(colonIdx + 1).replace('%','').trim());
+            } else {
+              addDescontoRow('', seg.replace('%','').trim());
+            }
+          });
+        }
+        if (!list.children.length) addDescontoRow();
+      })();
+      chk('custo-fin', d.custoFin);
       if (d.custoFin === 'sim') {
         document.getElementById('custo-fin-desc-group').style.display = '';
         set('custo-fin-desc', d.custoFinDesc || '');
@@ -4280,6 +4353,7 @@
     updateSummary();
     addSimParcel('sim-pag-list','pag',{pct:100,tipo:'bl'});
     addSimParcel('sim-rec-list','rec',{pct:100,tipo:'recvdm'});
+    addDescontoRow(); // linha vazia inicial para desconto comercial
   }
 
   /* ── Drag-and-drop: reordenar colunas da tabela XLS ────── */

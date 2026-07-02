@@ -1200,6 +1200,16 @@
     const expTotal = ['limiteExportador','limiteDesp','limiteImp']
       .reduce((s, k) => s + (parseFloat((sol[k]||'0').replace(/\./g,'').replace(',','.')) || 0), 0);
 
+    const _fmtDescontos = () => {
+      if (sol.descontos && sol.descontos.length) {
+        const parts = sol.descontos
+          .map(d => d.aliquota ? `${d.aliquota}: ${d.percentual}%` : (d.percentual ? `${d.percentual}%` : ''))
+          .filter(Boolean);
+        return parts.length ? parts.join(' | ') : (sol.desconto || '');
+      }
+      return sol.desconto || '';
+    };
+
     document.getElementById('sol-details').innerHTML = [
       iv('Produto', sol.produto),
       iv('Modal', DB.utils.modalLabel[sol.modal] || sol.modal),
@@ -1207,6 +1217,7 @@
       iv('Incoterms', sol.incoterms),
       iv('Tipo Operação', DB.utils.tipoOpLabel[sol.tipoOp] || sol.tipoOp),
       iv('Origens', sol.origens),
+      iv('Desconto Comercial', _fmtDescontos()),
       iv('Limite Exportador', fm(sol.limiteExportador), 'money'),
       iv('Limite Despesas', fm(sol.limiteDesp), 'money'),
       iv('Limite Impostos', fm(sol.limiteImp), 'money'),
@@ -1339,6 +1350,7 @@
       rentabilidadeObs:    toStr(sol.rentabilidadeObs),
       custoAdm:            toStr(sol.custoAdm),
       custoAdmObs:         toStr(sol.custoAdmObs),
+      descontos:           Array.isArray(sol.descontos) ? sol.descontos.map(d => d.aliquota ? `${d.aliquota}: ${d.percentual}%` : `${d.percentual}%`).filter(s => s !== '%').join(' | ') : '',
       desconto:            toStr(sol.desconto),
       comentario:          toStr(sol.comentario),
     };
