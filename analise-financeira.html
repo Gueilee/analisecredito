@@ -1239,10 +1239,18 @@
 
       // ── Resultado IA ─────────────────────────────────────────────────────
       if (data.ai_error) {
-        // IA falhou, mas RF pode ter funcionado — não contamina o card de RF
+        // IA falhou, mas RF pode ter funcionado — exibe dados da RF normalmente
         btn.disabled = false;
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Iniciar Análise`;
         document.getElementById('trigger-sub').textContent = 'IA indisponível — tente novamente';
+
+        // Renderiza dados da Receita Federal mesmo sem IA
+        const rfd = rf.data || {};
+        if (rf.status === 'ok' && rfd.razao_social) {
+          document.getElementById('rf-icon').className  = 'bureau-icon ok';
+          document.getElementById('rf-status').textContent = 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK');
+          renderRF(rfd);
+        }
 
         const aiMsg = data.ai_error || '';
         let toastMsg;
@@ -1255,11 +1263,9 @@
         }
         showToast(toastMsg, 'error');
 
-        // Salva resultado parcial (só RF) para não perder a consulta
-        if (rf.status === 'ok') {
-          DB.solicitacoes.update(sol.id, { analise: data, rf_consultada_at: agora });
-          sol = DB.solicitacoes.getById(sol.id);
-        }
+        // Salva resultado parcial (RF) para não perder a consulta
+        DB.solicitacoes.update(sol.id, { analise: data, rf_consultada_at: agora });
+        sol = DB.solicitacoes.getById(sol.id);
         return;
       }
 
