@@ -1162,8 +1162,41 @@
       return `<div class="info-item"><div class="info-key">${k}</div><div class="info-val ${d === '—' ? 'empty' : cls}">${d}</div></div>`;
     };
     const fm = v => v ? DB.utils.fmtMoney(v) : '—';
+    const _tipo = sol.tipoAnalise || 'trade';
 
-    // Calcula exposição total
+    // Armazém — campos simplificados
+    if (_tipo === 'armazem') {
+      document.getElementById('sol-details').innerHTML = [
+        iv('Segmento',        sol.segmento),
+        iv('Ramo de Atividade', sol.ramo),
+        iv('Fundação',        sol.fundacao),
+        iv('Qtd. Posições',   sol.qtdPosicoes),
+        iv('Valor Mensal',    sol.valorMensal),
+        iv('Descrição',       sol.descricao),
+        iv('Comentário',      sol.comentario),
+        iv('Solicitante',     sol.solicitanteNome),
+        iv('Data',            DB.utils.fmtDate(sol.dataSolicitacao || sol.createdAt)),
+      ].join('');
+      return;
+    }
+
+    // Transporte — campos simplificados
+    if (_tipo === 'transporte') {
+      document.getElementById('sol-details').innerHTML = [
+        iv('Segmento',        sol.segmento),
+        iv('Ramo de Atividade', sol.ramo),
+        iv('Fundação',        sol.fundacao),
+        iv('Tipo de Frete',   sol.tipoFrete),
+        iv('Qtd. Fretes/mês', sol.qtdFretes),
+        iv('Descrição',       sol.descricao),
+        iv('Comentário',      sol.comentario),
+        iv('Solicitante',     sol.solicitanteNome),
+        iv('Data',            DB.utils.fmtDate(sol.dataSolicitacao || sol.createdAt)),
+      ].join('');
+      return;
+    }
+
+    // Trade — todos os campos
     const expTotal = ['limiteExportador','limiteDesp','limiteImp']
       .reduce((s, k) => s + (parseFloat((sol[k]||'0').replace(/\./g,'').replace(',','.')) || 0), 0);
 
