@@ -534,6 +534,7 @@
     body.view-only .btn-fin-save,
     body.view-only .btn-serasa-upload,
     body.view-only .btn-serasa-edit,
+    body.view-only #btn-rf-consult,
     body.view-only #btn-run,
     body.view-only #fin-file-input { display: none !important; }
 
@@ -655,7 +656,11 @@
                 </div>
                 <div>
                   <div class="bureau-name">Receita Federal</div>
-                  <div class="bureau-sub" id="rf-status">Aguardando análise…</div>
+                  <div class="bureau-sub" id="rf-status">Nenhuma consulta realizada</div>
+                  <button class="btn-serasa-upload" id="btn-rf-consult" onclick="runRFConsulta()">
+                    <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    Consultar CNPJ
+                  </button>
                 </div>
               </div>
               <div class="bureau-item">
@@ -894,8 +899,8 @@
               <div class="trigger-icon">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </div>
-              <div class="trigger-title">Análise de Crédito</div>
-              <div class="trigger-sub" id="trigger-sub">Consulta automática da Receita Federal e pré-análise gerada por IA para este CNPJ.</div>
+              <div class="trigger-title">Análise de Crédito por IA</div>
+              <div class="trigger-sub" id="trigger-sub">Pré-análise gerada por IA com base nos dados da solicitação. Consulte a Receita Federal separadamente.</div>
             </div>
             <button class="btn-run" id="btn-run" onclick="runAnalysis()">
               <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1053,6 +1058,14 @@
     renderSolDetails();
     loadFinancials();
 
+    // Se já tem dados da Receita Federal consultados separadamente, exibir
+    if (sol.rf_data && sol.rf_data.status === 'ok') {
+      const _rfd = sol.rf_data.data || {};
+      document.getElementById('rf-icon').className = 'bureau-icon ok';
+      document.getElementById('rf-status').textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
+      if (_rfd.razao_social) renderRF(_rfd);
+    }
+
     // Se já tem análise salva, exibir
     if (sol.analise) {
       document.getElementById('btn-exposicao').style.display = '';
@@ -1146,6 +1159,64 @@
     return String(v);
   };
 
+  /* ── Consulta Receita Federal (independente) ─────────── */
+  async function runRFConsulta() {
+    const btn  = document.getElementById('btn-rf-consult');
+    const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="13" height="13"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+    btn.disabled = true;
+    btn.innerHTML = spin + ' Consultando…';
+    document.getElementById('rf-icon').className  = 'bureau-icon wait';
+    document.getElementById('rf-status').textContent = 'Consultando…';
+
+    try {
+      const cnpj = (sol.cnpj || '').replace(/\D/g, '');
+      const res  = await fetch(`${API_URL}/api/receita/${cnpj}`, { credentials: 'include' });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+
+      const rf   = await res.json();
+      const agora = new Date().toISOString();
+      const rfd  = rf.data || {};
+
+      if (rf.status === 'ok') {
+        document.getElementById('rf-icon').className  = 'bureau-icon ok';
+        document.getElementById('rf-status').textContent = 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK');
+        if (rfd.razao_social) renderRF(rfd);
+        DB.solicitacoes.update(sol.id, { rf_data: rf, rf_consultada_at: agora });
+        sol = DB.solicitacoes.getById(sol.id);
+        showToast('Receita Federal consultada com sucesso!', 'success');
+      } else if (rf.status === 'not_found') {
+        document.getElementById('rf-icon').className  = 'bureau-icon error';
+        document.getElementById('rf-status').textContent = 'CNPJ não encontrado na Receita Federal';
+        showToast('CNPJ não encontrado na Receita Federal.', 'error');
+      } else if (rf.status === 'timeout') {
+        document.getElementById('rf-icon').className  = 'bureau-icon error';
+        document.getElementById('rf-status').textContent = 'Timeout — Receita Federal indisponível';
+        showToast('Timeout na consulta. Tente novamente em alguns instantes.', 'warning');
+      } else {
+        document.getElementById('rf-icon').className  = 'bureau-icon error';
+        document.getElementById('rf-status').textContent = rf.error || 'Erro na consulta';
+        showToast('Erro: ' + (rf.error || 'Desconhecido'), 'error');
+      }
+    } catch (e) {
+      document.getElementById('rf-icon').className  = 'bureau-icon error';
+      document.getElementById('rf-status').textContent = 'Falha na comunicação com o servidor';
+      const msg = e.message || '';
+      if (msg.includes('401')) {
+        DB.auth.logout().then(() => { window.location.href = 'login.html'; });
+        return;
+      }
+      showToast('Erro: ' + (msg || 'Falha de rede'), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Consultar CNPJ`;
+    }
+  }
+
   /* ── Executa análise ─────────────────────────────────── */
   async function runAnalysis() {
     const btn = document.getElementById('btn-run');
@@ -1153,9 +1224,7 @@
 
     const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="17" height="17"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
 
-    btn.innerHTML = spin + ' Consultando Receita Federal…';
-    document.getElementById('rf-status').textContent = 'Consultando…';
-    document.getElementById('rf-icon').className = 'bureau-icon wait';
+    btn.innerHTML = spin + ' Gerando Análise com IA…';
 
     const payload = {
       cnpj: sol.cnpj || '',
@@ -1200,8 +1269,6 @@
     };
 
     try {
-      btn.innerHTML = spin + ' Consultando Receita Federal…';
-
       const res = await fetch(`${API_URL}/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1321,11 +1388,9 @@
       document.getElementById('trigger-sub').textContent = 'Última análise: ' + new Date().toLocaleString('pt-BR');
 
     } catch (e) {
-      // Erros de rede / autenticação / servidor — RF também falhou
+      // Erros de rede / autenticação / servidor
       btn.disabled = false;
       btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Iniciar Análise`;
-      document.getElementById('rf-icon').className = 'bureau-icon error';
-      document.getElementById('rf-status').textContent = 'Falha na comunicação com o servidor';
 
       const msg = e.message || '';
       let toast;
