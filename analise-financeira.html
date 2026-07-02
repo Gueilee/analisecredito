@@ -1089,6 +1089,40 @@
       }
     }
 
+    // ── Tipo simplificado: Armazém / Transporte ────────────────────────────
+    // Esses segmentos só precisam de RF + Serasa — sem IA, sem financeiros
+    const _isSimplificado = sol.tipoAnalise === 'armazem' || sol.tipoAnalise === 'transporte'
+      || sol.segmento === 'ARMAZÉM' || sol.segmento === 'TRANSPORTE';
+
+    if (_isSimplificado) {
+      const _tipoLabel  = sol.tipoAnalise === 'armazem' ? 'Armazém' : 'Transporte';
+      const _color      = sol.tipoAnalise === 'armazem' ? 'var(--brand-neon-green)' : '#60a5fa';
+      const _bg         = sol.tipoAnalise === 'armazem' ? 'rgba(1,225,142,.08)' : 'rgba(59,130,246,.08)';
+      const _border     = sol.tipoAnalise === 'armazem' ? 'rgba(1,225,142,.2)'  : 'rgba(59,130,246,.2)';
+
+      // Banner informativo no hero
+      document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
+        `<div style="margin-top:.9rem;display:flex;align-items:center;gap:.65rem;background:${_bg};border:1px solid ${_border};border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.77rem;color:${_color};font-weight:600;">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Análise Simplificada (${_tipoLabel}) — validação via Receita Federal e Serasa apenas
+        </div>`
+      );
+
+      // Oculta seções exclusivas de Trade
+      ['fin-card', 'ai-card', 'detail-card', 'limits-card', 'trigger-card'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      document.getElementById('btn-exposicao').style.display = 'none';
+      document.getElementById('btn-pdf').style.display       = 'none';
+
+      // Painel de decisão visível imediatamente (sem exigir análise de IA)
+      if (!['aprovado', 'negado', 'em_comite'].includes(sol.status)) {
+        if (canDecide) document.getElementById('decision-card').style.display = '';
+        else           document.getElementById('pending-decision-banner').style.display = '';
+      }
+    }
+
     // Encomenda: adiciona banner no hero e configura botões específicos
     if (sol.tipoOp === 'encomenda') {
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
@@ -1219,6 +1253,10 @@
 
   /* ── Executa análise ─────────────────────────────────── */
   async function runAnalysis() {
+    // Clientes Armazém/Transporte não usam análise de IA
+    if (sol.tipoAnalise === 'armazem' || sol.tipoAnalise === 'transporte'
+        || sol.segmento === 'ARMAZÉM' || sol.segmento === 'TRANSPORTE') return;
+
     const btn = document.getElementById('btn-run');
     btn.disabled = true;
 
