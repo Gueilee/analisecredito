@@ -24,11 +24,13 @@ jobs:
             printf '%s\n' "$1" | sed -e 's/[\/&]/\\&/g'
           }
 
+          GEMINI_API_KEY_ESCAPED=$(escape "${{ secrets.ENV_PROD_GEMINI_API_KEY }}")
           ANTHROPIC_API_KEY_ESCAPED=$(escape "${{ secrets.ENV_PROD_ANTHROPIC_API_KEY }}")
           TURSO_TOKEN_ESCAPED=$(escape "${{ secrets.ENV_PROD_TURSO_TOKEN }}")
           APP_SECRET_KEY_ESCAPED=$(escape "${{ secrets.ENV_PROD_APP_SECRET_KEY }}")
           MAILER_DSN_ESCAPED=$(escape "${{ secrets.AZURE_SMTP_MAILER_DSN }}")
 
+          sed -i "s|^GEMINI_API_KEY=.*|GEMINI_API_KEY=$GEMINI_API_KEY_ESCAPED|g" .env.docker.prod
           sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY_ESCAPED|g" .env.docker.prod
           sed -i "s|^TURSO_TOKEN=.*|TURSO_TOKEN=$TURSO_TOKEN_ESCAPED|g" .env.docker.prod
           sed -i "s|^APP_SECRET_KEY=.*|APP_SECRET_KEY=$APP_SECRET_KEY_ESCAPED|g" .env.docker.prod

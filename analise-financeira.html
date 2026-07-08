@@ -1424,10 +1424,10 @@
 
         const aiMsg = data.ai_error || '';
         let toastMsg;
-        if (aiMsg.includes('crédito') || aiMsg.includes('credit') || aiMsg.includes('billing')) {
-          toastMsg = 'Saldo da API de IA insuficiente. Acesse console.anthropic.com/settings/billing para adicionar créditos.';
-        } else if (aiMsg.includes('inválida') || aiMsg.includes('authentication')) {
-          toastMsg = 'Chave de API da IA inválida. Verifique a configuração do servidor.';
+        if (aiMsg.includes('Limite') || aiMsg.includes('quota') || aiMsg.includes('RESOURCE_EXHAUSTED')) {
+          toastMsg = 'Limite de uso da API Gemini atingido. Aguarde alguns minutos e tente novamente.';
+        } else if (aiMsg.includes('inválida') || aiMsg.includes('authentication') || aiMsg.includes('API_KEY_INVALID')) {
+          toastMsg = 'Chave Gemini inválida ou não configurada. Verifique o secret ENV_PROD_GEMINI_API_KEY no GitHub.';
         } else {
           toastMsg = 'Erro na IA: ' + aiMsg;
         }
