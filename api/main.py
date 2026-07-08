@@ -1,6 +1,6 @@
 """
 Vendemmia — Análise de Crédito  |  API Backend
-FastAPI + BrasilAPI (Receita Federal) + Claude AI
+FastAPI + BrasilAPI (Receita Federal) + Gemini AI
 """
 
 import asyncio
@@ -19,9 +19,10 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import google.generativeai as genai
 import httpx
 import openpyxl
-from anthropic import Anthropic
+import pdfplumber
 from dotenv import load_dotenv
 from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -683,24 +684,79 @@ def calc_tempo_mercado(fundacao: str) -> str:
         return fundacao
 
 
-# ── Consulta BrasilAPI ───────────────────────────────────────────────────────
+# ── Consulta Receita Federal (BrasilAPI + fallback CNPJA) ────────────────────
+
+_CNPJA_URL = "https://open.cnpja.com/office"
+
+def _normalize_cnpja(d: dict) -> dict:
+    """Mapeia resposta da CNPJA para o formato BrasilAPI."""
+    addr = d.get("address") or {}
+    company = d.get("company") or {}
+    status  = d.get("status")  or {}
+    nature  = company.get("nature") or {}
+    act     = (d.get("mainActivity") or {})
+    return {
+        "razao_social":                    company.get("name", ""),
+        "nome_fantasia":                   d.get("alias") or "",
+        "descricao_situacao_cadastral":    status.get("text", ""),
+        "data_situacao_cadastral":         d.get("statusDate", ""),
+        "data_abertura":                   d.get("founded", ""),
+        "cnae_fiscal_descricao":           act.get("text", ""),
+        "natureza_juridica":               nature.get("text", ""),
+        "logradouro":                      addr.get("street", ""),
+        "numero":                          str(addr.get("number", "")),
+        "complemento":                     addr.get("details", ""),
+        "bairro":                          addr.get("district", ""),
+        "municipio":                       addr.get("city", ""),
+        "uf":                              addr.get("state", ""),
+        "cep":                             str(addr.get("zip", "")),
+        "email":                           d.get("emails", [{}])[0].get("address", "") if d.get("emails") else "",
+        "telefone":                        d.get("phones", [{}])[0].get("number", "")  if d.get("phones")  else "",
+        "_fonte":                          "cnpja",
+    }
+
 
 async def fetch_receita(cnpj: str) -> dict:
     clean = clean_cnpj(cnpj)
     if len(clean) != 14:
         return {"status": "invalid", "data": {}, "error": "CNPJ deve ter 14 dígitos"}
+
+    # 1ª tentativa — BrasilAPI (com retry em caso de 429)
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as c:
+                resp = await c.get(f"{BRASILAPI}/{clean}")
+            if resp.status_code == 200:
+                return {"status": "ok", "data": resp.json()}
+            if resp.status_code == 404:
+                return {"status": "not_found", "data": {}, "error": "CNPJ não encontrado na Receita Federal"}
+            if resp.status_code == 429 and attempt == 0:
+                await asyncio.sleep(2)
+                continue
+            # outro erro de status — tenta fallback
+            break
+        except httpx.TimeoutException:
+            break
+        except Exception:
+            break
+
+    # Fallback — CNPJA (API pública, sem chave)
     try:
-        async with httpx.AsyncClient(timeout=12.0) as client:
-            resp = await client.get(f"{BRASILAPI}/{clean}")
+        async with httpx.AsyncClient(timeout=15.0) as c:
+            resp = await c.get(
+                f"{_CNPJA_URL}/{clean}",
+                headers={"User-Agent": "vendemmia-analise-credito/2.0"},
+            )
         if resp.status_code == 200:
-            return {"status": "ok", "data": resp.json()}
+            return {"status": "ok", "data": _normalize_cnpja(resp.json())}
         if resp.status_code == 404:
             return {"status": "not_found", "data": {}, "error": "CNPJ não encontrado na Receita Federal"}
-        return {"status": "error", "data": {}, "error": f"BrasilAPI retornou HTTP {resp.status_code}"}
     except httpx.TimeoutException:
         return {"status": "timeout", "data": {}, "error": "Timeout ao consultar Receita Federal"}
     except Exception as exc:
         return {"status": "error", "data": {}, "error": str(exc)}
+
+    return {"status": "error", "data": {}, "error": "Serviço de consulta temporariamente indisponível. Tente novamente em alguns minutos."}
 
 
 # ── Prompt ───────────────────────────────────────────────────────────────────
@@ -893,9 +949,17 @@ def _extract_json(text: str) -> Optional[dict]:
 
 
 def _load_key() -> str:
-    """Carrega e limpa a chave do .env, removendo espaços e quebras de linha."""
+    """Carrega e limpa a chave Gemini do .env."""
     load_dotenv(dotenv_path=_ENV_FILE, override=True)
-    return os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    return os.environ.get("GEMINI_API_KEY", "").strip()
+
+
+def _gemini_generate(key: str, prompt: str) -> str:
+    """Chama a Gemini API e retorna o texto gerado."""
+    genai.configure(api_key=key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content(prompt)
+    return response.text
 
 
 # ── Modelo histórico ─────────────────────────────────────────────────────────
@@ -1198,7 +1262,7 @@ async def download_doc(sol_id: str, tipo: str, fname: str, current_user=Depends(
 # ── Extração de indicadores financeiros ─────────────────────────────────────
 
 def _xlsx_to_text(data: bytes, filename: str) -> str:
-    """Converte Excel para texto tabular para enviar ao Claude."""
+    """Converte Excel para texto tabular."""
     try:
         wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
         lines = [f"=== {filename} ==="]
@@ -1215,20 +1279,33 @@ def _xlsx_to_text(data: bytes, filename: str) -> str:
         return f"[Erro ao ler {filename}: {exc}]"
 
 
-def _build_content_from_files(file_list: list) -> list:
-    """Converte lista de (raw_bytes, filename) em partes de conteúdo Claude."""
-    content = []
+def _pdf_to_text(data: bytes, filename: str) -> str:
+    """Extrai texto e tabelas de PDF usando pdfplumber (sem consumir tokens da IA)."""
+    try:
+        parts = [f"=== {filename} ==="]
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
+            for i, page in enumerate(pdf.pages, 1):
+                text = page.extract_text() or ""
+                if text.strip():
+                    parts.append(f"\n--- Página {i} ---\n{text}")
+                for table in page.extract_tables():
+                    rows = [" | ".join(str(c or "").strip() for c in row) for row in table if any(c for c in row)]
+                    if rows:
+                        parts.append("\n[Tabela]\n" + "\n".join(rows))
+        return "\n".join(parts)
+    except Exception as exc:
+        return f"[Erro ao ler {filename}: {exc}]"
+
+
+def _extract_text_from_files(file_list: list) -> str:
+    """Extrai texto de todos os arquivos (PDF via pdfplumber, Excel via openpyxl)."""
+    parts = []
     for raw, fname in file_list:
         if fname.lower().endswith(".pdf"):
-            b64 = base64.standard_b64encode(raw).decode()
-            content.append({
-                "type": "document",
-                "source": {"type": "base64", "media_type": "application/pdf", "data": b64},
-                "title": fname,
-            })
+            parts.append(_pdf_to_text(raw, fname))
         elif fname.lower().endswith((".xlsx", ".xls")):
-            content.append({"type": "text", "text": _xlsx_to_text(raw, fname)})
-    return content
+            parts.append(_xlsx_to_text(raw, fname))
+    return "\n\n".join(parts)
 
 
 @app.post("/api/extract-financials")
@@ -1249,7 +1326,7 @@ async def extract_financials(
     """
     key = _load_key()
     if not key:
-        raise HTTPException(503, "ANTHROPIC_API_KEY não configurada")
+        raise HTTPException(503, "GEMINI_API_KEY não configurada no servidor")
 
     file_list: list[tuple[bytes, str]] = []
 
@@ -1278,15 +1355,14 @@ async def extract_financials(
             "Nenhum documento encontrado. Envie os arquivos ou verifique se o upload foi realizado."
         )
 
-    client  = Anthropic(api_key=key)
-    content = _build_content_from_files(file_list)
-    if not content:
-        raise HTTPException(400, "Nenhum arquivo em formato suportado (PDF, XLSX)")
+    # Extrai texto dos arquivos via Python (pdfplumber/openpyxl) — sem custo de tokens
+    doc_text = _extract_text_from_files(file_list)
+    if not doc_text.strip():
+        raise HTTPException(400, "Nenhum texto legível encontrado nos arquivos (PDF, XLSX)")
 
-    prompt = f"""Você é um analista financeiro. Analise os documentos da empresa "{empresa}" (CNPJ: {cnpj})
-e extraia os indicadores financeiros dos **dois últimos exercícios** disponíveis.
+    prompt = f"""Você é um analista financeiro. Analise os dados da empresa "{empresa}" (CNPJ: {cnpj}) extraídos dos documentos abaixo e identifique os indicadores financeiros dos **dois últimos exercícios** disponíveis.
 
-Retorne APENAS um JSON válido, sem texto extra:
+Retorne APENAS um JSON válido, sem texto extra, sem markdown:
 {{
   "anos": ["AAAA", "AAAA"],
   "dados": [
@@ -1309,41 +1385,32 @@ Retorne APENAS um JSON válido, sem texto extra:
       "fci": <número inteiro em R$ ou null>,
       "fcf": <número inteiro em R$ ou null>
     }},
-    {{ ...mesmo estrutura para o ano mais recente... }}
+    {{ ... mesma estrutura para o ano mais recente ... }}
   ]
 }}
 
-Regras obrigatórias:
-- Todos os valores em REAIS como inteiros (sem casas decimais, sem formatação)
+Regras:
+- Valores em REAIS como inteiros (sem casas decimais, sem R$, sem pontos de milhar)
 - Índice 0 = exercício mais antigo, índice 1 = mais recente
-- Campos não encontrados = null (não 0)
+- Campos não encontrados = null (nunca 0)
 - EBITDA: se não explícito, calcule como LAJIDA (EBIT + Depreciação + Amortização)
-- Dívida Financeira: empréstimos + financiamentos + debêntures (excluir fornecedores/impostos)
-- FCO/FCI/FCF: extrair da DFC se disponível"""
+- Dívida Financeira: empréstimos + financiamentos + debêntures (excluir fornecedores/impostos/trabalhistas)
+- FCO/FCI/FCF: extrair da DFC se disponível
 
-    content.append({"type": "text", "text": prompt})
+DOCUMENTOS:
+{doc_text[:60000]}"""
 
     try:
-        resp = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2000,
-            messages=[{"role": "user", "content": content}],
-            extra_headers={"anthropic-beta": "pdfs-2024-09-25"},
-        )
+        raw_text = _gemini_generate(key, prompt)
     except Exception as exc:
         err_str = str(exc)
-        if "credit balance is too low" in err_str or "insufficient_quota" in err_str:
-            raise HTTPException(
-                402,
-                "Saldo insuficiente na API de IA. Acesse console.anthropic.com/settings/billing para adicionar créditos."
-            )
-        if "invalid_api_key" in err_str or "authentication_error" in err_str:
-            raise HTTPException(401, "Chave de API da IA inválida. Verifique ANTHROPIC_API_KEY no servidor.")
-        if "overloaded" in err_str or "529" in err_str:
-            raise HTTPException(503, "API de IA sobrecarregada. Aguarde alguns segundos e tente novamente.")
+        if "API_KEY_INVALID" in err_str or "invalid" in err_str.lower():
+            raise HTTPException(401, "Chave Gemini inválida. Verifique GEMINI_API_KEY no servidor.")
+        if "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+            raise HTTPException(429, "Limite de uso da API Gemini atingido. Aguarde e tente novamente.")
         raise HTTPException(502, f"Erro na IA: {exc}")
 
-    extracted = _extract_json(resp.content[0].text)
+    extracted = _extract_json(raw_text)
     if not extracted:
         raise HTTPException(422, "Não foi possível extrair os dados financeiros dos documentos")
 
@@ -1611,23 +1678,17 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
     # 1. Consulta Receita Federal — sempre executada, nunca bloqueia a resposta
     receita = await fetch_receita(req.cnpj)
 
-    # 2. Tenta análise com Claude — falha de forma isolada
+    # 2. Tenta análise com Gemini — falha de forma isolada
     key = _load_key()
     analysis: Optional[Dict[str, Any]] = None
     ai_error: Optional[str] = None
 
     if not key:
-        ai_error = "ANTHROPIC_API_KEY não configurada no servidor."
+        ai_error = "GEMINI_API_KEY não configurada no servidor."
     else:
         prompt = build_prompt(req, receita)
         try:
-            client = Anthropic(api_key=key)
-            msg = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=4096,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw = msg.content[0].text
+            raw = _gemini_generate(key, prompt)
 
             # 3. Extrai JSON com três estratégias em cascata
             analysis = _extract_json(raw)
@@ -1654,12 +1715,10 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
 
         except Exception as exc:
             err_str = str(exc)
-            if "credit balance is too low" in err_str or "insufficient_quota" in err_str:
-                ai_error = "Saldo insuficiente na API da IA. Acesse console.anthropic.com/settings/billing para adicionar créditos."
-            elif "invalid_api_key" in err_str or "authentication_error" in err_str:
-                ai_error = "Chave de API da IA inválida. Verifique a variável ANTHROPIC_API_KEY no servidor."
-            elif "overloaded" in err_str or "529" in err_str:
-                ai_error = "API da IA sobrecarregada. Aguarde alguns segundos e tente novamente."
+            if "API_KEY_INVALID" in err_str or "invalid" in err_str.lower():
+                ai_error = "Chave Gemini inválida. Verifique a variável GEMINI_API_KEY no servidor."
+            elif "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                ai_error = "Limite de uso da API Gemini atingido. Aguarde e tente novamente."
             else:
                 ai_error = f"Erro na IA: {exc}"
 
@@ -1668,7 +1727,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
         "analysis": analysis,
         "ai_error": ai_error,
         "bureau_fonte": "BrasilAPI / Receita Federal",
-        "modelo_ia": "claude-sonnet-4-6",
+        "modelo_ia": "gemini-1.5-flash",
     }
 
 

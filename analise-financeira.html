@@ -1125,6 +1125,13 @@
       }
     }
 
+    // Painel de decisão visível imediatamente para qualquer tipo de cliente (Trade incluso)
+    // Permite que o time financeiro lance limites e decisões sem precisar rodar análise de IA
+    if (!_isSimplificado && !['aprovado', 'negado', 'em_comite'].includes(sol.status)) {
+      if (canDecide) document.getElementById('decision-card').style.display = '';
+      else           document.getElementById('pending-decision-banner').style.display = '';
+    }
+
     // Encomenda: adiciona banner no hero e configura botões específicos
     if (sol.tipoOp === 'encomenda') {
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
