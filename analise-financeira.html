@@ -1002,27 +1002,10 @@
       if (_bRf) _bRf.style.display = 'none';
     }
 
-    // Se já tem análise salva, exibir
+    // Se já tem análise salva, mantém botões visíveis (análise IA removida do fluxo)
     if (sol.analise) {
       document.getElementById('btn-exposicao').style.display = '';
       document.getElementById('btn-pdf').style.display = '';
-      const cachedAlerts = sol.analise?.analysis?.alertas_criticos || [];
-      const isFailed = cachedAlerts.some(a => a.includes('Erro ao processar'));
-      if (isFailed) {
-        // Análise anterior falhou — limpa o cache e pede nova análise
-        DB.solicitacoes.update(sol.id, { analise: null, analise_at: null });
-        sol = DB.solicitacoes.getById(sol.id);
-        document.getElementById('trigger-sub').textContent = 'Análise anterior falhou. Clique para tentar novamente.';
-      } else {
-        renderAnalysis(sol.analise);
-        document.getElementById('trigger-sub').textContent =
-          'Última análise: ' + (sol.analise_at ? new Date(sol.analise_at).toLocaleString('pt-BR') : '—');
-        const btnRun = document.getElementById('btn-run');
-        btnRun.disabled = true;
-        btnRun.innerHTML = `
-          <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Análise Concluída`;
-      }
     }
 
     // ── Tipo simplificado: Armazém / Transporte ────────────────────────────
