@@ -1717,12 +1717,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
 
         except Exception as exc:
             err_str = str(exc)
-            if "API_KEY_INVALID" in err_str:
-                ai_error = "Chave Gemini inválida (API_KEY_INVALID). Verifique o secret ENV_PROD_GEMINI_API_KEY no GitHub."
-            elif "RESOURCE_EXHAUSTED" in err_str:
-                ai_error = "Limite de uso da API Gemini atingido (RESOURCE_EXHAUSTED). Aguarde e tente novamente."
-            else:
-                ai_error = f"Erro Gemini: {type(exc).__name__}: {exc}"
+            ai_error = f"[{type(exc).__name__}] {exc}"
 
     return {
         "cnpj_data": receita,
