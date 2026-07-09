@@ -591,59 +591,61 @@
 
     /* ── Leitor de Documentos Financeiros ───────────────── */
     .fin-summary-bar {
-      font-size: .72rem; color: var(--text-faint); font-weight: 500;
-      padding: .35rem .2rem .65rem; border-bottom: 1px solid rgba(255,255,255,.06);
-      margin-bottom: .55rem;
+      font-size: .78rem; color: var(--text-faint); font-weight: 500;
+      padding: .4rem .25rem .7rem; border-bottom: 1px solid rgba(255,255,255,.06);
+      margin-bottom: .7rem;
     }
     .fin-doc-item {
-      border: 1px solid rgba(255,255,255,.07); border-radius: var(--radius-sm);
-      margin-bottom: .4rem; overflow: hidden;
+      border: 1px solid rgba(255,255,255,.09); border-radius: var(--radius-sm);
+      margin-bottom: .55rem; overflow: hidden;
     }
     .fin-doc-hd {
-      display: flex; align-items: center; justify-content: space-between; gap: .5rem;
-      padding: .55rem .75rem; cursor: pointer; background: rgba(255,255,255,.02);
+      display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+      padding: .75rem 1rem; cursor: pointer; background: rgba(255,255,255,.025);
       transition: background .12s; user-select: none; min-width: 0;
     }
-    .fin-doc-hd:hover { background: rgba(255,255,255,.045); }
+    .fin-doc-hd:hover { background: rgba(255,255,255,.055); }
     .fin-doc-name {
-      font-size: .76rem; font-weight: 600; color: var(--text-primary);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;
+      font-size: .84rem; font-weight: 600; color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;
     }
-    .fin-doc-meta { font-size: .68rem; color: var(--text-faint); white-space: nowrap; }
+    .fin-doc-meta { font-size: .74rem; color: var(--text-faint); white-space: nowrap; }
     .fin-doc-err-badge {
-      font-size: .62rem; font-weight: 700; color: var(--red); padding: .1rem .35rem;
+      font-size: .66rem; font-weight: 700; color: var(--red); padding: .15rem .4rem;
       border: 1px solid rgba(239,68,68,.3); border-radius: 4px; white-space: nowrap;
     }
     .fin-doc-body {
-      padding: .65rem .75rem; border-top: 1px solid rgba(255,255,255,.06);
-      display: flex; flex-direction: column; gap: .8rem;
+      padding: 1rem 1rem; border-top: 1px solid rgba(255,255,255,.07);
+      display: flex; flex-direction: column; gap: 1.2rem;
     }
     .fin-sec-lbl {
-      font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
-      color: var(--text-faint); margin-bottom: .3rem;
+      font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+      color: rgba(124,58,237,.7); margin-bottom: .5rem;
+      padding-bottom: .3rem; border-bottom: 1px solid rgba(124,58,237,.15);
     }
     .fin-pre {
-      font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace; font-size: .68rem;
-      color: var(--text-secondary); line-height: 1.55; white-space: pre-wrap; word-break: break-word;
-      background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.05);
-      border-radius: 5px; padding: .55rem .65rem; margin: 0; max-height: 300px; overflow-y: auto;
+      font-family: inherit; font-size: .82rem;
+      color: var(--text-primary); line-height: 1.8; white-space: pre-wrap; word-break: break-word;
+      background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.07);
+      border-left: 2px solid rgba(124,58,237,.3);
+      border-radius: 6px; padding: .9rem 1rem; margin: 0; max-height: 380px; overflow-y: auto;
     }
-    .fin-tbl-wrap { overflow-x: auto; }
+    .fin-tbl-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid rgba(255,255,255,.08); }
     .fin-extracted-tbl {
-      width: 100%; border-collapse: collapse; font-size: .69rem; color: var(--text-secondary);
+      width: 100%; border-collapse: collapse; font-size: .8rem; color: var(--text-secondary);
     }
     .fin-extracted-tbl th {
       text-align: left; font-weight: 700; color: var(--text-primary);
-      padding: .28rem .55rem; background: rgba(255,255,255,.04);
+      padding: .5rem .8rem; background: rgba(255,255,255,.05);
       border-bottom: 1px solid rgba(255,255,255,.1); white-space: nowrap;
     }
     .fin-extracted-tbl td {
-      padding: .24rem .55rem; border-bottom: 1px solid rgba(255,255,255,.04); white-space: nowrap;
+      padding: .4rem .8rem; border-bottom: 1px solid rgba(255,255,255,.04); white-space: nowrap;
     }
     .fin-extracted-tbl tr:last-child td { border-bottom: none; }
-    .fin-extracted-tbl tr:hover td { background: rgba(255,255,255,.018); }
+    .fin-extracted-tbl tr:hover td { background: rgba(255,255,255,.025); }
     .fin-doc-err-msg {
-      font-size: .74rem; color: var(--red); padding: .4rem .2rem; line-height: 1.5;
+      font-size: .8rem; color: var(--red); padding: .5rem .25rem; line-height: 1.6;
     }
       </style>
 </head>
