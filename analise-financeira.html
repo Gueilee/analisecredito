@@ -1423,15 +1423,7 @@
         }
 
         const aiMsg = data.ai_error || '';
-        let toastMsg;
-        if (aiMsg.includes('Limite') || aiMsg.includes('quota') || aiMsg.includes('RESOURCE_EXHAUSTED')) {
-          toastMsg = 'Limite de uso da API Gemini atingido. Aguarde alguns minutos e tente novamente.';
-        } else if (aiMsg.includes('inválida') || aiMsg.includes('authentication') || aiMsg.includes('API_KEY_INVALID')) {
-          toastMsg = 'Chave Gemini inválida ou não configurada. Verifique o secret ENV_PROD_GEMINI_API_KEY no GitHub.';
-        } else {
-          toastMsg = 'Erro na IA: ' + aiMsg;
-        }
-        showToast(toastMsg, 'error');
+        showToast('Erro IA: ' + aiMsg, 'error');
 
         // Salva resultado parcial (RF) para não perder a consulta
         DB.solicitacoes.update(sol.id, { analise: data, rf_consultada_at: agora });
