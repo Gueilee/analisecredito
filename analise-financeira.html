@@ -2250,6 +2250,7 @@
 
   function loadFinancials() {
     if (sol.analiseFinanceira?.documentos) {
+      _docReaderData = sol.analiseFinanceira;
       renderDocReader(sol.analiseFinanceira);
     }
   }
@@ -2324,6 +2325,7 @@
   }
 
   function _applyDocReader(data) {
+    _docReaderData = data;
     renderDocReader(data);
     if (sol?.id) {
       DB.solicitacoes.update(sol.id, { analiseFinanceira: data });
