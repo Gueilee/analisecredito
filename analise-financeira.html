@@ -644,6 +644,14 @@
     }
     .fin-extracted-tbl tr:last-child td { border-bottom: none; }
     .fin-extracted-tbl tr:hover td { background: rgba(255,255,255,.025); }
+    .fin-doc-del {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 5px; border: 1px solid transparent;
+      background: transparent; color: var(--text-faint); cursor: pointer;
+      transition: color .14s, background .14s, border-color .14s; flex-shrink: 0;
+    }
+    .fin-doc-del:hover { color: var(--red); background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.25); }
+    body.view-only .fin-doc-del { display: none !important; }
     .fin-doc-err-msg {
       font-size: .8rem; color: var(--red); padding: .5rem .25rem; line-height: 1.6;
     }
@@ -1003,6 +1011,7 @@
   // Declaradas aqui para evitar TDZ — initFin() é function declaration (hoisted)
   let finData  = [initFin(), initFin()];
   let finYears = ['2023', '2024'];
+  let _docReaderData = null;
 
   if (!solId) { location.href = 'solicitacoes.html'; }
   else {
@@ -2360,7 +2369,12 @@
             <span class="fin-doc-meta">${meta} • ${secsCount} seção(ões)</span>
             ${doc.erro ? `<span class="fin-doc-err-badge">Erro</span>` : ''}
           </div>
-          <svg class="fin-doc-chev" id="fin-chev-${idx}" viewBox="0 0 24 24" fill="none" width="13" height="13" style="flex-shrink:0;transition:transform .18s;"><polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
+            <button class="fin-doc-del" onclick="event.stopPropagation();deleteFinDoc(${idx})" title="Remover documento">
+              <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <svg class="fin-doc-chev" id="fin-chev-${idx}" viewBox="0 0 24 24" fill="none" width="13" height="13" style="transition:transform .18s;"><polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
         </div>
         <div class="fin-doc-body" id="fin-doc-body-${idx}" style="display:none;">
           ${doc.erro ? `<div class="fin-doc-err-msg">${_escHtml(doc.erro)}</div>` : ''}
@@ -2384,6 +2398,61 @@
     const open = body.style.display !== 'none';
     body.style.display = open ? 'none' : '';
     if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+  }
+
+  function deleteFinDoc(idx) {
+    if (!_docReaderData?.documentos?.[idx]) return;
+    const nome = _docReaderData.documentos[idx].nome;
+    showConfirm({
+      title: 'Remover documento?',
+      sub: nome,
+      body: 'O arquivo será removido desta análise. Se foi enviado pelo servidor, também será excluído do armazenamento.',
+      variant: 'warn',
+      okLabel: 'Remover',
+      iconSvg: `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      onConfirm: async () => {
+        // Remove do servidor (fire-and-forget — não bloqueia se falhar)
+        if (sol?.id) {
+          fetch(`${API_URL}/api/docs/${sol.id}/${encodeURIComponent(nome)}`, {
+            method: 'DELETE', credentials: 'include'
+          }).catch(() => {});
+        }
+
+        // Remove do estado local
+        _docReaderData.documentos.splice(idx, 1);
+
+        if (_docReaderData.documentos.length === 0) {
+          _docReaderData = null;
+          if (sol?.id) {
+            DB.solicitacoes.update(sol.id, { analiseFinanceira: null });
+            sol = DB.solicitacoes.getById(sol.id);
+          }
+          document.getElementById('fin-results').style.display = 'none';
+          document.getElementById('fin-hint-area').style.display = '';
+        } else {
+          // Recalcula o resumo
+          const nd = _docReaderData.documentos.length;
+          const tp = _docReaderData.documentos.reduce((s,d) => s + (d.paginas||0), 0);
+          const tt = _docReaderData.documentos.reduce((s,d) =>
+            s + (d.secoes||[]).filter(x => x.tipo==='tabela'||x.tipo==='planilha').length, 0);
+          let resumo = `${nd} documento${nd!==1?'s':''} analisado${nd!==1?'s':''}`;
+          if (tp) resumo += ` • ${tp} página${tp!==1?'s':''}`;
+          if (tt) resumo += ` • ${tt} tabela${tt!==1?'s':''} encontrada${tt!==1?'s':''}`;
+          _docReaderData.resumo = resumo;
+          document.getElementById('fin-summary').textContent = resumo;
+          const acc = document.getElementById('fin-accordion');
+          acc.innerHTML = '';
+          _docReaderData.documentos.forEach((doc, i) => {
+            acc.insertAdjacentHTML('beforeend', _renderDocHtml(doc, i));
+          });
+          if (sol?.id) {
+            DB.solicitacoes.update(sol.id, { analiseFinanceira: _docReaderData });
+            sol = DB.solicitacoes.getById(sol.id);
+          }
+        }
+        showToast('Documento removido.', 'success');
+      }
+    });
   }
 
   function _escHtml(str) {

@@ -1261,6 +1261,25 @@ async def download_doc(sol_id: str, tipo: str, fname: str, current_user=Depends(
     )
 
 
+@app.delete("/api/docs/{sol_id}/{nome}")
+@limiter.limit("20/minute")
+async def delete_doc(sol_id: str, nome: str, request: Request, current_user=Depends(_get_current_user)):
+    """Remove um documento armazenado no Turso pelo nome."""
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "sol_id inválido.")
+    rows = await _turso_query(
+        "SELECT id FROM documents WHERE sol_id=? AND nome=?",
+        [sol_id, nome],
+    )
+    if not rows:
+        raise HTTPException(404, "Documento não encontrado.")
+    await _turso_exec(
+        "DELETE FROM documents WHERE sol_id=? AND nome=?",
+        [sol_id, nome],
+    )
+    return {"ok": True}
+
+
 # ── Extração de indicadores financeiros ─────────────────────────────────────
 
 def _xlsx_to_text(data: bytes, filename: str) -> str:
