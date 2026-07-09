@@ -1310,6 +1310,60 @@ def _extract_text_from_files(file_list: list) -> str:
     return "\n\n".join(parts)
 
 
+def _pdf_to_structured(data: bytes, filename: str) -> dict:
+    """Extrai conteúdo estruturado (texto + tabelas por página) de um PDF via pdfplumber."""
+    try:
+        secoes: list[dict] = []
+        num_paginas = 0
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
+            num_paginas = len(pdf.pages)
+            for i, page in enumerate(pdf.pages, 1):
+                text = (page.extract_text() or "").strip()
+                if text:
+                    secoes.append({"tipo": "texto", "pagina": i, "conteudo": text})
+                for table in page.extract_tables():
+                    rows = [
+                        [str(c or "").strip() for c in row]
+                        for row in table
+                        if any(c for c in row)
+                    ]
+                    if rows:
+                        secoes.append({"tipo": "tabela", "pagina": i, "linhas": rows})
+        return {"nome": filename, "tipo": "pdf", "paginas": num_paginas, "secoes": secoes}
+    except Exception as exc:
+        return {"nome": filename, "tipo": "pdf", "paginas": 0, "secoes": [], "erro": str(exc)}
+
+
+def _xlsx_to_structured(data: bytes, filename: str) -> dict:
+    """Extrai conteúdo estruturado (planilhas como tabelas) de um Excel via openpyxl."""
+    try:
+        secoes: list[dict] = []
+        wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+        for name in wb.sheetnames:
+            ws = wb[name]
+            linhas = []
+            for row in ws.iter_rows(values_only=True):
+                cells = [str(c) if c is not None else "" for c in row]
+                if any(c.strip() for c in cells):
+                    linhas.append(cells)
+            if linhas:
+                secoes.append({"tipo": "planilha", "nome": name, "linhas": linhas})
+        return {"nome": filename, "tipo": "excel", "planilhas": len(wb.sheetnames), "secoes": secoes}
+    except Exception as exc:
+        return {"nome": filename, "tipo": "excel", "planilhas": 0, "secoes": [], "erro": str(exc)}
+
+
+def _extract_documents_structured(file_list: list) -> list:
+    """Retorna lista de documentos com conteúdo estruturado (sem IA)."""
+    docs = []
+    for raw, fname in file_list:
+        if fname.lower().endswith(".pdf"):
+            docs.append(_pdf_to_structured(raw, fname))
+        elif fname.lower().endswith((".xlsx", ".xls")):
+            docs.append(_xlsx_to_structured(raw, fname))
+    return docs
+
+
 @app.post("/api/extract-financials")
 @limiter.limit("10/minute")
 async def extract_financials(
@@ -1320,16 +1374,12 @@ async def extract_financials(
     files:   List[UploadFile] = File(default=[]),
     current_user=Depends(_get_current_user),
 ):
-    """Extrai indicadores financeiros de PDFs/Excel via Claude.
+    """Extrai conteúdo de documentos financeiros via Python (pdfplumber/openpyxl). Sem IA.
 
     Aceita duas fontes (em ordem de prioridade):
-    1. sol_id — lê arquivos já salvos em /api/docs/{sol_id}/
+    1. sol_id — lê arquivos já salvos no Turso (tipo IN 'balanco','dre')
     2. files  — upload direto de arquivos pelo usuário
     """
-    key = _load_key()
-    if not key:
-        raise HTTPException(503, "GEMINI_API_KEY não configurada no servidor")
-
     file_list: list[tuple[bytes, str]] = []
 
     # Prioridade 1: arquivos salvos no Turso
@@ -1349,7 +1399,7 @@ async def extract_financials(
         for f in files:
             raw = await f.read()
             if raw:
-                file_list.append((raw, f.filename or "doc"))
+                file_list.append((raw, f.filename or "documento"))
 
     if not file_list:
         raise HTTPException(
@@ -1357,66 +1407,21 @@ async def extract_financials(
             "Nenhum documento encontrado. Envie os arquivos ou verifique se o upload foi realizado."
         )
 
-    # Extrai texto dos arquivos via Python (pdfplumber/openpyxl) — sem custo de tokens
-    doc_text = _extract_text_from_files(file_list)
-    if not doc_text.strip():
-        raise HTTPException(400, "Nenhum texto legível encontrado nos arquivos (PDF, XLSX)")
+    documentos = _extract_documents_structured(file_list)
 
-    prompt = f"""Você é um analista financeiro. Analise os dados da empresa "{empresa}" (CNPJ: {cnpj}) extraídos dos documentos abaixo e identifique os indicadores financeiros dos **dois últimos exercícios** disponíveis.
+    total_paginas = sum(d.get("paginas", 0) for d in documentos)
+    total_tabelas = sum(
+        sum(1 for s in d.get("secoes", []) if s["tipo"] in ("tabela", "planilha"))
+        for d in documentos
+    )
+    nd = len(documentos)
+    resumo = f"{nd} documento{'s' if nd != 1 else ''} analisado{'s' if nd != 1 else ''}"
+    if total_paginas:
+        resumo += f" • {total_paginas} página{'s' if total_paginas != 1 else ''}"
+    if total_tabelas:
+        resumo += f" • {total_tabelas} tabela{'s' if total_tabelas != 1 else ''} encontrada{'s' if total_tabelas != 1 else ''}"
 
-Retorne APENAS um JSON válido, sem texto extra, sem markdown:
-{{
-  "anos": ["AAAA", "AAAA"],
-  "dados": [
-    {{
-      "receitaBruta": <número inteiro em R$ ou null>,
-      "receitaLiquida": <número inteiro em R$ ou null>,
-      "lucroBruto": <número inteiro em R$ ou null>,
-      "lucroLiquido": <número inteiro em R$ ou null>,
-      "ebitda": <número inteiro em R$ ou null>,
-      "ativoCirculante": <número inteiro em R$ ou null>,
-      "realizavelLP": <número inteiro em R$ ou null>,
-      "ativoTotal": <número inteiro em R$ ou null>,
-      "passivoCirculante": <número inteiro em R$ ou null>,
-      "exigivelLP": <número inteiro em R$ ou null>,
-      "passivoTotal": <número inteiro em R$ ou null>,
-      "patrimonioLiquido": <número inteiro em R$ ou null>,
-      "dividaFinanceira": <número inteiro em R$ ou null>,
-      "fco": <número inteiro em R$ ou null>,
-      "fce": <número inteiro em R$ ou null>,
-      "fci": <número inteiro em R$ ou null>,
-      "fcf": <número inteiro em R$ ou null>
-    }},
-    {{ ... mesma estrutura para o ano mais recente ... }}
-  ]
-}}
-
-Regras:
-- Valores em REAIS como inteiros (sem casas decimais, sem R$, sem pontos de milhar)
-- Índice 0 = exercício mais antigo, índice 1 = mais recente
-- Campos não encontrados = null (nunca 0)
-- EBITDA: se não explícito, calcule como LAJIDA (EBIT + Depreciação + Amortização)
-- Dívida Financeira: empréstimos + financiamentos + debêntures (excluir fornecedores/impostos/trabalhistas)
-- FCO/FCI/FCF: extrair da DFC se disponível
-
-DOCUMENTOS:
-{doc_text[:60000]}"""
-
-    try:
-        raw_text = _gemini_generate(key, prompt)
-    except Exception as exc:
-        err_str = str(exc)
-        if "API_KEY_INVALID" in err_str:
-            raise HTTPException(401, "Chave Gemini inválida (API_KEY_INVALID). Verifique o secret ENV_PROD_GEMINI_API_KEY no GitHub.")
-        if "RESOURCE_EXHAUSTED" in err_str:
-            raise HTTPException(429, "Limite de uso da API Gemini atingido (RESOURCE_EXHAUSTED). Aguarde e tente novamente.")
-        raise HTTPException(502, f"Erro Gemini: {type(exc).__name__}: {exc}")
-
-    extracted = _extract_json(raw_text)
-    if not extracted:
-        raise HTTPException(422, "Não foi possível extrair os dados financeiros dos documentos")
-
-    return extracted
+    return {"documentos": documentos, "resumo": resumo}
 
 
 # ── Notificações por e-mail ───────────────────────────────────────────────────

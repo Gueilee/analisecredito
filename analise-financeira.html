@@ -588,6 +588,63 @@
     .confirm-btn-ok.warn  { background: linear-gradient(135deg,#c97d00,#f59e0b); color: #1a0f00; }
     .confirm-btn-ok.danger { background: var(--red); color: #fff; }
     .confirm-btn-ok:hover { opacity: .88; }
+
+    /* ── Leitor de Documentos Financeiros ───────────────── */
+    .fin-summary-bar {
+      font-size: .72rem; color: var(--text-faint); font-weight: 500;
+      padding: .35rem .2rem .65rem; border-bottom: 1px solid rgba(255,255,255,.06);
+      margin-bottom: .55rem;
+    }
+    .fin-doc-item {
+      border: 1px solid rgba(255,255,255,.07); border-radius: var(--radius-sm);
+      margin-bottom: .4rem; overflow: hidden;
+    }
+    .fin-doc-hd {
+      display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+      padding: .55rem .75rem; cursor: pointer; background: rgba(255,255,255,.02);
+      transition: background .12s; user-select: none; min-width: 0;
+    }
+    .fin-doc-hd:hover { background: rgba(255,255,255,.045); }
+    .fin-doc-name {
+      font-size: .76rem; font-weight: 600; color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;
+    }
+    .fin-doc-meta { font-size: .68rem; color: var(--text-faint); white-space: nowrap; }
+    .fin-doc-err-badge {
+      font-size: .62rem; font-weight: 700; color: var(--red); padding: .1rem .35rem;
+      border: 1px solid rgba(239,68,68,.3); border-radius: 4px; white-space: nowrap;
+    }
+    .fin-doc-body {
+      padding: .65rem .75rem; border-top: 1px solid rgba(255,255,255,.06);
+      display: flex; flex-direction: column; gap: .8rem;
+    }
+    .fin-sec-lbl {
+      font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+      color: var(--text-faint); margin-bottom: .3rem;
+    }
+    .fin-pre {
+      font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace; font-size: .68rem;
+      color: var(--text-secondary); line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+      background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.05);
+      border-radius: 5px; padding: .55rem .65rem; margin: 0; max-height: 300px; overflow-y: auto;
+    }
+    .fin-tbl-wrap { overflow-x: auto; }
+    .fin-extracted-tbl {
+      width: 100%; border-collapse: collapse; font-size: .69rem; color: var(--text-secondary);
+    }
+    .fin-extracted-tbl th {
+      text-align: left; font-weight: 700; color: var(--text-primary);
+      padding: .28rem .55rem; background: rgba(255,255,255,.04);
+      border-bottom: 1px solid rgba(255,255,255,.1); white-space: nowrap;
+    }
+    .fin-extracted-tbl td {
+      padding: .24rem .55rem; border-bottom: 1px solid rgba(255,255,255,.04); white-space: nowrap;
+    }
+    .fin-extracted-tbl tr:last-child td { border-bottom: none; }
+    .fin-extracted-tbl tr:hover td { background: rgba(255,255,255,.018); }
+    .fin-doc-err-msg {
+      font-size: .74rem; color: var(--red); padding: .4rem .2rem; line-height: 1.5;
+    }
       </style>
 </head>
 <body>
@@ -648,7 +705,7 @@
 
           <!-- Bureau -->
           <div class="card animate-in delay-1">
-            <div class="card-title" style="margin-bottom:.9rem;">Consulta de Bureau</div>
+            <div class="card-title" style="margin-bottom:.9rem;">Consultas Iniciais</div>
             <div class="bureau-grid">
               <div class="bureau-item">
                 <div class="bureau-icon wait" id="rf-icon">
@@ -769,62 +826,49 @@
             </div>
           </div>
 
-          <!-- ── Análise Financeira — Indicadores ── -->
+          <!-- ── Documentos Financeiros ── -->
           <div class="card animate-in delay-2" id="fin-card">
             <div class="fin-card-hd">
               <div style="display:flex;align-items:center;gap:.6rem;">
                 <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style="color:var(--purple-light);flex-shrink:0"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                <span class="card-title">Análise Financeira — Indicadores</span>
+                <span class="card-title">Documentos Financeiros</span>
               </div>
               <div class="fin-actions">
                 <button class="btn-fin-extract" id="btn-fin-extract" onclick="triggerFinExtract()">
                   <svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Extrair Dados
+                  Analisar Documentos
                 </button>
                 <label id="btn-fin-upload-manual" class="btn-fin-extract" style="display:none;cursor:pointer;" title="Selecionar arquivos manualmente">
                   <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                   Selecionar Arquivos
                   <input type="file" id="fin-file-input" accept=".pdf,.xlsx,.xls" multiple style="display:none" onchange="handleFinFiles(this.files)">
                 </label>
-                <button class="btn-fin-save" onclick="saveFinancials()">
-                  <svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="1.7"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="1.7"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="1.7"/></svg>
-                  Salvar
-                </button>
-                <span class="fin-saved-tag" id="fin-saved-tag">
-                  <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Salvo
-                </span>
               </div>
             </div>
 
-            <!-- Banner: documentos não encontrados no servidor -->
-            <div id="docs-missing-banner" style="display:none;margin:.6rem 0 .2rem;padding:.75rem 1rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.28);border-left:3px solid var(--yellow);border-radius:var(--radius-sm);display:none;align-items:flex-start;gap:.75rem;">
-              <svg viewBox="0 0 24 24" fill="none" width="16" height="16" style="color:var(--yellow);flex-shrink:0;margin-top:.1rem"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              <div>
-                <div style="font-size:.82rem;font-weight:700;color:var(--yellow);margin-bottom:.2rem;">Documentos não encontrados no servidor</div>
-                <div style="font-size:.79rem;color:var(--text-secondary);line-height:1.5;">Os arquivos de Balanço e DRE precisam ser selecionados para a extração via IA. Clique em <strong style="color:var(--text-primary);">Selecionar Arquivos</strong> ao lado para enviar os documentos.</div>
-              </div>
+            <!-- Zona de drop para upload manual -->
+            <div id="fin-dropzone" style="display:none;border:1.5px dashed rgba(124,58,237,.3);border-radius:var(--radius-sm);padding:1.5rem 1rem;text-align:center;cursor:pointer;margin:.25rem 0 .6rem;transition:border-color .15s,background .15s;"
+                 ondragover="event.preventDefault();this.style.borderColor='rgba(124,58,237,.7)';this.style.background='rgba(124,58,237,.06)'"
+                 ondragleave="this.style.borderColor='rgba(124,58,237,.3)';this.style.background=''"
+                 ondrop="event.preventDefault();this.style.borderColor='rgba(124,58,237,.3)';this.style.background='';handleFinFiles(event.dataTransfer.files)"
+                 onclick="document.getElementById('fin-file-input').click()">
+              <svg viewBox="0 0 24 24" fill="none" width="22" height="22" style="color:var(--purple-light);margin-bottom:.5rem"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <div style="font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:.2rem;">Arraste os documentos aqui ou clique para selecionar</div>
+              <div style="font-size:.7rem;color:var(--text-faint);">Balanço Patrimonial, DRE, relatórios financeiros — PDF ou Excel (.xlsx)</div>
             </div>
 
-            <div class="fin-year-bar">
-              <span class="fin-year-lbl">Exercícios:</span>
-              <input type="text" class="fin-year-inp" id="fin-y0" value="2023" maxlength="4" oninput="updateYearHeaders()">
-              <span style="color:var(--text-faint);font-size:.8rem;">→</span>
-              <input type="text" class="fin-year-inp" id="fin-y1" value="2024" maxlength="4" oninput="updateYearHeaders()">
+            <!-- Resultados -->
+            <div id="fin-results" style="display:none;">
+              <div id="fin-summary" class="fin-summary-bar"></div>
+              <div id="fin-accordion"></div>
             </div>
 
-            <div class="fin-thead">
-              <div class="fin-th" style="text-align:left;">Indicador</div>
-              <div class="fin-th" id="fth-0">2023</div>
-              <div class="fin-th" id="fth-1">2024</div>
-              <div class="fin-th">Var.</div>
-            </div>
-
-            <div id="fin-body"></div>
-
-            <div class="fin-hint">
-              Campos em itálico são calculados automaticamente a partir dos dados inseridos — você pode substituí-los digitando diretamente.
-              Anexe os PDFs/Excel dos balanços e clique em <strong>Extrair Dados</strong> para preencher os campos automaticamente via leitura Python dos documentos.
+            <!-- Estado inicial -->
+            <div id="fin-hint-area" style="padding:1.3rem .25rem .6rem;text-align:center;">
+              <svg viewBox="0 0 24 24" fill="none" width="28" height="28" style="color:rgba(124,58,237,.35);margin-bottom:.75rem"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.5"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.5"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <div style="font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:.4rem;">Leitura de Documentos</div>
+              <p style="font-size:.72rem;color:var(--text-faint);line-height:1.65;max-width:340px;margin:0 auto .3rem;">Clique em <strong style="color:var(--text-secondary);">Analisar Documentos</strong> para extrair via Python o conteúdo dos arquivos enviados com esta solicitação — balanços, DREs, relatórios.</p>
+              <p style="font-size:.72rem;color:var(--text-faint);line-height:1.65;max-width:340px;margin:0 auto;">Se os documentos não estiverem no servidor, clique em <strong style="color:var(--text-secondary);">Selecionar Arquivos</strong> para enviá-los diretamente.</p>
             </div>
           </div>
 
@@ -2191,72 +2235,41 @@
     finYears=[y0,y1];
   }
 
-  function saveFinancials() {
-    finYears=[
-      document.getElementById('fin-y0').value.trim()||'20XX',
-      document.getElementById('fin-y1').value.trim()||'20X1',
-    ];
-    DB.solicitacoes.update(sol.id, {
-      analiseFinanceira:{years:finYears,data:finData,salvo_at:new Date().toISOString()}
-    });
-    sol=DB.solicitacoes.getById(sol.id);
-    const tag=document.getElementById('fin-saved-tag');
-    tag.style.display='inline-flex';
-    setTimeout(()=>tag.style.display='none',2500);
-    showToast('Análise financeira salva!','success');
-  }
+  function saveFinancials() { /* removido — dados salvos automaticamente após extração */ }
 
   function loadFinancials() {
-    if(sol.analiseFinanceira){
-      finData  = sol.analiseFinanceira.data  || [initFin(),initFin()];
-      finYears = sol.analiseFinanceira.years || ['2023','2024'];
-      const y0el=document.getElementById('fin-y0'), y1el=document.getElementById('fin-y1');
-      if(y0el)y0el.value=finYears[0]; if(y1el)y1el.value=finYears[1];
-      updateYearHeaders();
+    if (sol.analiseFinanceira?.documentos) {
+      renderDocReader(sol.analiseFinanceira);
     }
-    renderFinTable();
-    recompute();
   }
 
   async function triggerFinExtract() {
-    if (sol && sol.id) {
-      // Try server-stored documents first (uploaded during form submission)
-      const btn = document.getElementById('btn-fin-extract');
-      const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="12" height="12"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-      btn.disabled = true; btn.innerHTML = spin + ' Extraindo…';
-      try {
-        const form = new FormData();
-        form.append('sol_id', sol.id);
-        form.append('empresa', sol.empresa || '');
-        form.append('cnpj', sol.cnpj || '');
-        const res = await fetch(`${API_URL}/api/extract-financials`, { method: 'POST', credentials: 'include', body: form });
-        if (res.status === 404) {
-          // Docs não estão no servidor — mostra banner e botão de upload manual
-          btn.disabled = false;
-          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair Dados`;
-          const banner = document.getElementById('docs-missing-banner');
-          const manualBtn = document.getElementById('btn-fin-upload-manual');
-          if (banner)    { banner.style.display = 'flex'; }
-          if (manualBtn) { manualBtn.style.display = 'inline-flex'; }
-          showToast('Selecione os arquivos de Balanço/DRE para continuar.', 'warning');
-          return;
-        }
-        if (!res.ok) {
-          const e = await res.json().catch(() => ({}));
-          const msg = e.detail || `HTTP ${res.status}`;
-          if (res.status === 402) throw new Error('Saldo insuficiente na API de IA. Acesse console.anthropic.com/settings/billing para adicionar créditos.');
-          if (res.status === 503) throw new Error('API de IA sobrecarregada. Aguarde alguns segundos e tente novamente.');
-          throw new Error(msg);
-        }
-        const ex = await res.json();
-        await _applyExtraction(ex);
-      } catch(e) { showToast('Erro: ' + e.message, 'error'); }
-      finally {
-        btn.disabled = false;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair Dados`;
+    const btn = document.getElementById('btn-fin-extract');
+    const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="12" height="12"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    btn.disabled = true; btn.innerHTML = spin + ' Lendo documentos…';
+    try {
+      const form = new FormData();
+      if (sol && sol.id) form.append('sol_id', sol.id);
+      form.append('empresa', (sol && sol.empresa) || '');
+      form.append('cnpj',    (sol && sol.cnpj)    || '');
+      const res = await fetch(`${API_URL}/api/extract-financials`, { method: 'POST', credentials: 'include', body: form });
+      if (res.status === 404) {
+        document.getElementById('fin-dropzone').style.display = '';
+        document.getElementById('btn-fin-upload-manual').style.display = 'inline-flex';
+        document.getElementById('fin-hint-area').style.display = 'none';
+        showToast('Documentos não encontrados no servidor. Envie os arquivos abaixo.', 'warning');
+        return;
       }
-    } else {
-      document.getElementById('fin-file-input').click();
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.detail || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      _applyDocReader(data);
+    } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+    finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Analisar Documentos`;
     }
   }
 
@@ -2264,27 +2277,22 @@
     if (!files || files.length === 0) return;
     const btn = document.getElementById('btn-fin-extract');
     const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="12" height="12"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-    btn.disabled = true; btn.innerHTML = spin + ' Extraindo…';
+    btn.disabled = true; btn.innerHTML = spin + ' Lendo documentos…';
     try {
       const form = new FormData();
-      form.append('empresa', sol.empresa || ''); form.append('cnpj', sol.cnpj || '');
+      form.append('empresa', (sol && sol.empresa) || '');
+      form.append('cnpj',    (sol && sol.cnpj)    || '');
+      if (sol?.id) form.append('sol_id', sol.id);
       Array.from(files).forEach(f => form.append('files', f));
       const res = await fetch(`${API_URL}/api/extract-financials`, { method: 'POST', credentials: 'include', body: form });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        const msg = e.detail || `HTTP ${res.status}`;
-        if (res.status === 402) throw new Error('Saldo insuficiente na API de IA. Acesse console.anthropic.com/settings/billing para adicionar créditos.');
-        if (res.status === 503) throw new Error('API de IA sobrecarregada. Aguarde alguns segundos e tente novamente.');
-        throw new Error(msg);
+        throw new Error(e.detail || `HTTP ${res.status}`);
       }
-      const ex = await res.json();
-      await _applyExtraction(ex);
-      // Esconde banner e botão manual após extração bem-sucedida
-      const banner = document.getElementById('docs-missing-banner');
-      const manualBtn = document.getElementById('btn-fin-upload-manual');
-      if (banner)    banner.style.display = 'none';
-      if (manualBtn) manualBtn.style.display = 'none';
-      // Salva os arquivos no servidor para reutilização futura
+      const data = await res.json();
+      _applyDocReader(data);
+      document.getElementById('fin-dropzone').style.display = 'none';
+      document.getElementById('btn-fin-upload-manual').style.display = 'none';
       if (sol?.id) {
         try {
           const upForm = new FormData();
@@ -2294,45 +2302,90 @@
             upForm.append(tipo, f);
           });
           await fetch(`${API_URL}/api/docs/${sol.id}/upload`, { method: 'POST', credentials: 'include', body: upForm });
-        } catch(_) { /* não bloqueia */ }
+        } catch(_) {}
       }
     } catch(e) { showToast('Erro: ' + e.message, 'error'); }
     finally {
       btn.disabled = false;
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Extrair Dados`;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Analisar Documentos`;
       document.getElementById('fin-file-input').value = '';
     }
   }
 
-  function _applyExtraction(ex) {
-    if (ex.anos && ex.anos.length >= 2) {
-      finYears = [String(ex.anos[0]), String(ex.anos[1])];
-      document.getElementById('fin-y0').value = finYears[0];
-      document.getElementById('fin-y1').value = finYears[1];
-      updateYearHeaders();
+  function _applyDocReader(data) {
+    renderDocReader(data);
+    if (sol?.id) {
+      DB.solicitacoes.update(sol.id, { analiseFinanceira: data });
+      sol = DB.solicitacoes.getById(sol.id);
     }
-    if (ex.dados && ex.dados.length >= 2) {
-      [0, 1].forEach(yi => {
-        const d = ex.dados[yi] || {};
-        Object.keys(d).forEach(k => {
-          if (k in finData[yi] && d[k] !== null && d[k] !== undefined) {
-            const v = d[k];
-            if (v === 0) {
-              finData[yi][k] = '';
-            } else if (typeof v === 'number' && KEY_TIP[k] === 'money') {
-              // Formata inteiros monetários com separador de milhar pt-BR: 120.973.500
-              finData[yi][k] = Math.round(v).toLocaleString('pt-BR');
-            } else {
-              finData[yi][k] = String(v);
-            }
-          }
-        });
-      });
-      renderFinTable(); recompute();
-      showToast('Dados extraídos! Revise e salve.', 'success');
-    } else {
-      showToast('Extração incompleta — preencha os campos faltantes.', 'error');
-    }
+    showToast((data.resumo || 'Extração concluída') + '.', 'success');
+  }
+
+  function renderDocReader(data) {
+    document.getElementById('fin-hint-area').style.display = 'none';
+    document.getElementById('fin-dropzone').style.display = 'none';
+    const results = document.getElementById('fin-results');
+    results.style.display = '';
+    document.getElementById('fin-summary').textContent = data.resumo || '';
+    const acc = document.getElementById('fin-accordion');
+    acc.innerHTML = '';
+    (data.documentos || []).forEach((doc, idx) => {
+      acc.insertAdjacentHTML('beforeend', _renderDocHtml(doc, idx));
+    });
+  }
+
+  function _renderDocHtml(doc, idx) {
+    const icoPdf = `<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/></svg>`;
+    const icoXls = `<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.7"/><line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="1.7"/><line x1="9" y1="9" x2="9" y2="21" stroke="currentColor" stroke-width="1.7"/></svg>`;
+    const ico = doc.tipo === 'pdf' ? icoPdf : icoXls;
+    const meta = doc.tipo === 'pdf' ? `${doc.paginas || 0} pág.` : `${doc.planilhas || 0} planilha(s)`;
+    const secsCount = (doc.secoes || []).length;
+    const secoesHtml = (doc.secoes || []).map(s => {
+      if (s.tipo === 'texto')
+        return `<div class="fin-text-block"><div class="fin-sec-lbl">Página ${s.pagina}</div><pre class="fin-pre">${_escHtml(s.conteudo)}</pre></div>`;
+      if (s.tipo === 'tabela')
+        return `<div class="fin-tbl-block"><div class="fin-sec-lbl">Tabela — Página ${s.pagina}</div>${_finRenderTable(s.linhas)}</div>`;
+      if (s.tipo === 'planilha')
+        return `<div class="fin-tbl-block"><div class="fin-sec-lbl">Planilha: ${_escHtml(s.nome)}</div>${_finRenderTable(s.linhas)}</div>`;
+      return '';
+    }).join('');
+    return `
+      <div class="fin-doc-item">
+        <div class="fin-doc-hd" onclick="toggleFinDoc(${idx})">
+          <div style="display:flex;align-items:center;gap:.5rem;min-width:0;">
+            <span style="color:var(--text-faint);flex-shrink:0;">${ico}</span>
+            <span class="fin-doc-name">${_escHtml(doc.nome)}</span>
+            <span class="fin-doc-meta">${meta} • ${secsCount} seção(ões)</span>
+            ${doc.erro ? `<span class="fin-doc-err-badge">Erro</span>` : ''}
+          </div>
+          <svg class="fin-doc-chev" id="fin-chev-${idx}" viewBox="0 0 24 24" fill="none" width="13" height="13" style="flex-shrink:0;transition:transform .18s;"><polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="fin-doc-body" id="fin-doc-body-${idx}" style="display:none;">
+          ${doc.erro ? `<div class="fin-doc-err-msg">${_escHtml(doc.erro)}</div>` : ''}
+          ${secoesHtml || (!doc.erro ? '<div style="color:var(--text-faint);font-size:.75rem;padding:.4rem 0;">Nenhum conteúdo extraído.</div>' : '')}
+        </div>
+      </div>`;
+  }
+
+  function _finRenderTable(linhas) {
+    if (!linhas || !linhas.length) return '';
+    const rows = linhas.map((row, ri) =>
+      `<tr>${row.map(c => ri === 0 ? `<th>${_escHtml(c)}</th>` : `<td>${_escHtml(c)}</td>`).join('')}</tr>`
+    ).join('');
+    return `<div class="fin-tbl-wrap"><table class="fin-extracted-tbl"><tbody>${rows}</tbody></table></div>`;
+  }
+
+  function toggleFinDoc(idx) {
+    const body = document.getElementById(`fin-doc-body-${idx}`);
+    const chev = document.getElementById(`fin-chev-${idx}`);
+    if (!body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+  }
+
+  function _escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   /* ── Toast ───────────────────────────────────────────── */
