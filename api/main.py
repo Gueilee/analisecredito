@@ -1406,11 +1406,11 @@ DOCUMENTOS:
         raw_text = _gemini_generate(key, prompt)
     except Exception as exc:
         err_str = str(exc)
-        if "API_KEY_INVALID" in err_str or "invalid" in err_str.lower():
-            raise HTTPException(401, "Chave Gemini inválida. Verifique GEMINI_API_KEY no servidor.")
-        if "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-            raise HTTPException(429, "Limite de uso da API Gemini atingido. Aguarde e tente novamente.")
-        raise HTTPException(502, f"Erro na IA: {exc}")
+        if "API_KEY_INVALID" in err_str:
+            raise HTTPException(401, "Chave Gemini inválida (API_KEY_INVALID). Verifique o secret ENV_PROD_GEMINI_API_KEY no GitHub.")
+        if "RESOURCE_EXHAUSTED" in err_str:
+            raise HTTPException(429, "Limite de uso da API Gemini atingido (RESOURCE_EXHAUSTED). Aguarde e tente novamente.")
+        raise HTTPException(502, f"Erro Gemini: {type(exc).__name__}: {exc}")
 
     extracted = _extract_json(raw_text)
     if not extracted:
@@ -1717,12 +1717,12 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
 
         except Exception as exc:
             err_str = str(exc)
-            if "API_KEY_INVALID" in err_str or "invalid" in err_str.lower():
-                ai_error = "Chave Gemini inválida. Verifique a variável GEMINI_API_KEY no servidor."
-            elif "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-                ai_error = "Limite de uso da API Gemini atingido. Aguarde e tente novamente."
+            if "API_KEY_INVALID" in err_str:
+                ai_error = "Chave Gemini inválida (API_KEY_INVALID). Verifique o secret ENV_PROD_GEMINI_API_KEY no GitHub."
+            elif "RESOURCE_EXHAUSTED" in err_str:
+                ai_error = "Limite de uso da API Gemini atingido (RESOURCE_EXHAUSTED). Aguarde e tente novamente."
             else:
-                ai_error = f"Erro na IA: {exc}"
+                ai_error = f"Erro Gemini: {type(exc).__name__}: {exc}"
 
     return {
         "cnpj_data": receita,
