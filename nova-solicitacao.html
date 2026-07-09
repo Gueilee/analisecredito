@@ -869,6 +869,44 @@
     .wizard-tipo-tag.trade      { background: rgba(124,58,237,.12); color: var(--purple-light);     border: 1px solid rgba(124,58,237,.3); }
     .wizard-tipo-tag.transporte { background: rgba(59,130,246,.1);  color: var(--blue);             border: 1px solid rgba(59,130,246,.3); }
     .wizard-tipo-tag.armazem    { background: rgba(1,225,142,.1);   color: var(--brand-neon-green); border: 1px solid rgba(1,225,142,.3); }
+
+    /* ── Tela Cheia — Simulação Financeira 3.1.6 ────────── */
+    .xls-fs-btn {
+      display: inline-flex; align-items: center; gap: .38rem;
+      padding: .32rem .8rem; border-radius: 6px; flex-shrink: 0;
+      background: rgba(124,58,237,.1); border: 1px solid rgba(124,58,237,.25);
+      color: var(--purple-light); font-family: inherit; font-size: .69rem;
+      font-weight: 600; cursor: pointer; transition: all .14s; white-space: nowrap;
+    }
+    .xls-fs-btn:hover { background: rgba(124,58,237,.22); border-color: rgba(124,58,237,.5); }
+    .xls-fs-btn svg { width: 11px; height: 11px; }
+
+    #xls-fs-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9100;
+      background: rgba(4,2,14,.92); backdrop-filter: blur(8px);
+      flex-direction: column;
+    }
+    #xls-fs-modal {
+      display: flex; flex-direction: column; height: 100%;
+    }
+    #xls-fs-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem; border-bottom: 1px solid rgba(140,105,220,.2);
+      background: rgba(10,6,26,.98); flex-shrink: 0;
+      box-shadow: 0 2px 16px rgba(0,0,0,.4);
+    }
+    .xls-fs-close-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .4rem 1rem; border-radius: 6px;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+      color: var(--text-secondary); font-family: inherit; font-size: .76rem;
+      font-weight: 600; cursor: pointer; transition: all .14s;
+    }
+    .xls-fs-close-btn:hover { background: rgba(255,255,255,.11); color: var(--text-primary); }
+    #xls-fs-body {
+      flex: 1; overflow: auto; padding: 1.8rem 2.5rem 2rem;
+    }
+    #xls-fs-body .xls-wrap { margin-top: 0; }
       </style>
 </head>
 <body>
@@ -1572,9 +1610,15 @@
 
               <!-- 3.1.6 Simulação Financeira do Ciclo de Importação -->
               <div style="margin-top:1.4rem;" id="secao-sim-ciclo">
-                <div class="section-title">
-                  <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                  3.1.6 Simulação Financeira do Ciclo de Importação
+                <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.1rem;">
+                  <div class="section-title" style="flex:1;margin-bottom:0;">
+                    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    3.1.6 Simulação Financeira do Ciclo de Importação
+                  </div>
+                  <button class="xls-fs-btn" onclick="openXlsFullscreen()" title="Expandir em tela cheia">
+                    <svg viewBox="0 0 24 24" fill="none"><polyline points="15 3 21 3 21 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="9 21 3 21 3 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="3" x2="14" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="21" x2="10" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    Tela Cheia
+                  </button>
                 </div>
                 <p style="font-size:.77rem;color:var(--text-muted);margin:.35rem 0 .6rem">
                   Preencha os valores de cada etapa. Células em destaque são calculadas automaticamente pelo sistema.
@@ -4578,7 +4622,59 @@
       dragSrcIdx = -1;
     });
   })();
+
+  /* ── Fullscreen — Simulação Financeira 3.1.6 ── */
+  let _xlsFsRef = null;
+
+  function openXlsFullscreen() {
+    const wrap = document.querySelector('#secao-sim-ciclo .xls-wrap');
+    if (!wrap) return;
+    // Salva posição original com um comment placeholder
+    const ph = document.createComment('xls-fs-placeholder');
+    wrap.parentNode.insertBefore(ph, wrap);
+    _xlsFsRef = ph;
+    document.getElementById('xls-fs-body').appendChild(wrap);
+    document.getElementById('xls-fs-overlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    document._xlsFsEsc = e => { if (e.key === 'Escape') closeXlsFullscreen(); };
+    document.addEventListener('keydown', document._xlsFsEsc);
+  }
+
+  function closeXlsFullscreen() {
+    const overlay = document.getElementById('xls-fs-overlay');
+    if (!overlay || overlay.style.display === 'none') return;
+    if (_xlsFsRef) {
+      const wrap = document.querySelector('#xls-fs-body .xls-wrap');
+      if (wrap) _xlsFsRef.parentNode.insertBefore(wrap, _xlsFsRef);
+      _xlsFsRef.parentNode.removeChild(_xlsFsRef);
+      _xlsFsRef = null;
+    }
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+    if (document._xlsFsEsc) {
+      document.removeEventListener('keydown', document._xlsFsEsc);
+      document._xlsFsEsc = null;
+    }
+  }
 </script>
+
+<!-- ══ Fullscreen overlay — Simulação Financeira 3.1.6 ══ -->
+<div id="xls-fs-overlay">
+  <div id="xls-fs-modal">
+    <div id="xls-fs-hd">
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16" style="color:var(--purple-light);flex-shrink:0"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span style="font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.55px;color:var(--text-primary);">3.1.6 Simulação Financeira do Ciclo de Importação</span>
+        <span style="font-size:.71rem;color:var(--text-faint);font-weight:400;letter-spacing:0;">— Pressione <kbd style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:.05rem .35rem;font-size:.67rem;">Esc</kbd> para fechar</span>
+      </div>
+      <button class="xls-fs-close-btn" onclick="closeXlsFullscreen()">
+        <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        Fechar
+      </button>
+    </div>
+    <div id="xls-fs-body"></div>
+  </div>
+</div>
 
 </body>
 </html>
