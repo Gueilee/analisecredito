@@ -19,7 +19,7 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import google.generativeai as genai
+from google import genai as google_genai
 import httpx
 import openpyxl
 import pdfplumber
@@ -955,10 +955,12 @@ def _load_key() -> str:
 
 
 def _gemini_generate(key: str, prompt: str) -> str:
-    """Chama a Gemini API e retorna o texto gerado."""
-    genai.configure(api_key=key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(prompt)
+    """Chama a Gemini API (google-genai v1) e retorna o texto gerado."""
+    client = google_genai.Client(api_key=key)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt,
+    )
     return response.text
 
 
@@ -1727,7 +1729,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
         "analysis": analysis,
         "ai_error": ai_error,
         "bureau_fonte": "BrasilAPI / Receita Federal",
-        "modelo_ia": "gemini-1.5-flash",
+        "modelo_ia": "gemini-2.0-flash",
     }
 
 
