@@ -1311,12 +1311,18 @@ async def run_idwall_bgc(sol_id: str, request: Request, current_user=Depends(_ge
         raise HTTPException(502, f"IDwall: erro de rede — {type(exc).__name__}: {str(exc)[:300]}")
 
     if create_res.status_code not in (200, 201):
-        body_text = create_res.text[:600]
-        raise HTTPException(502, f"IDwall HTTP {create_res.status_code}: {body_text}")
+        raise HTTPException(502, f"IDwall HTTP {create_res.status_code} ao criar relatório.")
 
-    protocolo = create_res.json().get("result", {}).get("protocolo")
+    try:
+        result_obj = create_res.json().get("result", {})
+    except Exception:
+        raise HTTPException(502, "IDwall retornou resposta não-JSON ao criar relatório.")
+
+    # IDwall usa "numero" (não "protocolo") como identificador do relatório
+    protocolo = result_obj.get("numero") or result_obj.get("protocolo")
     if not protocolo:
-        raise HTTPException(502, f"IDwall não retornou protocolo. Resposta: {create_res.text[:400]}")
+        campos = list(result_obj.keys())
+        raise HTTPException(502, f"IDwall não retornou número do relatório. Campos: {campos}")
 
     # Retorna protocolo imediatamente — polling é feito pelo cliente via /api/idwall-poll
     return {"protocolo": protocolo, "status": "EM_EXECUCAO"}
@@ -1335,35 +1341,59 @@ async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", curr
 
     hdrs = {"Authorization": token, "Content-Type": "application/json"}
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        poll = await client.get(
-            f"https://api-v2.idwall.co/relatorios/{protocolo}",
-            headers=hdrs,
-        )
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            poll = await client.get(
+                f"https://api-v2.idwall.co/relatorios/{protocolo}",
+                headers=hdrs,
+            )
+    except httpx.TimeoutException:
+        raise HTTPException(502, "IDwall: timeout ao consultar relatório.")
+    except httpx.RequestError as exc:
+        raise HTTPException(502, f"IDwall: erro de rede — {type(exc).__name__}: {str(exc)[:200]}")
 
     if poll.status_code != 200:
-        raise HTTPException(502, f"IDwall poll HTTP {poll.status_code}: {poll.text[:300]}")
+        raise HTTPException(502, f"IDwall poll HTTP {poll.status_code}.")
 
-    data = poll.json().get("result", {})
+    try:
+        data = poll.json().get("result", {})
+    except Exception:
+        raise HTTPException(502, "IDwall retornou resposta não-JSON no poll.")
+
     status = data.get("status", "")
 
-    if status != "CONCLUIDO":
+    # IDwall estados terminais: CONCLUIDO (com resultado APROVADO/REPROVADO/INCONCLUSIVO)
+    # Estado pendente: "EM ANALISE" (com espaço, não underscore)
+    if status not in ("CONCLUIDO", "APROVADO", "REPROVADO", "INCONCLUSIVO", "ERRO"):
         return {"status": status, "protocolo": protocolo}
 
-    matrix = data.get("matrix_data") or {}
+    # Validações: podem estar em matrix_data.validacoes ou diretamente em validacoes
+    matrix = data.get("matrix_data") or data
     validacoes_raw = matrix.get("validacoes") or {}
-    validacoes = [
-        {
-            "nome": v.get("descricao") or k,
-            "status": v.get("status", ""),
-            "resultado": v.get("resultado", ""),
-        }
-        for k, v in validacoes_raw.items()
-    ]
+    if isinstance(validacoes_raw, list):
+        validacoes = [
+            {
+                "nome": v.get("descricao") or v.get("nome", ""),
+                "status": v.get("status", ""),
+                "resultado": v.get("resultado", ""),
+            }
+            for v in validacoes_raw
+        ]
+    else:
+        validacoes = [
+            {
+                "nome": v.get("descricao") or k,
+                "status": v.get("status", ""),
+                "resultado": v.get("resultado", ""),
+            }
+            for k, v in validacoes_raw.items()
+        ]
+
+    resultado_final = data.get("resultado", "") or status
     return {
         "protocolo": protocolo,
         "status": "CONCLUIDO",
-        "resultado": data.get("resultado", ""),
+        "resultado": resultado_final,
         "nomeEmpresa": data.get("nome", ""),
         "cnpj": cnpj,
         "consultadaEm": date.today().isoformat(),
@@ -1374,14 +1404,29 @@ async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", curr
 @app.get("/api/idwall-ping")
 @limiter.limit("5/minute")
 async def idwall_ping(request: Request, current_user=Depends(_get_current_user)):
-    """Diagnóstico: testa conectividade com IDwall sem criar relatório."""
+    """Diagnóstico: testa conectividade e mostra estrutura de um relatório existente."""
     token = os.getenv("IDWALL_API_TOKEN", "")
     token_ok = bool(token)
     token_preview = (token[:8] + "…") if token else "(vazio)"
+    hdrs = {"Authorization": token}
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get("https://api-v2.idwall.co/relatorios", headers={"Authorization": token})
-        return {"token_ok": token_ok, "token_preview": token_preview, "http_status": r.status_code, "body_preview": r.text[:300]}
+            r_list = await client.get("https://api-v2.idwall.co/relatorios", headers=hdrs)
+        result = {
+            "token_ok": token_ok,
+            "token_preview": token_preview,
+            "list_status": r_list.status_code,
+            "list_preview": r_list.text[:500],
+        }
+        # Se houver relatórios, busca o primeiro para ver estrutura completa
+        itens = r_list.json().get("result", {}).get("itens", []) if r_list.status_code == 200 else []
+        if itens:
+            numero = itens[0].get("numero")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r_one = await client.get(f"https://api-v2.idwall.co/relatorios/{numero}", headers=hdrs)
+            result["single_status"] = r_one.status_code
+            result["single_body"] = r_one.text[:1000]
+        return result
     except httpx.TimeoutException:
         return {"token_ok": token_ok, "token_preview": token_preview, "error": "timeout"}
     except httpx.RequestError as exc:
