@@ -1280,6 +1280,73 @@ async def delete_doc(sol_id: str, nome: str, request: Request, current_user=Depe
     return {"ok": True}
 
 
+@app.post("/api/idwall/{sol_id}")
+@limiter.limit("10/minute")
+async def run_idwall_bgc(sol_id: str, request: Request, current_user=Depends(_get_current_user)):
+    """Consulta BGC completo PJ via IDwall API e retorna validações estruturadas."""
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "sol_id inválido.")
+
+    body = await request.json()
+    cnpj = re.sub(r"\D", "", str(body.get("cnpj", "")))
+    if len(cnpj) != 14:
+        raise HTTPException(400, "CNPJ inválido — informe 14 dígitos.")
+
+    token = os.getenv("IDWALL_API_TOKEN", "")
+    if not token:
+        raise HTTPException(503, "IDwall não configurado no servidor.")
+
+    hdrs = {"Authorization": token, "Content-Type": "application/json"}
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        create_res = await client.post(
+            "https://api-v2.idwall.co/relatorios",
+            json={"matriz": "vendemmia_bgc_completo_v2_pj", "parametros": {"cnpj_numero": cnpj}},
+            headers=hdrs,
+        )
+
+    if create_res.status_code not in (200, 201):
+        raise HTTPException(502, f"IDwall: erro ao criar relatório ({create_res.status_code}).")
+
+    protocolo = create_res.json().get("result", {}).get("protocolo")
+    if not protocolo:
+        raise HTTPException(502, "IDwall não retornou protocolo do relatório.")
+
+    # Poll até CONCLUIDO (máx ~30 s)
+    for _ in range(15):
+        await asyncio.sleep(2)
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            poll = await client.get(
+                f"https://api-v2.idwall.co/relatorios/{protocolo}",
+                headers=hdrs,
+            )
+        if poll.status_code != 200:
+            continue
+        data = poll.json().get("result", {})
+        if data.get("status") == "CONCLUIDO":
+            matrix = data.get("matrix_data") or {}
+            validacoes_raw = matrix.get("validacoes") or {}
+            validacoes = [
+                {
+                    "nome": v.get("descricao") or k,
+                    "status": v.get("status", ""),
+                    "resultado": v.get("resultado", ""),
+                }
+                for k, v in validacoes_raw.items()
+            ]
+            return {
+                "protocolo": protocolo,
+                "status": "CONCLUIDO",
+                "resultado": data.get("resultado", ""),
+                "nomeEmpresa": data.get("nome", ""),
+                "cnpj": cnpj,
+                "consultadaEm": date.today().isoformat(),
+                "validacoes": validacoes,
+            }
+
+    raise HTTPException(504, "IDwall não concluiu o relatório no tempo esperado. Tente novamente.")
+
+
 # ── Extração de indicadores financeiros ─────────────────────────────────────
 
 def _xlsx_to_text(data: bytes, filename: str) -> str:

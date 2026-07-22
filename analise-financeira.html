@@ -384,109 +384,39 @@
       .fin-year-inp { width: 58px; }
     }
 
-    /* ── Serasa ──────────────────────────────────────────── */
-    .btn-serasa-upload { display:inline-flex; align-items:center; gap:.45rem; padding:.32rem .75rem; background:rgba(139,92,246,.18); border:1px solid rgba(139,92,246,.4); border-radius:6px; color:var(--purple-light); font-size:.75rem; font-weight:600; cursor:pointer; transition:all .2s; margin-top:.3rem; }
-    .btn-serasa-upload:hover { background:rgba(139,92,246,.32); border-color:rgba(139,92,246,.7); }
-    .btn-serasa-upload svg { width:12px; height:12px; flex-shrink:0; }
-    .serasa-card { margin-top:.9rem; padding:1.2rem 1.35rem; background:rgba(139,92,246,.07); border:1px solid rgba(139,92,246,.2); border-radius:var(--radius); display:none; }
-    .serasa-card.visible { display:block; }
-    .serasa-card-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-    .serasa-card-hd-left { display:flex; align-items:center; gap:.55rem; }
-    .serasa-card-hd-left svg { color:var(--purple-light); width:16px; height:16px; }
-    .serasa-card-title { font-size:.82rem; font-weight:700; color:var(--text-primary); letter-spacing:.03em; }
-    .serasa-card-date { font-size:.72rem; color:var(--text-faint); }
-    .btn-serasa-edit { background:none; border:1px solid rgba(255,255,255,.1); border-radius:5px; color:var(--text-faint); font-size:.7rem; padding:.22rem .55rem; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:.3rem; }
-    .btn-serasa-edit:hover { border-color:rgba(139,92,246,.5); color:var(--purple-light); }
-    .serasa-score-row { display:grid; grid-template-columns:140px 1fr; gap:1.2rem; align-items:start; margin-bottom:1.1rem; }
-    .serasa-score-circle { width:140px; aspect-ratio:1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-    .serasa-score-circle svg { position:absolute; top:0; left:0; width:100%; height:100%; }
-    .serasa-score-val { font-size:2rem; font-weight:800; color:var(--text-primary); line-height:1; z-index:1; }
-    .serasa-score-max { font-size:.72rem; color:var(--text-faint); z-index:1; }
-    .serasa-score-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; z-index:1; margin-top:.15rem; }
-    .serasa-score-label.baixo      { color:#4ade80; }
-    .serasa-score-label.medio      { color:#facc15; }
-    .serasa-score-label.alto       { color:#f97316; }
-    .serasa-score-label.muito_alto { color:#f87171; }
-    .serasa-kpis { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; }
-    .serasa-kpi { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.6rem .75rem; }
-    .serasa-kpi-label { font-size:.68rem; color:var(--text-faint); margin-bottom:.2rem; }
-    .serasa-kpi-val { font-size:.95rem; font-weight:700; color:var(--text-primary); }
-    .serasa-kpi-val.green  { color:#4ade80; }
-    .serasa-kpi-val.yellow { color:#facc15; }
-    .serasa-kpi-val.red    { color:#f87171; }
-    .serasa-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:.55rem; margin-bottom:1rem; }
-    .serasa-metric { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.6rem .75rem; }
-    .serasa-metric-label { font-size:.68rem; color:var(--text-faint); margin-bottom:.2rem; }
-    .serasa-metric-val { font-size:.88rem; font-weight:700; color:var(--text-primary); }
-    .serasa-section-title { font-size:.72rem; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:.55rem; }
-    .anot-grid { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1rem; }
-    .anot-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .6rem; border-radius:20px; font-size:.72rem; font-weight:600; }
-    .anot-chip.ok  { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.25); color:#4ade80; }
-    .anot-chip.bad { background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.25); color:#f87171; }
-    .anot-chip svg { width:10px; height:10px; }
-    .serasa-bottom-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-    .serasa-setorial { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.75rem 1rem; }
-    .serasa-setorial-title { font-size:.7rem; color:var(--text-faint); margin-bottom:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
-    .serasa-setorial-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem; font-size:.78rem; }
-    .serasa-setorial-row:last-child { margin-bottom:0; }
-    .serasa-setorial-name { color:var(--text-secondary); }
-    .serasa-setorial-val { font-weight:700; color:var(--text-primary); }
-    .serasa-consultas { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.75rem 1rem; }
-    .serasa-consultas-title { font-size:.7rem; color:var(--text-faint); margin-bottom:.6rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
-    .serasa-consultas-grid { display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
-    .serasa-consultas-item { text-align:center; }
-    .serasa-consultas-num { font-size:1.4rem; font-weight:800; color:var(--text-primary); line-height:1; }
-    .serasa-consultas-lbl { font-size:.7rem; color:var(--text-faint); margin-top:.1rem; }
-    /* ── Modal Serasa ────────────────────────────────────── */
-    .serasa-overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:3000; display:none; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(4px); }
-    .serasa-overlay.open { display:flex; }
-    .serasa-modal { background:var(--purple-card); border:1px solid var(--glass-border); border-radius:var(--radius); width:100%; max-width:580px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column; }
-    .serasa-modal-hd { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 1.4rem; border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; }
-    .serasa-modal-hd h3 { font-size:.95rem; font-weight:700; display:flex; align-items:center; gap:.5rem; }
-    .serasa-modal-hd h3 svg { color:var(--purple-light); width:16px; height:16px; }
-    .btn-modal-close { background:none; border:none; color:var(--text-faint); font-size:1.3rem; cursor:pointer; line-height:1; padding:.2rem .4rem; border-radius:4px; transition:color .2s; }
-    .btn-modal-close:hover { color:var(--text-primary); }
-    .serasa-modal-body { overflow-y:auto; padding:1.2rem 1.4rem; flex:1; }
-    .serasa-modal-body::-webkit-scrollbar { width:5px; }
-    .serasa-modal-body::-webkit-scrollbar-track { background:transparent; }
-    .serasa-modal-body::-webkit-scrollbar-thumb { background:rgba(139,92,246,.3); border-radius:3px; }
-    .serasa-modal-ft { padding:1rem 1.4rem; border-top:1px solid rgba(255,255,255,.07); display:flex; justify-content:flex-end; gap:.7rem; flex-shrink:0; }
-    /* drop zone */
-    .serasa-drop-area { position:relative; border:2px dashed rgba(139,92,246,.35); border-radius:10px; padding:2.2rem 1.5rem; text-align:center; cursor:pointer; transition:all .2s; }
-    .serasa-drop-area:hover, .serasa-drop-area.drag-over { border-color:rgba(139,92,246,.7); background:rgba(139,92,246,.07); }
-    .serasa-drop-area input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
-    .serasa-drop-icon { width:38px; height:38px; color:rgba(139,92,246,.55); margin:0 auto .75rem; }
-    .serasa-drop-title { font-size:.88rem; font-weight:600; color:var(--text-primary); margin-bottom:.3rem; }
-    .serasa-drop-sub { font-size:.75rem; color:var(--text-faint); }
-    .serasa-file-name { font-size:.76rem; color:var(--purple-light); font-weight:600; margin-top:.55rem; display:none; }
-    /* status bar */
-    .serasa-status { margin-top:.9rem; padding:.6rem .9rem; border-radius:8px; font-size:.79rem; display:none; align-items:center; gap:.5rem; line-height:1.4; }
-    .serasa-status.loading { display:flex; background:rgba(139,92,246,.12); border:1px solid rgba(139,92,246,.2); color:var(--purple-light); }
-    .serasa-status.ok      { display:flex; background:rgba(74,222,128,.08); border:1px solid rgba(74,222,128,.2); color:#4ade80; }
-    .serasa-status.err     { display:flex; background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.2); color:#f87171; }
-    .serasa-status svg { width:14px; height:14px; flex-shrink:0; }
-    /* preview */
-    .serasa-preview { margin-top:1rem; display:none; }
-    .serasa-preview.visible { display:block; }
-    .serasa-preview-title { font-size:.7rem; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:.55rem; }
-    .serasa-preview-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.45rem; }
-    .sp-item { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:7px; padding:.5rem .65rem; }
-    .sp-label { font-size:.66rem; color:var(--text-faint); margin-bottom:.12rem; }
-    .sp-val { font-size:.81rem; font-weight:700; color:var(--text-primary); }
-    .sp-val.green  { color:#4ade80; }
-    .sp-val.yellow { color:#facc15; }
-    .sp-val.red    { color:#f87171; }
-    .serasa-anot-preview { margin-top:.55rem; display:flex; flex-wrap:wrap; gap:.35rem; }
-    /* anotações card redesign */
-    .anot-summary { display:flex; align-items:center; gap:.55rem; padding:.6rem .9rem; border-radius:8px; margin-bottom:.65rem; font-size:.78rem; font-weight:600; line-height:1.4; }
-    .anot-summary.all-ok  { background:rgba(74,222,128,.09); border:1px solid rgba(74,222,128,.2); color:#4ade80; }
-    .anot-summary.has-bad { background:rgba(248,113,113,.09); border:1px solid rgba(248,113,113,.2); color:#f87171; }
-    .anot-summary svg { width:14px; height:14px; flex-shrink:0; }
-    .anot-bad-list { display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.55rem; }
-    .anot-bad-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.28rem .7rem; border-radius:20px; font-size:.74rem; font-weight:700; background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.3); color:#f87171; }
-    .anot-bad-chip svg { width:9px; height:9px; }
-    .anot-ok-row { font-size:.7rem; color:var(--text-faint); display:flex; flex-wrap:wrap; gap:.3rem .55rem; align-items:center; }
-    .anot-ok-tag { color:rgba(74,222,128,.6); display:inline-flex; align-items:center; gap:.2rem; }
+    /* ── IDwall BGC ──────────────────────────────────────── */
+    .btn-idwall-consult { display:inline-flex; align-items:center; gap:.45rem; padding:.32rem .75rem; background:rgba(139,92,246,.18); border:1px solid rgba(139,92,246,.4); border-radius:6px; color:var(--purple-light); font-size:.75rem; font-weight:600; cursor:pointer; transition:all .2s; margin-top:.3rem; }
+    .btn-idwall-consult:hover { background:rgba(139,92,246,.32); border-color:rgba(139,92,246,.7); }
+    .btn-idwall-consult:disabled { opacity:.5; cursor:not-allowed; pointer-events:none; }
+    .btn-idwall-consult svg { width:12px; height:12px; flex-shrink:0; }
+    .idwall-card { margin-top:.9rem; padding:1.2rem 1.35rem; background:rgba(139,92,246,.07); border:1px solid rgba(139,92,246,.2); border-radius:var(--radius); display:none; }
+    .idwall-card.visible { display:block; }
+    .idwall-card-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; gap:.5rem; }
+    .idwall-card-hd-left { display:flex; align-items:center; gap:.55rem; flex-wrap:wrap; flex:1; min-width:0; }
+    .idwall-card-hd-left svg { color:var(--purple-light); width:16px; height:16px; flex-shrink:0; }
+    .idwall-card-title { font-size:.82rem; font-weight:700; color:var(--text-primary); letter-spacing:.03em; }
+    .idwall-card-date { font-size:.72rem; color:var(--text-faint); }
+    .btn-idwall-edit { background:none; border:1px solid rgba(255,255,255,.1); border-radius:5px; color:var(--text-faint); font-size:.7rem; padding:.22rem .55rem; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:.3rem; flex-shrink:0; }
+    .btn-idwall-edit:hover { border-color:rgba(139,92,246,.5); color:var(--purple-light); }
+    .btn-idwall-edit:disabled { opacity:.5; cursor:not-allowed; }
+    .idwall-verdict { display:flex; align-items:center; gap:.65rem; padding:.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:.82rem; font-weight:600; }
+    .idwall-verdict.valid   { background:rgba(74,222,128,.08); border:1px solid rgba(74,222,128,.2); color:#4ade80; }
+    .idwall-verdict.invalid { background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.3); color:#f87171; }
+    .idwall-verdict.error   { background:rgba(250,204,21,.08); border:1px solid rgba(250,204,21,.2); color:#facc15; }
+    .idwall-verdict svg { width:15px; height:15px; flex-shrink:0; }
+    .idwall-section-lbl { font-size:.7rem; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:.6rem; }
+    .idwall-rules { display:flex; flex-direction:column; gap:.4rem; }
+    .idwall-rule { display:flex; align-items:center; gap:.7rem; padding:.55rem .8rem; border-radius:8px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); }
+    .idwall-rule-icon { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .idwall-rule-icon.valid   { background:rgba(74,222,128,.15); color:#4ade80; }
+    .idwall-rule-icon.invalid { background:rgba(248,113,113,.15); color:#f87171; }
+    .idwall-rule-icon.error   { background:rgba(250,204,21,.12); color:#facc15; }
+    .idwall-rule-icon.no_data { background:rgba(255,255,255,.05); color:var(--text-faint); }
+    .idwall-rule-icon svg { width:11px; height:11px; }
+    .idwall-rule-body { flex:1; min-width:0; }
+    .idwall-rule-name { font-size:.8rem; font-weight:600; color:var(--text-primary); }
+    .idwall-rule-code { font-size:.7rem; color:var(--text-faint); margin-top:.06rem; }
+    @keyframes spin { to { transform:rotate(360deg); } }
 
     /* ── Toast ───────────────────────────────────────────── */
     .toast {
@@ -532,8 +462,8 @@
     }
     body.view-only .btn-fin-extract,
     body.view-only .btn-fin-save,
-    body.view-only .btn-serasa-upload,
-    body.view-only .btn-serasa-edit,
+    body.view-only .btn-idwall-consult,
+    body.view-only .btn-idwall-edit,
     body.view-only #btn-rf-consult,
     body.view-only #btn-run,
     body.view-only #fin-file-input { display: none !important; }
@@ -724,116 +654,44 @@
                 <div>
                   <div class="bureau-name">Receita Federal</div>
                   <div class="bureau-sub" id="rf-status">Nenhuma consulta realizada</div>
-                  <button class="btn-serasa-upload" id="btn-rf-consult" onclick="runRFConsulta()">
+                  <button class="btn-idwall-consult" id="btn-rf-consult" onclick="runRFConsulta()">
                     <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                     Consultar CNPJ
                   </button>
                 </div>
               </div>
               <div class="bureau-item">
-                <div class="bureau-icon soon" id="serasa-icon">
-                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <div class="bureau-icon wait" id="idwall-icon">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>
                 <div>
-                  <div class="bureau-name">Serasa Experian</div>
-                  <div class="bureau-sub" id="serasa-bureau-sub" style="color:var(--text-faint);">Nenhuma consulta registrada</div>
-                  <button class="btn-serasa-upload" onclick="openSerasaModal()">
-                    <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                    Lançar Consulta
+                  <div class="bureau-name">IDwall BGC</div>
+                  <div class="bureau-sub" id="idwall-bureau-sub" style="color:var(--text-faint);">Nenhuma consulta realizada</div>
+                  <button class="btn-idwall-consult" id="btn-idwall-consult" onclick="runIdwallConsulta()">
+                    <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    Consultar BGC
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- ── Serasa Card ── -->
-          <div class="card animate-in delay-1 serasa-card" id="serasa-card">
-            <div class="serasa-card-hd">
-              <div class="serasa-card-hd-left">
+          <!-- ── IDwall BGC Card ── -->
+          <div class="card animate-in delay-1 idwall-card" id="idwall-card">
+            <div class="idwall-card-hd">
+              <div class="idwall-card-hd-left">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7"/></svg>
-                <span class="serasa-card-title">Serasa Experian</span>
-                <span class="serasa-card-date" id="serasa-consulta-date"></span>
+                <span class="idwall-card-title">IDwall BGC</span>
+                <span class="idwall-card-date" id="idwall-consulta-date"></span>
               </div>
-              <button class="btn-serasa-edit" onclick="openSerasaModal()">
-                <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Editar
+              <button class="btn-idwall-edit" id="btn-idwall-reconsult" onclick="runIdwallConsulta()">
+                <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Reconsultar
               </button>
             </div>
-            <div class="serasa-score-row">
-              <div class="serasa-score-circle" id="serasa-score-circle">
-                <span class="serasa-score-val" id="serasa-score-val">—</span>
-                <span class="serasa-score-max">/1000</span>
-                <span class="serasa-score-label" id="serasa-score-label">—</span>
-              </div>
-              <div class="serasa-kpis">
-                <div class="serasa-kpi">
-                  <div class="serasa-kpi-label">Prob. Inadimplência</div>
-                  <div class="serasa-kpi-val" id="sk-inadimp">—</div>
-                </div>
-                <div class="serasa-kpi">
-                  <div class="serasa-kpi-label">Honram Compromissos</div>
-                  <div class="serasa-kpi-val green" id="sk-honra">—</div>
-                </div>
-                <div class="serasa-kpi">
-                  <div class="serasa-kpi-label">Limite Crédito PJ</div>
-                  <div class="serasa-kpi-val" id="sk-limite-pj">—</div>
-                </div>
-                <div class="serasa-kpi">
-                  <div class="serasa-kpi-label">Limite Mensal</div>
-                  <div class="serasa-kpi-val" id="sk-limite-mensal">—</div>
-                </div>
-              </div>
-            </div>
-            <div class="serasa-metrics">
-              <div class="serasa-metric">
-                <div class="serasa-metric-label">Pontualidade</div>
-                <div class="serasa-metric-val" id="sk-pont">—</div>
-              </div>
-              <div class="serasa-metric">
-                <div class="serasa-metric-label">Fat. Estimado/ano</div>
-                <div class="serasa-metric-val" id="sk-fat">—</div>
-              </div>
-              <div class="serasa-metric">
-                <div class="serasa-metric-label">Score Fraude</div>
-                <div class="serasa-metric-val" id="sk-fraude">—</div>
-              </div>
-              <div class="serasa-metric">
-                <div class="serasa-metric-label">Recomendação</div>
-                <div class="serasa-metric-val" id="sk-rec">—</div>
-              </div>
-            </div>
-            <div class="serasa-section-title">Anotações Negativas</div>
-            <div class="anot-grid" id="serasa-anot-grid"></div>
-            <div class="serasa-bottom-row">
-              <div class="serasa-setorial">
-                <div class="serasa-setorial-title">Score Setorial</div>
-                <div class="serasa-setorial-row">
-                  <span class="serasa-setorial-name" id="sk-sp-nome">Estado</span>
-                  <span class="serasa-setorial-val" id="sk-sp-val">—</span>
-                </div>
-                <div class="serasa-setorial-row">
-                  <span class="serasa-setorial-name" id="sk-reg-nome">Região</span>
-                  <span class="serasa-setorial-val" id="sk-reg-val">—</span>
-                </div>
-                <div class="serasa-setorial-row">
-                  <span class="serasa-setorial-name">Brasil</span>
-                  <span class="serasa-setorial-val" id="sk-pais-val">—</span>
-                </div>
-              </div>
-              <div class="serasa-consultas">
-                <div class="serasa-consultas-title">Consultas ao CNPJ</div>
-                <div class="serasa-consultas-grid">
-                  <div class="serasa-consultas-item">
-                    <div class="serasa-consultas-num" id="sk-cons-mes">—</div>
-                    <div class="serasa-consultas-lbl">este mês</div>
-                  </div>
-                  <div class="serasa-consultas-item">
-                    <div class="serasa-consultas-num" id="sk-cons-ano">—</div>
-                    <div class="serasa-consultas-lbl">últ. 13 meses</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <div id="idwall-verdict-area"></div>
+            <div class="idwall-section-lbl">Regras de Validação</div>
+            <div class="idwall-rules" id="idwall-rules"></div>
           </div>
 
           <!-- ── Documentos Financeiros ── -->
@@ -1064,7 +922,7 @@
     }
 
     // ── Tipo simplificado: Armazém / Transporte ────────────────────────────
-    // Esses segmentos só precisam de RF + Serasa — sem IA, sem financeiros
+    // Esses segmentos só precisam de RF + IDwall BGC — sem IA, sem financeiros
     const _isSimplificado = sol.tipoAnalise === 'armazem' || sol.tipoAnalise === 'transporte'
       || sol.segmento === 'ARMAZÉM' || sol.segmento === 'TRANSPORTE';
 
@@ -1078,7 +936,7 @@
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
         `<div style="margin-top:.9rem;display:flex;align-items:center;gap:.65rem;background:${_bg};border:1px solid ${_border};border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.77rem;color:${_color};font-weight:600;">
           <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Análise Simplificada (${_tipoLabel}) — validação via Receita Federal e Serasa apenas
+          Análise Simplificada (${_tipoLabel}) — validação via Receita Federal e IDwall BGC
         </div>`
       );
 
@@ -1131,7 +989,7 @@
     // Bloquear edição em processos finalizados
     if (['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
 
-    // Serasa — chamado ao final do 2º bloco <script>, depois que renderSerasaCard é definido
+    // IDwall — renderizado no 2º bloco <script>, depois que renderIdwallCard é definido
   }
 
   /* ── Dados da solicitação ────────────────────────────── */
@@ -2478,9 +2336,6 @@
       main.insertBefore(banner, main.firstChild);
     }
 
-    // Bloquear abertura do modal Serasa
-    window.openSerasaModal = () => {};
-
     // Garantir que trigger-card e decision-card estão ocultos
     const tc = document.getElementById('trigger-card');
     const dc = document.getElementById('decision-card');
@@ -2522,466 +2377,129 @@
   if (sol) boot();
 </script>
 
-<!-- pdf.js para leitura de PDF no browser -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-<!-- ── Modal Serasa ───────────────────────────────────── -->
-<div class="serasa-overlay" id="serasa-overlay" onclick="if(event.target===this)closeSerasaModal()">
-  <div class="serasa-modal">
-    <div class="serasa-modal-hd">
-      <h3>
-        <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7"/></svg>
-        Importar Consulta Serasa Experian
-      </h3>
-      <button class="btn-modal-close" onclick="closeSerasaModal()">×</button>
-    </div>
-    <div class="serasa-modal-body">
-
-      <div class="serasa-drop-area" id="serasa-drop"
-           ondragover="event.preventDefault();this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="event.preventDefault();this.classList.remove('drag-over');handleSerasaFile(event.dataTransfer.files[0])">
-        <input type="file" accept=".pdf" onchange="handleSerasaFile(this.files[0])">
-        <svg class="serasa-drop-icon" viewBox="0 0 24 24" fill="none">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/>
-          <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/>
-          <line x1="12" y1="18" x2="12" y2="12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-          <polyline points="9 15 12 12 15 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <div class="serasa-drop-title">Arraste o PDF do Serasa aqui</div>
-        <div class="serasa-drop-sub">ou clique para selecionar — o sistema lê e extrai os dados automaticamente</div>
-        <div class="serasa-file-name" id="serasa-file-name"></div>
-      </div>
-
-      <div class="serasa-status" id="serasa-status"></div>
-
-      <div class="serasa-preview" id="serasa-preview">
-        <div class="serasa-preview-title">Dados extraídos — revise e salve</div>
-        <div class="serasa-preview-grid" id="serasa-preview-grid"></div>
-        <div style="margin-top:.7rem;">
-          <div class="serasa-preview-title" style="margin-bottom:.4rem;">Anotações Negativas</div>
-          <div class="serasa-anot-preview" id="serasa-anot-preview"></div>
-        </div>
-      </div>
-
-
-    </div>
-    <div class="serasa-modal-ft">
-      <button class="btn btn-secondary btn-sm" onclick="closeSerasaModal()">Cancelar</button>
-      <button class="btn btn-sm" id="btn-serasa-save"
-              style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border:none;display:none;"
-              onclick="saveSerasaFromParsed()">
-        <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
-        Salvar Consulta
-      </button>
-    </div>
-  </div>
-</div>
 
 <script>
-/* ── Serasa — Upload & Parse automático ────────────────── */
-(function () {
-  if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
-})();
+/* ── IDwall BGC ─────────────────────────────────────── */
 
-let _serasaParsed = null;
+let _idwallLoading = false;
 
-function openSerasaModal() {
-  _serasaParsed = null;
-  document.getElementById('serasa-status').className = 'serasa-status';
-  document.getElementById('serasa-preview').classList.remove('visible');
-  document.getElementById('btn-serasa-save').style.display = 'none';
-  const fnEl = document.getElementById('serasa-file-name');
-  if (fnEl) { fnEl.textContent = ''; fnEl.style.display = 'none'; }
-  document.getElementById('serasa-overlay').classList.add('open');
-}
+async function runIdwallConsulta() {
+  if (_idwallLoading) return;
+  if (!sol?.id) { showToast('Salve a solicitação antes de consultar.', 'error'); return; }
+  const cnpj = sol.cnpj;
+  if (!cnpj) { showToast('CNPJ não informado na solicitação.', 'error'); return; }
 
-function closeSerasaModal() {
-  document.getElementById('serasa-overlay').classList.remove('open');
-}
+  _idwallLoading = true;
+  const btn  = document.getElementById('btn-idwall-consult');
+  const btnR = document.getElementById('btn-idwall-reconsult');
+  const loadingHtml = '<svg viewBox="0 0 24 24" fill="none" style="width:12px;height:12px;animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Consultando…';
+  if (btn)  { btn.disabled  = true; btn.innerHTML  = loadingHtml; }
+  if (btnR) { btnR.disabled = true; btnR.innerHTML = loadingHtml; }
 
-/* ── Leitura e parsing do PDF ─────────────────────────── */
-async function handleSerasaFile(file) {
-  if (!file) return;
-  if (!file.name.toLowerCase().endsWith('.pdf')) {
-    _serasaStatus('err', 'Selecione um arquivo PDF exportado do Serasa.');
-    return;
-  }
-  const fnEl = document.getElementById('serasa-file-name');
-  if (fnEl) { fnEl.textContent = '📄 ' + file.name; fnEl.style.display = 'block'; }
-  _serasaStatus('loading', 'Lendo e interpretando o PDF…');
-  document.getElementById('serasa-preview').classList.remove('visible');
-  document.getElementById('btn-serasa-save').style.display = 'none';
-  _serasaParsed = null;
   try {
-    const text = await _extractPDFText(file);
-    const data = _parseSerasaText(text);
-    data.arquivoNome = file.name;
-    if (!data.consultadaEm) data.consultadaEm = new Date().toISOString().slice(0, 10);
-    _serasaParsed = data;
-    if (!data.score) throw new Error('Score não identificado. Verifique se o arquivo é um relatório Serasa Score Empresas.');
-    _serasaStatus('ok', 'PDF interpretado com sucesso — revise os dados abaixo e salve.');
-    _renderSerasaPreview(data);
-    document.getElementById('btn-serasa-save').style.display = '';
+    const res = await fetch(`${API_URL}/api/idwall/${sol.id}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cnpj }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Erro ${res.status}`);
+    }
+    const data = await res.json();
+    sol.idwall = data;
+    DB.solicitacoes.update(sol.id, { idwall: data });
+    sol = DB.solicitacoes.getById(sol.id);
+    renderIdwallCard(data);
+    _updateIdwallBureau();
+    showToast('Consulta IDwall BGC concluída!', 'success');
   } catch (e) {
-    _serasaStatus('err', e.message || 'Erro ao processar o arquivo.');
-    console.error('[Serasa parse]', e);
+    showToast('Erro na consulta IDwall: ' + (e.message || 'Tente novamente.'), 'error');
+  } finally {
+    _idwallLoading = false;
+    const consultarHtml = '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Consultar BGC';
+    const reconsultarHtml = '<svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Reconsultar';
+    if (btn)  { btn.disabled  = false; btn.innerHTML  = consultarHtml; }
+    if (btnR) { btnR.disabled = false; btnR.innerHTML = reconsultarHtml; }
   }
 }
 
-function _serasaStatus(type, msg) {
-  const icons = {
-    loading: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
-    ok:      `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    err:     `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`,
-  };
-  const el = document.getElementById('serasa-status');
-  el.className = 'serasa-status ' + type;
-  el.innerHTML = (icons[type] || '') + '<span>' + msg + '</span>';
-}
+function _updateIdwallBureau() {
+  if (!sol?.idwall) return;
+  const el   = document.getElementById('idwall-bureau-sub');
+  const icon = document.getElementById('idwall-icon');
+  const d    = sol.idwall;
+  const res  = (d.resultado || '').toUpperCase();
+  const validas   = (d.validacoes || []).filter(v => (v.status || '').toUpperCase() === 'VALID').length;
+  const invalidas = (d.validacoes || []).filter(v => (v.status || '').toUpperCase() === 'INVALID').length;
+  const total     = (d.validacoes || []).length;
 
-async function _extractPDFText(file) {
-  if (typeof pdfjsLib === 'undefined') throw new Error('Biblioteca pdf.js não carregada. Verifique a conexão.');
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  let out = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page    = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    out += content.items.map(it => it.str).join(' ') + '\n';
-  }
-  return out;
-}
-
-function _parseSerasaText(raw) {
-  const t  = raw.replace(/\s{2,}/g, ' ').trim();
-  // Normalize: strip accents for robust section matching
-  const nt = t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-  const grab = (...pats) => {
-    for (const p of pats) { const m = t.match(p); if (m && m[1] != null) return m[1].trim(); }
-    return null;
-  };
-  const toNum  = s => s != null ? parseFloat(s.replace(/\./g, '').replace(',', '.')) : null;
-  const toInt  = s => s != null ? parseInt(s.replace(/[.\s]/g, ''), 10) : null;
-  const toMoney = (s, suf) => {
-    if (s == null) return null;
-    let v = parseFloat(s.replace(/\./g, '').replace(',', '.'));
-    if (!isFinite(v)) return null;
-    if (suf) { const sl = suf.toLowerCase(); if (/milh/.test(sl)) v *= 1e6; else if (/mil/.test(sl)) v *= 1e3; }
-    return v;
-  };
-  // Uses accent-stripped normalized text; "sem registros" etc. also stripped
-  const isClean = pat => {
-    const idx = nt.search(new RegExp(pat, 'i'));
-    if (idx < 0) return true;
-    return /sem\s+registros?|sem\s+ocorrencia|nenhum\s+registro/.test(nt.substring(idx, idx + 300));
-  };
-
-  /* ── Score principal: "620 Risco baixo" — NOT "634 de 1000" (fraude) */
-  const scoreM = t.match(/(\d{3})\s+[Rr]isco\s+(Muito\s+Alto|Alto|M[eé]dio|Baixo)\b/i);
-  const score  = scoreM ? toInt(scoreM[1]) : null;
-  let risco = 'baixo';
-  if (scoreM) {
-    const r = scoreM[2].toLowerCase();
-    if      (r.includes('muito')) risco = 'muito_alto';
-    else if (r.includes('alto'))  risco = 'alto';
-    else if (r.includes('dio') || r.includes('deo')) risco = 'medio';
-  }
-
-  /* ── Probabilidade de inadimplência: "1,48% Probabilidade de inadimplência" */
-  const inadStr = grab(
-    /(\d+[,.]?\d*)\s*%\s*[Pp]robabilidade\s+de\s+inadimpl/i,
-    /inadimpl[eê]ncia[^0-9]{0,30}(\d+[,.]?\d*)\s*%/i
-  );
-  const inadimplencia = toNum(inadStr);
-
-  /* ── Honram compromissos: "honrar os compromissos assumidos em 96,42%" */
-  const honraStr = grab(
-    /compromissos?\s+assumidos?\s+em\s+(\d+[,.]?\d*)\s*%/i,
-    /honr[ae][mr][^0-9]{0,40}(\d+[,.]?\d*)\s*%/i
-  );
-  const honraCompromisos = toNum(honraStr);
-
-  /* ── Pontualidade: "Pontualidade de Pagamento 100%" */
-  const pontStr = grab(/[Pp]ontualidade[^0-9]{0,40}(\d+[,.]?\d*)\s*%/i);
-  const pontualidade = toNum(pontStr);
-
-  /* ── Limite PJ: "Limite de Crédito PJ R$ 414 mil" */
-  const limPJM = t.match(/[Ll]imite[^0-9\n]{0,40}PJ[^0-9\n]{0,10}R\$\s*([\d.,]+)\s*(milh[oõ]es?|mil\b)?/i)
-               || t.match(/PJ[^0-9\n]{0,15}R\$\s*([\d.,]+)\s*(milh[oõ]es?|mil\b)?/i);
-  const limitePJ = limPJM ? toMoney(limPJM[1], limPJM[2]) : null;
-
-  /* ── Limite Mensal: "R$ 25.000,00 Limite mensal sugerido" */
-  const limMenM = t.match(/R\$\s*([\d.,]+)\s*[Ll]imite\s+mensal/i)
-                || t.match(/[Ll]imite\s+mensal[^0-9\n]{0,10}R\$\s*([\d.,]+)/i);
-  const limiteMensal = limMenM ? toMoney(limMenM[1], null) : null;
-
-  /* ── Faturamento: "R$ 5,76 milhões ao ano Faturamento Estimado" */
-  const fatM = t.match(/R\$\s*([\d.,]+)\s*(milh[oõ]es?|mil\b)\s+(?:ao\s+ano\s+)?[Ff]aturamento/i)
-             || t.match(/[Ff]aturamento[^0-9\n]{0,20}R\$\s*([\d.,]+)\s*(milh[oõ]es?|mil\b)?/i);
-  const faturamentoEstimado = fatM ? toMoney(fatM[1], fatM[2]) : null;
-
-  /* ── Score Fraude: "Score 634 de 1000 Baixo" */
-  const fraudeM = t.match(/[Ss]core\s+(\d{3})\s+de\s+1\.?000\b/i);
-  const scoreFraude = fraudeM ? toInt(fraudeM[1]) : null;
-
-  /* ── Recomendação de venda */
-  let recomendacaoVenda = 'prazo';
-  const recStr = grab(/[Rr]ecomenda[çc][aã]o[^a-zA-Z\n]{0,10}([^\n.]{5,60})/i);
-  if (recStr) {
-    const r = recStr.toLowerCase();
-    if      (r.includes('negar') || r.includes('não conceder')) recomendacaoVenda = 'negar';
-    else if (r.includes('garantia'))                            recomendacaoVenda = 'garantias';
-  }
-
-  /* ── Consultas: section-scoped, bidirectional ─────────────── */
-  const _cIdx = t.search(/[Cc]onsultas?\s+ao\s+CNPJ/i);
-  const _cBlk = _cIdx >= 0 ? t.substring(_cIdx, _cIdx + 400) : t;
-  const _mesM = _cBlk.match(/(\d+)\s+consultas?\s+(?:[Cc]onsultas?\s+)?neste\s+m[eê]s/i)
-              || _cBlk.match(/neste\s+m[eê]s[^0-9]{0,20}(\d+)/i);
-  const _anoM = _cBlk.match(/(\d+)\s+consultas?\s+(?:[Cc]onsultas?\s+)?(?:nos?\s+)?[úu]ltimos?\s+13\s+meses?/i)
-              || _cBlk.match(/[úu]ltimos?\s+13\s+meses?[^0-9]{0,20}(\d+)/i)
-              || _cBlk.match(/13\s+meses?[^0-9]{0,20}(\d+)/i);
-  const consultasMes = _mesM ? toInt(_mesM[1]) : null;
-  const consultasAno = _anoM ? toInt(_anoM[1]) : null;
-
-  /* ── Score Setorial: order-aware (works for both row and column PDF layouts) ── */
-  // In row layout: SP_name SP_score Sudeste_name Sudeste_score Brasil_name Brasil_score
-  // In col layout: SP_name Sudeste_name Brasil_name SP_score Sudeste_score Brasil_score
-  // In BOTH layouts the geo names and scores appear in the same relative order → map by position rank
-  const _setIdx  = t.search(/[Ss]core\s+[Ss]etorial/i);
-  const _setBlk  = _setIdx >= 0 ? t.substring(_setIdx, _setIdx + 800) : t;
-  const _spI     = _setBlk.search(/S[aã]o\s+Paulo/i);
-  const _regI    = _setBlk.search(/(Sudeste|Nordeste|Norte\b|Sul\b|Centro.?Oeste)/i);
-  const _brI     = _setBlk.search(/Brasil\b/i);
-  const _firstI  = Math.min(_spI >= 0 ? _spI : 9999, _regI >= 0 ? _regI : 9999, _brI >= 0 ? _brI : 9999);
-  const _sScores = [..._setBlk.matchAll(/\b(\d{3})\b/g)]
-    .filter(m => m.index >= _firstI)
-    .map(m => parseInt(m[1]))
-    .filter(n => n >= 200 && n <= 999);
-  const _geoOrder = [
-    { pos: _spI,  key: 'sp'  },
-    { pos: _regI, key: 'reg' },
-    { pos: _brI,  key: 'br'  },
-  ].filter(g => g.pos >= 0).sort((a, b) => a.pos - b.pos);
-  const _sMap = {};
-  _geoOrder.forEach((g, i) => { _sMap[g.key] = _sScores[i] ?? null; });
-  const spVal    = _sMap['sp']  ?? null;
-  const regNomeM = _setBlk.match(/(Sudeste|Nordeste|Norte\b|Sul\b|Centro.?Oeste)/i);
-  const regNome  = regNomeM ? regNomeM[1] : null;
-  const regVal   = _sMap['reg'] ?? null;
-  const paisVal  = _sMap['br']  ?? null;
-
-  /* ── Data da consulta */
-  let consultadaEm = null;
-  const dtM = t.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
-  if (dtM) consultadaEm = `${dtM[3]}-${dtM[2]}-${dtM[1]}`;
-
-  /* ── Administradores */
-  const admStr = grab(/(\d+)\s+[Aa]dministrador[ae]?s?\b/i);
-  const numAdministradores = toInt(admStr);
-
-  return {
-    consultadaEm, score, risco, inadimplencia, honraCompromisos,
-    pontualidade, scoreFraude, limitePJ, limiteMensal, faturamentoEstimado,
-    recomendacaoVenda, numAdministradores, consultasMes, consultasAno,
-    scoreEstadoNome: 'São Paulo', scoreEstado: spVal,
-    scoreRegiaoNome: regNome || 'Sudeste', scoreRegiao: regVal,
-    scorePais: paisVal,
-    // Use "dividas vencidas" (section title) to avoid false positive from "Total de dívidas: R$ 0,00"
-    pefin:           !isClean('pefin'),
-    refin:           !isClean('refin'),
-    dividasVencidas: !isClean('dividas\\s+vencidas'),
-    falencia:        !isClean('falencia|recuperacao\\s+judicial'),
-    acoesJudiciais:  !isClean('acoes?\\s+judiciais?'),
-    protestos:       !isClean('protesto'),
-    cheque:          !isClean('cheque'),
-    sociosAnotacoes: !isClean('quadro\\s+societario'),
-    adminAnotacoes:  !isClean('administradores?\\s+com\\s+anota'),
-    arquivoNome: '',
-  };
-}
-
-function _renderSerasaPreview(d) {
-  const fmtPct = v => v != null ? v.toFixed(2) + '%' : '—';
-  const fmtBRL = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR') : '—';
-  const riskLabel = { baixo:'Baixo', medio:'Médio', alto:'Alto', muito_alto:'Muito Alto' };
-  const riskCls   = { baixo:'green', medio:'yellow', alto:'red', muito_alto:'red' };
-  const items = [
-    { label:'Score',               val: d.score ? `${d.score} — ${riskLabel[d.risco]||''}` : '—',  cls: riskCls[d.risco]||'' },
-    { label:'Prob. Inadimplência', val: fmtPct(d.inadimplencia),       cls: (d.inadimplencia??99) < 3 ? 'green':'yellow' },
-    { label:'Honram Compromissos', val: fmtPct(d.honraCompromisos),    cls: 'green' },
-    { label:'Limite PJ',           val: fmtBRL(d.limitePJ),            cls: '' },
-    { label:'Limite Mensal',       val: fmtBRL(d.limiteMensal),        cls: '' },
-    { label:'Fat. Estimado/ano',   val: fmtBRL(d.faturamentoEstimado), cls: '' },
-    { label:'Pontualidade',        val: fmtPct(d.pontualidade),        cls: 'green' },
-    { label:'Score Fraude',        val: d.scoreFraude ? `${d.scoreFraude}/1000` : '—', cls: '' },
-    { label:'Data da Consulta',    val: d.consultadaEm ? new Date(d.consultadaEm + 'T12:00:00').toLocaleDateString('pt-BR') : '—', cls: '' },
-  ];
-  document.getElementById('serasa-preview-grid').innerHTML = items.map(i =>
-    `<div class="sp-item"><div class="sp-label">${i.label}</div><div class="sp-val ${i.cls}">${i.val}</div></div>`
-  ).join('');
-
-  const anotDefsPrev = [
-    { key:'pefin', label:'PEFIN' }, { key:'refin', label:'REFIN' },
-    { key:'dividasVencidas', label:'Dívidas Vencidas' }, { key:'falencia', label:'Falência' },
-    { key:'acoesJudiciais',  label:'Ações Jud.' }, { key:'protestos', label:'Protestos' },
-    { key:'cheque', label:'Cheque' }, { key:'sociosAnotacoes', label:'Sócios' },
-    { key:'adminAnotacoes', label:'Adm.' },
-  ];
-  const _xSvgP  = `<svg viewBox="0 0 24 24" fill="none" width="9" height="9"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
-  const _okSvgP = `<svg viewBox="0 0 24 24" fill="none" width="9" height="9"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  const badPrev = anotDefsPrev.filter(a => !!d[a.key]);
-  const okPrev  = anotDefsPrev.filter(a => !d[a.key]);
-  let anotPrevHtml = '';
-  if (badPrev.length === 0) {
-    anotPrevHtml = `<span style="color:#4ade80;font-size:.72rem;display:inline-flex;align-items:center;gap:.3rem;">${_okSvgP} Sem anotações negativas (${anotDefsPrev.length} tipos limpos)</span>`;
+  if (res === 'VALID') {
+    if (el)   { el.textContent = `Aprovado · ${validas}/${total} regras válidas`; el.style.color = '#4ade80'; }
+    if (icon) icon.className = 'bureau-icon ok';
+  } else if (res === 'INVALID') {
+    if (el)   { el.textContent = `${invalidas} irregularidade${invalidas !== 1 ? 's' : ''} encontrada${invalidas !== 1 ? 's' : ''}`; el.style.color = '#f87171'; }
+    if (icon) icon.className = 'bureau-icon error';
   } else {
-    anotPrevHtml  = badPrev.map(a => `<span class="anot-chip bad">${_xSvgP} ${a.label}</span>`).join('');
-    anotPrevHtml += `<span style="color:var(--text-faint);font-size:.68rem;margin-left:.4rem;">${okPrev.length} limpos</span>`;
+    if (el)   { el.textContent = 'Consulta realizada'; el.style.color = 'var(--text-faint)'; }
+    if (icon) icon.className = 'bureau-icon ok';
   }
-  document.getElementById('serasa-anot-preview').innerHTML = anotPrevHtml;
-
-  document.getElementById('serasa-preview').classList.add('visible');
+  const btnConsult = document.getElementById('btn-idwall-consult');
+  if (btnConsult) btnConsult.style.display = 'none';
 }
 
-function saveSerasaFromParsed() {
-  if (!_serasaParsed) return;
-  sol.serasa = _serasaParsed;
-  DB.solicitacoes.update(sol.id, { serasa: sol.serasa });
-  closeSerasaModal();
-  renderSerasaCard();
-  _updateSerasaBureau();
-  showToast('Consulta Serasa registrada com sucesso!', 'success');
-}
-
-function _updateSerasaBureau() {
-  if (!sol.serasa) return;
-  const el   = document.getElementById('serasa-bureau-sub');
-  const icon = document.getElementById('serasa-icon');
-  const risco = sol.serasa.risco || 'baixo';
-  const label = { baixo:'Risco Baixo', medio:'Risco Médio', alto:'Risco Alto', muito_alto:'Risco Muito Alto' }[risco] || '';
-  const color = { baixo:'#4ade80', medio:'#facc15', alto:'#f97316', muito_alto:'#f87171' }[risco];
-  el.textContent = 'Score ' + sol.serasa.score + ' · ' + label;
-  el.style.color = color;
-  if (icon) icon.className = 'bureau-icon ok';
-  // Usa o pai do serasa-bureau-sub para não capturar o botão da Receita Federal
-  const btnUpload = el?.parentElement?.querySelector('.btn-serasa-upload');
-  if (btnUpload) btnUpload.style.display = 'none';
-}
-
-function renderSerasaCard() {
-  if (!sol || !sol.serasa) return;
-  const s    = sol.serasa;
-  const card = document.getElementById('serasa-card');
+function renderIdwallCard(d) {
+  if (!d) return;
+  const card = document.getElementById('idwall-card');
   card.classList.add('visible');
 
-  const dt = s.consultadaEm ? new Date(s.consultadaEm + 'T12:00:00').toLocaleDateString('pt-BR') : '';
-  document.getElementById('serasa-consulta-date').textContent = dt ? '— ' + dt : '';
+  const dt      = d.consultadaEm ? new Date(d.consultadaEm + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+  const empresa = d.nomeEmpresa  ? ' · ' + d.nomeEmpresa : '';
+  document.getElementById('idwall-consulta-date').textContent = dt ? '— ' + dt + empresa : empresa;
 
-  // Score gauge
-  const pct = Math.min((s.score || 0) / 1000, 1);
-  const riskColor = { baixo:'#4ade80', medio:'#facc15', alto:'#f97316', muito_alto:'#f87171' }[s.risco] || '#4ade80';
-  const R = 58, CX = 70, CY = 70;
-  function polarXY(deg, r) {
-    const rad = (deg - 90) * Math.PI / 180;
-    return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)];
-  }
-  function arc(a1, a2, r) {
-    const [sx, sy] = polarXY(a1, r);
-    const [ex, ey] = polarXY(a2, r);
-    const large = ((a2 - a1 + 360) % 360) > 180 ? 1 : 0;
-    return `M${sx} ${sy} A${r} ${r} 0 ${large} 1 ${ex} ${ey}`;
-  }
-  const bgPath   = arc(-210, 30, R);
-  const fillEnd  = -210 + 240 * pct;
-  const fillPath = pct > 0 ? arc(-210, fillEnd, R) : '';
-  const gaugeSvg = `<svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;">
-    <path d="${bgPath}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12" stroke-linecap="round"/>
-    ${fillPath ? `<path d="${fillPath}" fill="none" stroke="${riskColor}" stroke-width="12" stroke-linecap="round" style="filter:drop-shadow(0 0 6px ${riskColor}80)"/>` : ''}
-  </svg>`;
-  const circEl = document.getElementById('serasa-score-circle');
-  const oldSvg = circEl.querySelector('svg');
-  if (oldSvg) oldSvg.remove();
-  circEl.insertAdjacentHTML('afterbegin', gaugeSvg);
+  const res = (d.resultado || '').toUpperCase();
+  const verdictCfg = {
+    VALID:   { cls: 'valid',   icon: '<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',   label: 'Sem irregularidades — todas as validações aprovadas' },
+    INVALID: { cls: 'invalid', icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>', label: 'Irregularidades encontradas — verifique as regras abaixo' },
+  };
+  const vc = verdictCfg[res] || { cls: 'error', icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>', label: 'Resultado inconclusivo ou erro na consulta' };
+  document.getElementById('idwall-verdict-area').innerHTML =
+    `<div class="idwall-verdict ${vc.cls}">${vc.icon} ${vc.label}</div>`;
 
-  document.getElementById('serasa-score-val').textContent = s.score || '—';
-  const labelEl = document.getElementById('serasa-score-label');
-  const labelMap = { baixo:'Risco Baixo', medio:'Risco Médio', alto:'Risco Alto', muito_alto:'Risco Muito Alto' };
-  labelEl.textContent = labelMap[s.risco] || '—';
-  labelEl.className   = 'serasa-score-label ' + (s.risco || 'baixo');
+  const iconsMap = {
+    VALID:   '<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    INVALID: '<svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
+    ERROR:   '<svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    NO_DATA: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/></svg>',
+  };
 
-  // KPIs
-  const fmtPct = v => (v != null) ? v.toFixed(2) + '%' : '—';
-  const fmtBRL = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR') : '—';
-  const inadEl = document.getElementById('sk-inadimp');
-  inadEl.textContent = fmtPct(s.inadimplencia);
-  inadEl.className   = 'serasa-kpi-val ' + (s.inadimplencia < 3 ? 'green' : s.inadimplencia < 8 ? 'yellow' : 'red');
-  document.getElementById('sk-honra').textContent        = fmtPct(s.honraCompromisos);
-  document.getElementById('sk-limite-pj').textContent    = fmtBRL(s.limitePJ);
-  document.getElementById('sk-limite-mensal').textContent = fmtBRL(s.limiteMensal);
-
-  // Metrics
-  document.getElementById('sk-pont').textContent  = fmtPct(s.pontualidade);
-  document.getElementById('sk-fat').textContent   = fmtBRL(s.faturamentoEstimado);
-  document.getElementById('sk-fraude').textContent = (s.scoreFraude || '—') + '/1000';
-  const recEl  = document.getElementById('sk-rec');
-  const recMap = { prazo:'✓ Conceder a prazo', garantias:'! Exigir garantias', negar:'✗ Não conceder' };
-  recEl.textContent = recMap[s.recomendacaoVenda] || s.recomendacaoVenda || '—';
-  recEl.style.color = { prazo:'#4ade80', garantias:'#facc15', negar:'#f87171' }[s.recomendacaoVenda] || '';
-
-  // Anotações
-  const anotDefs = [
-    { key:'pefin',          label:'PEFIN' },
-    { key:'refin',          label:'REFIN' },
-    { key:'dividasVencidas',label:'Dívidas Vencidas' },
-    { key:'falencia',       label:'Falência/Recuperação' },
-    { key:'acoesJudiciais', label:'Ações Judiciais' },
-    { key:'protestos',      label:'Protestos' },
-    { key:'cheque',         label:'Cheque sem Fundo' },
-    { key:'sociosAnotacoes',label:'Sócios c/ Anotações' },
-    { key:'adminAnotacoes', label:'Adm. c/ Anotações' },
-  ];
-  const _xSvg  = `<svg viewBox="0 0 24 24" fill="none" width="11" height="11"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
-  const _okSvg = `<svg viewBox="0 0 24 24" fill="none" width="9" height="9"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  const badItems = anotDefs.filter(a => !!s[a.key]);
-  const okItems  = anotDefs.filter(a => !s[a.key]);
-  let anotHtml = '';
-  if (badItems.length === 0) {
-    anotHtml += `<div class="anot-summary all-ok">${_okSvg} Nenhuma anotação negativa detectada — todos os ${anotDefs.length} tipos consultados estão limpos</div>`;
+  const validacoes = d.validacoes || [];
+  if (validacoes.length === 0) {
+    document.getElementById('idwall-rules').innerHTML =
+      '<div style="font-size:.78rem;color:var(--text-faint);padding:.5rem 0;">Nenhuma regra de validação retornada.</div>';
   } else {
-    anotHtml += `<div class="anot-summary has-bad">${_xSvg} ${badItems.length} ocorrência${badItems.length > 1 ? 's' : ''} detectada${badItems.length > 1 ? 's' : ''}</div>`;
-    anotHtml += `<div class="anot-bad-list">` + badItems.map(a => `<span class="anot-bad-chip">${_xSvg} ${a.label}</span>`).join('') + `</div>`;
+    document.getElementById('idwall-rules').innerHTML = validacoes.map(v => {
+      const st  = (v.status || 'NO_DATA').toUpperCase();
+      const cls = st === 'VALID' ? 'valid' : st === 'INVALID' ? 'invalid' : st === 'ERROR' ? 'error' : 'no_data';
+      const ico = iconsMap[st] || iconsMap.NO_DATA;
+      return `<div class="idwall-rule">
+        <div class="idwall-rule-icon ${cls}">${ico}</div>
+        <div class="idwall-rule-body">
+          <div class="idwall-rule-name">${_escHtml(v.nome || v.resultado || 'Regra')}</div>
+          ${v.resultado ? `<div class="idwall-rule-code">${_escHtml(v.resultado)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
   }
-  if (okItems.length > 0) {
-    anotHtml += `<div class="anot-ok-row">Limpos: ` + okItems.map(a => `<span class="anot-ok-tag">${_okSvg} ${a.label}</span>`).join('') + `</div>`;
-  }
-  document.getElementById('serasa-anot-grid').innerHTML = anotHtml;
-
-  // Score Setorial
-  document.getElementById('sk-sp-nome').textContent  = s.scoreEstadoNome  || 'Estado';
-  document.getElementById('sk-sp-val').textContent   = s.scoreEstado      || '—';
-  document.getElementById('sk-reg-nome').textContent = s.scoreRegiaoNome  || 'Região';
-  document.getElementById('sk-reg-val').textContent  = s.scoreRegiao      || '—';
-  document.getElementById('sk-pais-val').textContent = s.scorePais        || '—';
-
-  // Consultas
-  document.getElementById('sk-cons-mes').textContent = s.consultasMes ?? '—';
-  document.getElementById('sk-cons-ano').textContent = s.consultasAno ?? '—';
-
-  _updateSerasaBureau();
 }
 
-// Inicializa o card Serasa se já houver dados salvos.
-// Executado aqui (2º bloco) porque renderSerasaCard e _updateSerasaBureau só ficam
-// disponíveis depois que este script é parseado — boot() roda no 1º bloco, antes disso.
-if (typeof sol !== 'undefined' && sol && sol.serasa) {
-  renderSerasaCard();
-  _updateSerasaBureau();
+// Bootstrap: inicializa o card IDwall se já houver dados de consulta anterior.
+// Executado aqui (2º bloco) porque renderIdwallCard e _updateIdwallBureau só ficam
+// disponíveis depois que este script é parseado.
+if (typeof sol !== 'undefined' && sol && sol.idwall) {
+  renderIdwallCard(sol.idwall);
+  _updateIdwallBureau();
 }
 </script>
 </body>
