@@ -656,7 +656,6 @@
         <td class="text-muted" style="font-size:.78rem;">${s.solicitanteNome || '—'}</td>
         <td>
           <span class="badge ${DB.utils.statusBadge[s.status] || 'pendente'}">${DB.utils.statusLabel[s.status] || s.status}</span>
-          ${s.validadeDias ? DB.utils.validadeBadgeHtml(s) : ''}
         </td>
         <td>
           <div class="row-actions">
