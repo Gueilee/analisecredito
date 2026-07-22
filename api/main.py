@@ -1306,7 +1306,8 @@ async def run_idwall_bgc(sol_id: str, request: Request, current_user=Depends(_ge
         )
 
     if create_res.status_code not in (200, 201):
-        raise HTTPException(502, f"IDwall: erro ao criar relatório ({create_res.status_code}).")
+        body_text = create_res.text[:400]
+        raise HTTPException(502, f"IDwall HTTP {create_res.status_code}: {body_text}")
 
     protocolo = create_res.json().get("result", {}).get("protocolo")
     if not protocolo:
