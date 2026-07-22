@@ -2404,9 +2404,19 @@ function _idwallShowPendingState() {
   const el   = document.getElementById('idwall-bureau-sub');
   const icon = document.getElementById('idwall-icon');
   const btn  = document.getElementById('btn-idwall-consult');
-  if (el)   { el.textContent = 'Relatório em análise — clique para verificar'; el.style.color = '#facc15'; }
+  if (el) {
+    el.innerHTML = 'Relatório em análise — <span style="cursor:pointer;text-decoration:underline;color:var(--text-faint)" onclick="forceNewIdwallConsulta()">criar nova consulta</span>';
+    el.style.color = '#facc15';
+  }
   if (icon) icon.className = 'bureau-icon wait';
   if (btn)  { btn.innerHTML = _IDWALL_BTN_VERIFICAR; btn.disabled = false; }
+}
+
+function forceNewIdwallConsulta() {
+  if (!sol?.id) return;
+  sol.idwall_pending = null;
+  DB.solicitacoes.update(sol.id, { idwall_pending: null });
+  runIdwallConsulta();
 }
 
 async function checkIdwallPending() {
