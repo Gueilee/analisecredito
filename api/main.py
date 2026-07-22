@@ -1325,7 +1325,14 @@ async def run_idwall_bgc(sol_id: str, request: Request, current_user=Depends(_ge
         raise HTTPException(502, f"IDwall não retornou número do relatório. Campos: {campos}")
 
     # Retorna protocolo imediatamente — polling é feito pelo cliente via /api/idwall-poll
-    return {"protocolo": protocolo, "status": "EM_EXECUCAO"}
+    # debug_fields incluído para diagnóstico durante integração
+    return {
+        "protocolo": protocolo,
+        "status": "EM_EXECUCAO",
+        "debug_create_fields": list(result_obj.keys()),
+        "debug_create_status": result_obj.get("status", ""),
+        "debug_create_msg": result_obj.get("mensagem", ""),
+    }
 
 
 @app.get("/api/idwall-poll/{protocolo}")

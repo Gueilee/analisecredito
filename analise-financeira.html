@@ -2386,6 +2386,7 @@ let _idwallLoading = false;
 const _IDWALL_SPIN = '<svg viewBox="0 0 24 24" fill="none" style="width:12px;height:12px;animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const _IDWALL_BTN_CONSULTAR   = '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Consultar BGC';
 const _IDWALL_BTN_RECONSULTAR = '<svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Reconsultar';
+const _IDWALL_BTN_VERIFICAR  = '<svg viewBox="0 0 24 24" fill="none"><polyline points="1 4 1 10 7 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 15a9 9 0 1 0 .49-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Verificar Status';
 
 function _idwallSetLoading(on) {
   const btn  = document.getElementById('btn-idwall-consult');
@@ -2394,13 +2395,58 @@ function _idwallSetLoading(on) {
     if (btn)  { btn.disabled  = true; btn.innerHTML  = _IDWALL_SPIN + ' Consultando…'; }
     if (btnR) { btnR.disabled = true; btnR.innerHTML = _IDWALL_SPIN + ' Aguardando…'; }
   } else {
-    if (btn)  { btn.disabled  = false; btn.innerHTML  = _IDWALL_BTN_CONSULTAR; }
+    if (btn)  { btn.disabled  = false; btn.innerHTML  = sol?.idwall_pending?.numero ? _IDWALL_BTN_VERIFICAR : _IDWALL_BTN_CONSULTAR; }
     if (btnR) { btnR.disabled = false; btnR.innerHTML = _IDWALL_BTN_RECONSULTAR; }
+  }
+}
+
+function _idwallShowPendingState() {
+  const el   = document.getElementById('idwall-bureau-sub');
+  const icon = document.getElementById('idwall-icon');
+  const btn  = document.getElementById('btn-idwall-consult');
+  if (el)   { el.textContent = 'Relatório em análise — clique para verificar'; el.style.color = '#facc15'; }
+  if (icon) icon.className = 'bureau-icon wait';
+  if (btn)  { btn.innerHTML = _IDWALL_BTN_VERIFICAR; btn.disabled = false; }
+}
+
+async function checkIdwallPending() {
+  if (_idwallLoading) return;
+  const p = sol?.idwall_pending;
+  if (!p?.numero) return;
+  _idwallLoading = true;
+  _idwallSetLoading(true);
+  try {
+    const pollRes = await fetch(
+      `${API_URL}/api/idwall-poll/${encodeURIComponent(p.numero)}?cnpj=${encodeURIComponent(p.cnpj || '')}`,
+      { credentials: 'include' }
+    );
+    if (!pollRes.ok) throw new Error((await pollRes.json().catch(() => ({}))).detail || `Erro ${pollRes.status}`);
+    const d = await pollRes.json();
+    if (d.status === 'CONCLUIDO') {
+      sol.idwall = d;
+      sol.idwall_pending = null;
+      DB.solicitacoes.update(sol.id, { idwall: d, idwall_pending: null });
+      sol = DB.solicitacoes.getById(sol.id);
+      renderIdwallCard(d);
+      _updateIdwallBureau();
+      showToast('Consulta IDwall BGC concluída!', 'success');
+    } else {
+      _idwallShowPendingState();
+      showToast(`IDwall: ainda processando (${d.status || 'EM ANALISE'}). Tente novamente em breve.`, 'error');
+    }
+  } catch (e) {
+    _idwallShowPendingState();
+    showToast('Erro ao verificar IDwall: ' + e.message, 'error');
+  } finally {
+    _idwallLoading = false;
+    _idwallSetLoading(false);
   }
 }
 
 async function runIdwallConsulta() {
   if (_idwallLoading) return;
+  // Relatório pendente? Verifica status em vez de criar novo
+  if (sol?.idwall_pending?.numero) return checkIdwallPending();
   if (!sol?.id) { showToast('Salve a solicitação antes de consultar.', 'error'); return; }
   const cnpj = sol.cnpj;
   if (!cnpj) { showToast('CNPJ não informado na solicitação.', 'error'); return; }
@@ -2420,7 +2466,14 @@ async function runIdwallConsulta() {
       const err = await createRes.json().catch(() => ({}));
       throw new Error(err.detail || `Erro HTTP ${createRes.status} ao criar relatório`);
     }
-    const { protocolo } = await createRes.json();
+    const createData = await createRes.json();
+    const protocolo = createData.protocolo;
+    console.log('[IDwall] create response:', createData); // debug: campos e status do relat.
+
+    // Salva estado pendente imediatamente — sobrevive reload de página
+    const pendingData = { numero: protocolo, cnpj };
+    sol.idwall_pending = pendingData;
+    DB.solicitacoes.update(sol.id, { idwall_pending: pendingData });
 
     // 2. Polling até CONCLUIDO (máx 60 tentativas × 5 s = 5 min)
     let data = null;
@@ -2438,13 +2491,21 @@ async function runIdwallConsulta() {
         throw new Error(err.detail || `Erro HTTP ${pollRes.status} no polling`);
       }
       const pollData = await pollRes.json();
+      console.log(`[IDwall] poll #${i+1}:`, pollData.status, pollData.mensagem || '');
       if (pollData.status === 'CONCLUIDO') { data = pollData; break; }
     }
 
-    if (!data) throw new Error('IDwall não concluiu em 5 minutos. Tente novamente em instantes.');
+    if (!data) {
+      // Timeout: IDwall ainda processando — estado pendente preservado para verificar depois
+      _idwallShowPendingState();
+      showToast('IDwall ainda processando. Clique "Verificar Status" para checar depois.', 'error');
+      return;
+    }
 
+    // Concluído: limpa pendente, salva resultado e renderiza
     sol.idwall = data;
-    DB.solicitacoes.update(sol.id, { idwall: data });
+    sol.idwall_pending = null;
+    DB.solicitacoes.update(sol.id, { idwall: data, idwall_pending: null });
     sol = DB.solicitacoes.getById(sol.id);
     renderIdwallCard(data);
     _updateIdwallBureau();
@@ -2532,6 +2593,8 @@ function renderIdwallCard(d) {
 if (typeof sol !== 'undefined' && sol && sol.idwall) {
   renderIdwallCard(sol.idwall);
   _updateIdwallBureau();
+} else if (typeof sol !== 'undefined' && sol && sol.idwall_pending) {
+  _idwallShowPendingState();
 }
 </script>
 </body>
