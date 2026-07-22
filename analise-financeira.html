@@ -2422,10 +2422,13 @@ async function runIdwallConsulta() {
     }
     const { protocolo } = await createRes.json();
 
-    // 2. Polling até CONCLUIDO (máx 20 tentativas × 3 s = 60 s)
+    // 2. Polling até CONCLUIDO (máx 60 tentativas × 5 s = 5 min)
     let data = null;
-    for (let i = 0; i < 20; i++) {
-      await new Promise(r => setTimeout(r, 3000));
+    const _subEl = document.getElementById('idwall-bureau-sub');
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 5000));
+      const elapsed = (i + 1) * 5;
+      if (_subEl) _subEl.textContent = `Processando validações IDwall… ${elapsed}s`;
       const pollRes = await fetch(
         `${API_URL}/api/idwall-poll/${encodeURIComponent(protocolo)}?cnpj=${encodeURIComponent(cnpj)}`,
         { credentials: 'include' }
@@ -2438,7 +2441,7 @@ async function runIdwallConsulta() {
       if (pollData.status === 'CONCLUIDO') { data = pollData; break; }
     }
 
-    if (!data) throw new Error('IDwall não concluiu o relatório em 60 segundos. Tente novamente.');
+    if (!data) throw new Error('IDwall não concluiu em 5 minutos. Tente novamente em instantes.');
 
     sol.idwall = data;
     DB.solicitacoes.update(sol.id, { idwall: data });
