@@ -1298,12 +1298,17 @@ async def run_idwall_bgc(sol_id: str, request: Request, current_user=Depends(_ge
 
     hdrs = {"Authorization": token, "Content-Type": "application/json"}
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        create_res = await client.post(
-            "https://api-v2.idwall.co/relatorios",
-            json={"matriz": "vendemmia_bgc_completo_v2_pj", "parametros": {"cnpj_numero": cnpj}},
-            headers=hdrs,
-        )
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            create_res = await client.post(
+                "https://api-v2.idwall.co/relatorios",
+                json={"matriz": "vendemmia_bgc_completo_v2_pj", "parametros": {"cnpj_numero": cnpj}},
+                headers=hdrs,
+            )
+    except httpx.TimeoutException:
+        raise HTTPException(502, "IDwall: timeout ao conectar — verifique conectividade do servidor.")
+    except httpx.RequestError as exc:
+        raise HTTPException(502, f"IDwall: erro de rede — {type(exc).__name__}: {str(exc)[:300]}")
 
     if create_res.status_code not in (200, 201):
         body_text = create_res.text[:600]
