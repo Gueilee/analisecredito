@@ -1371,6 +1371,23 @@ async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", curr
     }
 
 
+@app.get("/api/idwall-ping")
+@limiter.limit("5/minute")
+async def idwall_ping(request: Request, current_user=Depends(_get_current_user)):
+    """Diagnóstico: testa conectividade com IDwall sem criar relatório."""
+    token = os.getenv("IDWALL_API_TOKEN", "")
+    token_ok = bool(token)
+    token_preview = (token[:8] + "…") if token else "(vazio)"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get("https://api-v2.idwall.co/relatorios", headers={"Authorization": token})
+        return {"token_ok": token_ok, "token_preview": token_preview, "http_status": r.status_code, "body_preview": r.text[:300]}
+    except httpx.TimeoutException:
+        return {"token_ok": token_ok, "token_preview": token_preview, "error": "timeout"}
+    except httpx.RequestError as exc:
+        return {"token_ok": token_ok, "token_preview": token_preview, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
+
 # ── Extração de indicadores financeiros ─────────────────────────────────────
 
 def _xlsx_to_text(data: bytes, filename: str) -> str:
