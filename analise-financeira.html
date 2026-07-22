@@ -2383,6 +2383,22 @@
 
 let _idwallLoading = false;
 
+const _IDWALL_SPIN = '<svg viewBox="0 0 24 24" fill="none" style="width:12px;height:12px;animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const _IDWALL_BTN_CONSULTAR   = '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Consultar BGC';
+const _IDWALL_BTN_RECONSULTAR = '<svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Reconsultar';
+
+function _idwallSetLoading(on) {
+  const btn  = document.getElementById('btn-idwall-consult');
+  const btnR = document.getElementById('btn-idwall-reconsult');
+  if (on) {
+    if (btn)  { btn.disabled  = true; btn.innerHTML  = _IDWALL_SPIN + ' Consultando…'; }
+    if (btnR) { btnR.disabled = true; btnR.innerHTML = _IDWALL_SPIN + ' Aguardando…'; }
+  } else {
+    if (btn)  { btn.disabled  = false; btn.innerHTML  = _IDWALL_BTN_CONSULTAR; }
+    if (btnR) { btnR.disabled = false; btnR.innerHTML = _IDWALL_BTN_RECONSULTAR; }
+  }
+}
+
 async function runIdwallConsulta() {
   if (_idwallLoading) return;
   if (!sol?.id) { showToast('Salve a solicitação antes de consultar.', 'error'); return; }
@@ -2390,24 +2406,40 @@ async function runIdwallConsulta() {
   if (!cnpj) { showToast('CNPJ não informado na solicitação.', 'error'); return; }
 
   _idwallLoading = true;
-  const btn  = document.getElementById('btn-idwall-consult');
-  const btnR = document.getElementById('btn-idwall-reconsult');
-  const loadingHtml = '<svg viewBox="0 0 24 24" fill="none" style="width:12px;height:12px;animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Consultando…';
-  if (btn)  { btn.disabled  = true; btn.innerHTML  = loadingHtml; }
-  if (btnR) { btnR.disabled = true; btnR.innerHTML = loadingHtml; }
+  _idwallSetLoading(true);
 
   try {
-    const res = await fetch(`${API_URL}/api/idwall/${sol.id}`, {
+    // 1. Criar relatório (resposta rápida — só devolve protocolo)
+    const createRes = await fetch(`${API_URL}/api/idwall/${sol.id}`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cnpj }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || `Erro ${res.status}`);
+    if (!createRes.ok) {
+      const err = await createRes.json().catch(() => ({}));
+      throw new Error(err.detail || `Erro HTTP ${createRes.status} ao criar relatório`);
     }
-    const data = await res.json();
+    const { protocolo } = await createRes.json();
+
+    // 2. Polling até CONCLUIDO (máx 20 tentativas × 3 s = 60 s)
+    let data = null;
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const pollRes = await fetch(
+        `${API_URL}/api/idwall-poll/${encodeURIComponent(protocolo)}?cnpj=${encodeURIComponent(cnpj)}`,
+        { credentials: 'include' }
+      );
+      if (!pollRes.ok) {
+        const err = await pollRes.json().catch(() => ({}));
+        throw new Error(err.detail || `Erro HTTP ${pollRes.status} no polling`);
+      }
+      const pollData = await pollRes.json();
+      if (pollData.status === 'CONCLUIDO') { data = pollData; break; }
+    }
+
+    if (!data) throw new Error('IDwall não concluiu o relatório em 60 segundos. Tente novamente.');
+
     sol.idwall = data;
     DB.solicitacoes.update(sol.id, { idwall: data });
     sol = DB.solicitacoes.getById(sol.id);
@@ -2418,10 +2450,7 @@ async function runIdwallConsulta() {
     showToast('Erro na consulta IDwall: ' + (e.message || 'Tente novamente.'), 'error');
   } finally {
     _idwallLoading = false;
-    const consultarHtml = '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Consultar BGC';
-    const reconsultarHtml = '<svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Reconsultar';
-    if (btn)  { btn.disabled  = false; btn.innerHTML  = consultarHtml; }
-    if (btnR) { btnR.disabled = false; btnR.innerHTML = reconsultarHtml; }
+    _idwallSetLoading(false);
   }
 }
 

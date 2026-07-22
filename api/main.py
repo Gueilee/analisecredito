@@ -1283,7 +1283,7 @@ async def delete_doc(sol_id: str, nome: str, request: Request, current_user=Depe
 @app.post("/api/idwall/{sol_id}")
 @limiter.limit("10/minute")
 async def run_idwall_bgc(sol_id: str, request: Request, current_user=Depends(_get_current_user)):
-    """Consulta BGC completo PJ via IDwall API e retorna validações estruturadas."""
+    """Cria relatório BGC PJ na IDwall e retorna protocolo para polling pelo cliente."""
     if not _SOL_ID_RE.match(sol_id):
         raise HTTPException(400, "sol_id inválido.")
 
@@ -1298,7 +1298,7 @@ async def run_idwall_bgc(sol_id: str, request: Request, current_user=Depends(_ge
 
     hdrs = {"Authorization": token, "Content-Type": "application/json"}
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
         create_res = await client.post(
             "https://api-v2.idwall.co/relatorios",
             json={"matriz": "vendemmia_bgc_completo_v2_pj", "parametros": {"cnpj_numero": cnpj}},
@@ -1306,46 +1306,64 @@ async def run_idwall_bgc(sol_id: str, request: Request, current_user=Depends(_ge
         )
 
     if create_res.status_code not in (200, 201):
-        body_text = create_res.text[:400]
+        body_text = create_res.text[:600]
         raise HTTPException(502, f"IDwall HTTP {create_res.status_code}: {body_text}")
 
     protocolo = create_res.json().get("result", {}).get("protocolo")
     if not protocolo:
-        raise HTTPException(502, "IDwall não retornou protocolo do relatório.")
+        raise HTTPException(502, f"IDwall não retornou protocolo. Resposta: {create_res.text[:400]}")
 
-    # Poll até CONCLUIDO (máx ~30 s)
-    for _ in range(15):
-        await asyncio.sleep(2)
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            poll = await client.get(
-                f"https://api-v2.idwall.co/relatorios/{protocolo}",
-                headers=hdrs,
-            )
-        if poll.status_code != 200:
-            continue
-        data = poll.json().get("result", {})
-        if data.get("status") == "CONCLUIDO":
-            matrix = data.get("matrix_data") or {}
-            validacoes_raw = matrix.get("validacoes") or {}
-            validacoes = [
-                {
-                    "nome": v.get("descricao") or k,
-                    "status": v.get("status", ""),
-                    "resultado": v.get("resultado", ""),
-                }
-                for k, v in validacoes_raw.items()
-            ]
-            return {
-                "protocolo": protocolo,
-                "status": "CONCLUIDO",
-                "resultado": data.get("resultado", ""),
-                "nomeEmpresa": data.get("nome", ""),
-                "cnpj": cnpj,
-                "consultadaEm": date.today().isoformat(),
-                "validacoes": validacoes,
-            }
+    # Retorna protocolo imediatamente — polling é feito pelo cliente via /api/idwall-poll
+    return {"protocolo": protocolo, "status": "EM_EXECUCAO"}
 
-    raise HTTPException(504, "IDwall não concluiu o relatório no tempo esperado. Tente novamente.")
+
+@app.get("/api/idwall-poll/{protocolo}")
+@limiter.limit("30/minute")
+async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", current_user=Depends(_get_current_user)):
+    """Consulta o status de um relatório IDwall. Retorna dados completos quando CONCLUIDO."""
+    if not re.match(r'^[a-zA-Z0-9_\-]{4,128}$', protocolo):
+        raise HTTPException(400, "protocolo inválido.")
+
+    token = os.getenv("IDWALL_API_TOKEN", "")
+    if not token:
+        raise HTTPException(503, "IDwall não configurado no servidor.")
+
+    hdrs = {"Authorization": token, "Content-Type": "application/json"}
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        poll = await client.get(
+            f"https://api-v2.idwall.co/relatorios/{protocolo}",
+            headers=hdrs,
+        )
+
+    if poll.status_code != 200:
+        raise HTTPException(502, f"IDwall poll HTTP {poll.status_code}: {poll.text[:300]}")
+
+    data = poll.json().get("result", {})
+    status = data.get("status", "")
+
+    if status != "CONCLUIDO":
+        return {"status": status, "protocolo": protocolo}
+
+    matrix = data.get("matrix_data") or {}
+    validacoes_raw = matrix.get("validacoes") or {}
+    validacoes = [
+        {
+            "nome": v.get("descricao") or k,
+            "status": v.get("status", ""),
+            "resultado": v.get("resultado", ""),
+        }
+        for k, v in validacoes_raw.items()
+    ]
+    return {
+        "protocolo": protocolo,
+        "status": "CONCLUIDO",
+        "resultado": data.get("resultado", ""),
+        "nomeEmpresa": data.get("nome", ""),
+        "cnpj": cnpj,
+        "consultadaEm": date.today().isoformat(),
+        "validacoes": validacoes,
+    }
 
 
 # ── Extração de indicadores financeiros ─────────────────────────────────────
