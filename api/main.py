@@ -1397,6 +1397,7 @@ async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", curr
         ]
 
     resultado_final = data.get("resultado", "") or status
+    matrix = data.get("matrix_data") or data
     return {
         "protocolo": protocolo,
         "status": "CONCLUIDO",
@@ -1405,6 +1406,11 @@ async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", curr
         "cnpj": cnpj,
         "consultadaEm": date.today().isoformat(),
         "validacoes": validacoes,
+        "_debug_result_keys": list(data.keys()),
+        "_debug_matrix_keys": list(matrix.keys()) if isinstance(matrix, dict) else str(type(matrix)),
+        "_debug_validacoes_raw_type": type(validacoes_raw).__name__,
+        "_debug_validacoes_raw": validacoes_raw if not isinstance(validacoes_raw, dict) or len(validacoes_raw) < 5 else {k: v for k, v in list(validacoes_raw.items())[:3]},
+        "_debug_matrix_data": str(data.get("matrix_data", ""))[:500],
     }
 
 
