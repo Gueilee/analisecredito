@@ -2728,35 +2728,39 @@ function renderIdwallCard(d) {
 
     // Dívida Ativa
     const divida = dados.divida_ativa || {};
-    if (divida.nome) {
-      sections.push(`
-        <div class="idwall-dados-section">
-          <div class="idwall-dados-title">Dívida Ativa na Fazenda</div>
-          <div class="idwall-dados-grid">
+    sections.push(`
+      <div class="idwall-dados-section">
+        <div class="idwall-dados-title">Dívida Ativa na Fazenda</div>
+        <div class="idwall-dados-grid">
+          ${divida.nome ? `
             <div class="idwall-dados-row"><span class="idwall-dados-lbl">Devedor</span><span class="idwall-dados-val">${_escHtml(divida.nome)}</span></div>
             <div class="idwall-dados-row"><span class="idwall-dados-lbl">Valor Devido</span><span class="idwall-dados-val" style="color:#f87171;font-weight:700;">R$ ${_escHtml(divida.valor_devido)}</span></div>
-          </div>
-        </div>`);
-    }
+          ` : `
+            <div class="idwall-dados-row"><span class="idwall-dados-val" style="color:#4ade80;">&#10003; Nenhum registro de dívida ativa encontrado</span></div>
+          `}
+        </div>
+      </div>`);
 
     // Contribuinte (SINTEGRA)
     const contrib = dados.contribuinte || {};
-    if (contrib.situacao_ie) {
-      const ieOk = (contrib.situacao_ie || '').toLowerCase() === 'habilitado';
-      const docOk = (contrib.situacao_documento || '').toLowerCase().includes('sem restrição') || (contrib.situacao_documento || '').toLowerCase().includes('sem restricao');
-      sections.push(`
-        <div class="idwall-dados-section">
-          <div class="idwall-dados-title">Contribuinte (SINTEGRA/SEFAZ)</div>
-          <div class="idwall-dados-grid">
+    const ieOk = (contrib.situacao_ie || '').toLowerCase() === 'habilitado';
+    const docOk = (contrib.situacao_documento || '').toLowerCase().includes('sem restrição') || (contrib.situacao_documento || '').toLowerCase().includes('sem restricao');
+    sections.push(`
+      <div class="idwall-dados-section">
+        <div class="idwall-dados-title">Contribuinte (SINTEGRA/SEFAZ)</div>
+        <div class="idwall-dados-grid">
+          ${contrib.situacao_ie ? `
             <div class="idwall-dados-row"><span class="idwall-dados-lbl">Inscrição Estadual</span><span class="idwall-dados-val">${_escHtml(contrib.inscricao_estadual || '—')}</span></div>
             <div class="idwall-dados-row"><span class="idwall-dados-lbl">Situação IE</span><span class="idwall-dados-val"><span class="idwall-dados-badge ${ieOk ? 'ok' : 'warn'}">${_escHtml(contrib.situacao_ie)}</span></span></div>
             <div class="idwall-dados-row"><span class="idwall-dados-lbl">Situação CNPJ</span><span class="idwall-dados-val"><span class="idwall-dados-badge ${docOk ? 'ok' : 'warn'}">${_escHtml(contrib.situacao_documento || '—')}</span></span></div>
             ${contrib.tipo_ie ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Tipo IE</span><span class="idwall-dados-val">${_escHtml(contrib.tipo_ie)}</span></div>` : ''}
             ${contrib.regime_tributacao ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Regime</span><span class="idwall-dados-val">${_escHtml(contrib.regime_tributacao)}</span></div>` : ''}
             ${contrib.municipio ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Município</span><span class="idwall-dados-val">${_escHtml(contrib.municipio)}${contrib.estado ? '/' + contrib.estado : ''}</span></div>` : ''}
-          </div>
-        </div>`);
-    }
+          ` : `
+            <div class="idwall-dados-row"><span class="idwall-dados-val" style="color:var(--text-faint);">Sem informação de Inscrição Estadual para este CNPJ</span></div>
+          `}
+        </div>
+      </div>`);
 
     if (sections.length > 0) {
       dadosCont.innerHTML = sections.join('');
