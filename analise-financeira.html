@@ -2542,7 +2542,10 @@ function _updateIdwallBureau() {
     if (el)   { el.textContent = `Aprovado · ${validas}/${total} regras válidas`; el.style.color = '#4ade80'; }
     if (icon) icon.className = 'bureau-icon ok';
   } else if (res === 'INVALID') {
-    if (el)   { el.textContent = `${invalidas} irregularidade${invalidas !== 1 ? 's' : ''} encontrada${invalidas !== 1 ? 's' : ''}`; el.style.color = '#f87171'; }
+    const msgIrr = invalidas > 0
+      ? `${invalidas} irregularidade${invalidas !== 1 ? 's' : ''} encontrada${invalidas !== 1 ? 's' : ''}`
+      : (d.mensagem || 'Irregularidades encontradas na consulta');
+    if (el)   { el.textContent = msgIrr; el.style.color = '#f87171'; }
     if (icon) icon.className = 'bureau-icon error';
   } else {
     if (el)   { el.textContent = 'Consulta realizada'; el.style.color = 'var(--text-faint)'; }
@@ -2579,18 +2582,22 @@ function renderIdwallCard(d) {
 
   const validacoes = d.validacoes || [];
   if (validacoes.length === 0) {
-    document.getElementById('idwall-rules').innerHTML =
-      '<div style="font-size:.78rem;color:var(--text-faint);padding:.5rem 0;">Nenhuma regra de validação retornada.</div>';
+    const emptyMsg = d.mensagem
+      ? `<div style="font-size:.78rem;color:var(--text-faint);padding:.5rem 0;">${_escHtml(d.mensagem)}</div>`
+      : '<div style="font-size:.78rem;color:var(--text-faint);padding:.5rem 0;">Nenhuma regra de validação retornada.</div>';
+    document.getElementById('idwall-rules').innerHTML = emptyMsg;
   } else {
     document.getElementById('idwall-rules').innerHTML = validacoes.map(v => {
       const st  = (v.status || 'NO_DATA').toUpperCase();
       const cls = st === 'VALID' ? 'valid' : st === 'INVALID' ? 'invalid' : st === 'ERROR' ? 'error' : 'no_data';
       const ico = iconsMap[st] || iconsMap.NO_DATA;
+      const nomeDisplay = v.nome || v.resultado || 'Regra';
+      const descDisplay = v.mensagem || v.resultado || '';
       return `<div class="idwall-rule">
         <div class="idwall-rule-icon ${cls}">${ico}</div>
         <div class="idwall-rule-body">
-          <div class="idwall-rule-name">${_escHtml(v.nome || v.resultado || 'Regra')}</div>
-          ${v.resultado ? `<div class="idwall-rule-code">${_escHtml(v.resultado)}</div>` : ''}
+          <div class="idwall-rule-name">${_escHtml(nomeDisplay)}</div>
+          ${descDisplay ? `<div class="idwall-rule-code">${_escHtml(descDisplay)}</div>` : ''}
         </div>
       </div>`;
     }).join('');

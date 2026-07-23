@@ -1371,46 +1371,56 @@ async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", curr
 
     # IDwall estados terminais: CONCLUIDO (com resultado APROVADO/REPROVADO/INCONCLUSIVO)
     # Estado pendente: "EM ANALISE" (com espaço, não underscore)
-    if status not in ("CONCLUIDO", "APROVADO", "REPROVADO", "INCONCLUSIVO", "ERRO"):
+    if status not in ("CONCLUIDO", "APROVADO", "REPROVADO", "INCONCLUSIVO", "ERRO", "INVALID"):
         return {"status": status, "protocolo": protocolo}
 
-    # Validações: podem estar em matrix_data.validacoes ou diretamente em validacoes
-    matrix = data.get("matrix_data") or data
-    validacoes_raw = matrix.get("validacoes") or {}
-    if isinstance(validacoes_raw, list):
-        validacoes = [
-            {
-                "nome": v.get("descricao") or v.get("nome", ""),
-                "status": v.get("status", ""),
-                "resultado": v.get("resultado", ""),
-            }
-            for v in validacoes_raw
-        ]
-    else:
-        validacoes = [
-            {
-                "nome": v.get("descricao") or k,
-                "status": v.get("status", ""),
-                "resultado": v.get("resultado", ""),
-            }
-            for k, v in validacoes_raw.items()
-        ]
+    # Busca sub-relatórios (validações individuais ficam em relatórios filhos no BGC v2)
+    validacoes: list = []
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            children_res = await client.get(
+                "https://api-v2.idwall.co/relatorios",
+                params={"numero_pai": protocolo},
+                headers=hdrs,
+            )
+        if children_res.status_code == 200:
+            itens = children_res.json().get("result", {}).get("itens", []) or []
+            for item in itens:
+                validacoes.append({
+                    "nome": item.get("nome") or item.get("matriz") or "",
+                    "status": item.get("status", ""),
+                    "resultado": item.get("resultado", ""),
+                    "mensagem": item.get("mensagem", ""),
+                })
+    except Exception:
+        pass
+
+    # Fallback: validacoes inline (matrix_data ou raiz)
+    if not validacoes:
+        matrix = data.get("matrix_data") or data
+        validacoes_raw = matrix.get("validacoes") or {}
+        if isinstance(validacoes_raw, list):
+            validacoes = [
+                {"nome": v.get("descricao") or v.get("nome", ""), "status": v.get("status", ""), "resultado": v.get("resultado", "")}
+                for v in validacoes_raw
+            ]
+        elif isinstance(validacoes_raw, dict):
+            validacoes = [
+                {"nome": v.get("descricao") or k, "status": v.get("status", ""), "resultado": v.get("resultado", "")}
+                for k, v in validacoes_raw.items()
+            ]
 
     resultado_final = data.get("resultado", "") or status
-    matrix = data.get("matrix_data") or data
+    mensagem = data.get("mensagem", "")
     return {
         "protocolo": protocolo,
         "status": "CONCLUIDO",
         "resultado": resultado_final,
-        "nomeEmpresa": data.get("nome", ""),
+        "mensagem": mensagem,
+        "nomeEmpresa": "",
         "cnpj": cnpj,
         "consultadaEm": date.today().isoformat(),
         "validacoes": validacoes,
-        "_debug_result_keys": list(data.keys()),
-        "_debug_matrix_keys": list(matrix.keys()) if isinstance(matrix, dict) else str(type(matrix)),
-        "_debug_validacoes_raw_type": type(validacoes_raw).__name__,
-        "_debug_validacoes_raw": validacoes_raw if not isinstance(validacoes_raw, dict) or len(validacoes_raw) < 5 else {k: v for k, v in list(validacoes_raw.items())[:3]},
-        "_debug_matrix_data": str(data.get("matrix_data", ""))[:500],
     }
 
 
