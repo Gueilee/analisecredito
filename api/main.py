@@ -1369,58 +1369,92 @@ async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", curr
 
     status = data.get("status", "")
 
-    # IDwall estados terminais: CONCLUIDO (com resultado APROVADO/REPROVADO/INCONCLUSIVO)
-    # Estado pendente: "EM ANALISE" (com espaço, não underscore)
     if status not in ("CONCLUIDO", "APROVADO", "REPROVADO", "INCONCLUSIVO", "ERRO", "INVALID"):
         return {"status": status, "protocolo": protocolo}
 
-    # Busca sub-relatórios (validações individuais ficam em relatórios filhos no BGC v2)
+    # Busca dados estruturados dos sub-endpoints /validacoes e /dados
     validacoes: list = []
+    dados_extras: dict = {}
+
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            children_res = await client.get(
-                "https://api-v2.idwall.co/relatorios",
-                params={"numero_pai": protocolo},
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r_val = await client.get(
+                f"https://api-v2.idwall.co/relatorios/{protocolo}/validacoes",
                 headers=hdrs,
             )
-        if children_res.status_code == 200:
-            itens = children_res.json().get("result", {}).get("itens", []) or []
-            for item in itens:
-                validacoes.append({
-                    "nome": item.get("nome") or item.get("matriz") or "",
-                    "status": item.get("status", ""),
-                    "resultado": item.get("resultado", ""),
-                    "mensagem": item.get("mensagem", ""),
-                })
+            if r_val.status_code == 200:
+                for v in (r_val.json().get("result", {}).get("validacoes") or []):
+                    validacoes.append({
+                        "nome": v.get("nome", ""),
+                        "descricao": v.get("descricao", ""),
+                        "status": v.get("resultado", ""),
+                        "resultado": v.get("resultado", ""),
+                        "mensagem": v.get("mensagem", ""),
+                    })
+
+            r_dados = await client.get(
+                f"https://api-v2.idwall.co/relatorios/{protocolo}/dados",
+                headers=hdrs,
+            )
+            if r_dados.status_code == 200:
+                d = r_dados.json().get("result", {})
+                ci = d.get("cnpj") or {}
+                proc = d.get("processos") or {}
+                trf = d.get("processos_trf") or {}
+                divida = d.get("divida_ativa") or {}
+                contrib_list = (d.get("contribuinte") or {}).get("itens") or []
+                contrib = contrib_list[0] if contrib_list else {}
+                dados_extras = {
+                    "empresa": {
+                        "razao_social": ci.get("nome_empresarial", ""),
+                        "atividade_principal": ci.get("atividade_principal", ""),
+                        "capital_social": ci.get("capital_social"),
+                        "data_abertura": ci.get("data_abertura", ""),
+                        "situacao_cadastral": ci.get("situacao_cadastral", ""),
+                        "natureza_juridica": ci.get("natureza_juridica", ""),
+                        "cidade": (ci.get("localizacao") or {}).get("cidade", ""),
+                        "estado_uf": (ci.get("localizacao") or {}).get("estado", ""),
+                        "email": ci.get("email", ""),
+                        "qsa": [s.get("nome", "") for s in (ci.get("qsa") or []) if s.get("nome")],
+                    },
+                    "processos": {
+                        "total": len(proc.get("itens") or []),
+                        "estados_com_processos": proc.get("estados_com_processos") or [],
+                    },
+                    "processos_trf": {
+                        "total": trf.get("quantidade_processos") or 0,
+                        "estados_consultados": len(trf.get("estados_consultados") or []),
+                    },
+                    "divida_ativa": {
+                        "nome": divida.get("nome", ""),
+                        "valor_devido": divida.get("valor_devido", ""),
+                    } if divida.get("nome") else {},
+                    "contribuinte": {
+                        "situacao_ie": contrib.get("situacao_ie", ""),
+                        "tipo_ie": contrib.get("tipo_ie", ""),
+                        "inscricao_estadual": contrib.get("inscricao_estadual", ""),
+                        "situacao_documento": contrib.get("situacao_documento", ""),
+                        "regime_tributacao": contrib.get("regime_tributacao", ""),
+                        "estado": contrib.get("estado", ""),
+                        "municipio": contrib.get("municipio", ""),
+                    } if contrib else {},
+                }
     except Exception:
         pass
 
-    # Fallback: validacoes inline (matrix_data ou raiz)
-    if not validacoes:
-        matrix = data.get("matrix_data") or data
-        validacoes_raw = matrix.get("validacoes") or {}
-        if isinstance(validacoes_raw, list):
-            validacoes = [
-                {"nome": v.get("descricao") or v.get("nome", ""), "status": v.get("status", ""), "resultado": v.get("resultado", "")}
-                for v in validacoes_raw
-            ]
-        elif isinstance(validacoes_raw, dict):
-            validacoes = [
-                {"nome": v.get("descricao") or k, "status": v.get("status", ""), "resultado": v.get("resultado", "")}
-                for k, v in validacoes_raw.items()
-            ]
-
     resultado_final = data.get("resultado", "") or status
     mensagem = data.get("mensagem", "")
+
     return {
         "protocolo": protocolo,
         "status": "CONCLUIDO",
         "resultado": resultado_final,
         "mensagem": mensagem,
-        "nomeEmpresa": "",
+        "nomeEmpresa": dados_extras.get("empresa", {}).get("razao_social", ""),
         "cnpj": cnpj,
         "consultadaEm": date.today().isoformat(),
         "validacoes": validacoes,
+        "dados": dados_extras,
     }
 
 
