@@ -1424,6 +1424,28 @@ async def poll_idwall_bgc(protocolo: str, request: Request, cnpj: str = "", curr
     }
 
 
+@app.get("/api/idwall-inspect/{numero}")
+@limiter.limit("5/minute")
+async def idwall_inspect(numero: str, request: Request, current_user=Depends(_get_current_user)):
+    """Diagnóstico: busca todos os sub-endpoints de um relatório para mapear estrutura JSON."""
+    if not re.match(r'^[a-zA-Z0-9_\-]{4,128}$', numero):
+        raise HTTPException(400, "numero inválido.")
+    token = os.getenv("IDWALL_API_TOKEN", "")
+    if not token:
+        raise HTTPException(503, "IDwall não configurado.")
+    hdrs = {"Authorization": token, "Content-Type": "application/json"}
+    base = f"https://api-v2.idwall.co/relatorios/{numero}"
+    result = {}
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        for endpoint in ("", "/dados", "/validacoes", "/consultas", "/parametros"):
+            try:
+                r = await client.get(base + endpoint, headers=hdrs)
+                result[endpoint or "/"] = {"status": r.status_code, "body": r.json() if r.status_code == 200 else r.text[:500]}
+            except Exception as exc:
+                result[endpoint or "/"] = {"error": str(exc)}
+    return result
+
+
 @app.get("/api/idwall-ping")
 @limiter.limit("5/minute")
 async def idwall_ping(request: Request, current_user=Depends(_get_current_user)):
