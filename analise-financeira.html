@@ -669,10 +669,6 @@
                 <div>
                   <div class="bureau-name">Receita Federal</div>
                   <div class="bureau-sub" id="rf-status">Nenhuma consulta realizada</div>
-                  <button class="btn-idwall-consult" id="btn-rf-consult" onclick="runRFConsulta()">
-                    <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                    Consultar CNPJ
-                  </button>
                 </div>
               </div>
               <div class="bureau-item">
@@ -921,14 +917,11 @@
     renderSolDetails();
     loadFinancials();
 
-    // Se já tem dados da Receita Federal consultados separadamente, exibir
+    // Se já tem dados da Receita Federal, atualiza ícone do bureau (dados exibidos no card IDwall)
     if (sol.rf_data && sol.rf_data.status === 'ok') {
       const _rfd = sol.rf_data.data || {};
       document.getElementById('rf-icon').className = 'bureau-icon ok';
       document.getElementById('rf-status').textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
-      if (_rfd.razao_social) renderRF(_rfd);
-      const _bRf = document.getElementById('btn-rf-consult');
-      if (_bRf) _bRf.style.display = 'none';
     }
 
     // Se já tem análise salva, mantém botões visíveis (análise IA removida do fluxo)
@@ -2469,6 +2462,38 @@ async function checkIdwallPending() {
   }
 }
 
+async function _fetchRFParallel(cnpj) {
+    const rfIcon = document.getElementById('rf-icon');
+    const rfStatus = document.getElementById('rf-status');
+    if (rfIcon) rfIcon.className = 'bureau-icon wait';
+    if (rfStatus) rfStatus.textContent = 'Consultando…';
+    try {
+      const cnpjClean = (cnpj || '').replace(/\D/g, '');
+      const res = await fetch(`${API_URL}/api/receita/${cnpjClean}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rf = await res.json();
+      const rfd = rf.data || {};
+      if (rf.status === 'ok') {
+        if (rfIcon) rfIcon.className = 'bureau-icon ok';
+        if (rfStatus) rfStatus.textContent = 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK');
+        const rfExtra = {
+          nome_fantasia: rfd.nome_fantasia || '',
+          porte: rfd.descricao_porte || '',
+          simples: rfd.opcao_pelo_simples,
+          mei: rfd.opcao_pelo_mei,
+        };
+        DB.solicitacoes.update(sol.id, { rf_data: rf, rf_extra: rfExtra, rf_consultada_at: new Date().toISOString() });
+        sol = DB.solicitacoes.getById(sol.id);
+      } else {
+        if (rfIcon) rfIcon.className = 'bureau-icon error';
+        if (rfStatus) rfStatus.textContent = rf.status === 'not_found' ? 'CNPJ não encontrado' : (rf.error || 'Erro na consulta');
+      }
+    } catch (e) {
+      if (rfIcon) rfIcon.className = 'bureau-icon error';
+      if (rfStatus) rfStatus.textContent = 'Falha na comunicação';
+    }
+  }
+
 async function runIdwallConsulta() {
   if (_idwallLoading) return;
   // Relatório pendente? Verifica status em vez de criar novo
@@ -2500,6 +2525,9 @@ async function runIdwallConsulta() {
     const pendingData = { numero: protocolo, cnpj };
     sol.idwall_pending = pendingData;
     DB.solicitacoes.update(sol.id, { idwall_pending: pendingData });
+
+    // Consulta Receita Federal em paralelo (não aguarda — preenche campos extras no card IDwall)
+    _fetchRFParallel(cnpj);
 
     // 2. Polling até CONCLUIDO (máx 60 tentativas × 5 s = 5 min)
     let data = null;
@@ -2654,22 +2682,29 @@ function renderIdwallCard(d) {
   if (dadosCont) {
     const sections = [];
 
-    // Empresa (Receita Federal)
+    // Empresa (IDwall /dados + campos complementares da Receita Federal em paralelo)
     const emp = dados.empresa || {};
     if (emp.razao_social) {
       const capFmt = emp.capital_social
         ? 'R$ ' + Number(emp.capital_social).toLocaleString('pt-BR')
         : '—';
       const qsaFmt = (emp.qsa || []).slice(0,3).join(', ') || '—';
+      const rfE = sol?.rf_extra || {};
+      const rfSimples = rfE.simples === true ? 'Sim' : rfE.simples === false ? 'Não' : '';
+      const rfMei    = rfE.mei    === true ? 'Sim' : rfE.mei    === false ? 'Não' : '';
       sections.push(`
         <div class="idwall-dados-section">
           <div class="idwall-dados-title">Dados da Empresa (Receita Federal)</div>
           <div class="idwall-dados-grid">
             <div class="idwall-dados-row"><span class="idwall-dados-lbl">Razão Social</span><span class="idwall-dados-val">${_escHtml(emp.razao_social)}</span></div>
+            ${rfE.nome_fantasia ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Nome Fantasia</span><span class="idwall-dados-val">${_escHtml(rfE.nome_fantasia)}</span></div>` : ''}
             ${emp.natureza_juridica ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Natureza Jurídica</span><span class="idwall-dados-val">${_escHtml(emp.natureza_juridica)}</span></div>` : ''}
+            ${rfE.porte ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Porte</span><span class="idwall-dados-val">${_escHtml(rfE.porte)}</span></div>` : ''}
             ${emp.atividade_principal ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Atividade Principal</span><span class="idwall-dados-val">${_escHtml(emp.atividade_principal)}</span></div>` : ''}
             <div class="idwall-dados-row"><span class="idwall-dados-lbl">Capital Social</span><span class="idwall-dados-val">${capFmt}</span></div>
             ${emp.data_abertura ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Abertura</span><span class="idwall-dados-val">${_escHtml(emp.data_abertura)}</span></div>` : ''}
+            ${rfSimples ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Simples Nacional</span><span class="idwall-dados-val"><span class="idwall-dados-badge ${rfSimples === 'Sim' ? 'warn' : 'ok'}">${rfSimples}</span></span></div>` : ''}
+            ${rfMei ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">MEI</span><span class="idwall-dados-val"><span class="idwall-dados-badge ${rfMei === 'Sim' ? 'warn' : 'ok'}">${rfMei}</span></span></div>` : ''}
             ${emp.cidade ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Localização</span><span class="idwall-dados-val">${_escHtml(emp.cidade)}${emp.estado_uf ? '/' + emp.estado_uf : ''}</span></div>` : ''}
             ${emp.email ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">E-mail</span><span class="idwall-dados-val">${_escHtml(emp.email)}</span></div>` : ''}
             ${qsaFmt !== '—' ? `<div class="idwall-dados-row"><span class="idwall-dados-lbl">Quadro Societário</span><span class="idwall-dados-val">${_escHtml(qsaFmt)}</span></div>` : ''}
