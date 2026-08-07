@@ -676,6 +676,9 @@
                 </div>
               </div>
             </div>
+            <!-- rf-icon e rf-status ocultos — mantidos para não quebrar referências JS -->
+            <span id="rf-icon" style="display:none;"></span>
+            <span id="rf-status" style="display:none;"></span>
           </div>
 
           <!-- ── IDwall BGC Card ── -->
@@ -908,12 +911,7 @@
     renderSolDetails();
     loadFinancials();
 
-    // Se já tem dados da Receita Federal, atualiza ícone do bureau (dados exibidos no card IDwall)
-    if (sol.rf_data && sol.rf_data.status === 'ok') {
-      const _rfd = sol.rf_data.data || {};
-      document.getElementById('rf-icon').className = 'bureau-icon ok';
-      document.getElementById('rf-status').textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
-    }
+    // RF consultada em paralelo com IDwall — bureau consolidado no card IDwall
 
     // Botões de PDF e Simulação sempre visíveis para todos os clientes
     document.getElementById('btn-exposicao').style.display = '';
