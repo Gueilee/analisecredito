@@ -915,11 +915,9 @@
       document.getElementById('rf-status').textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
     }
 
-    // Se já tem análise salva, mantém botões visíveis (análise IA removida do fluxo)
-    if (sol.analise) {
-      document.getElementById('btn-exposicao').style.display = '';
-      document.getElementById('btn-pdf').style.display = '';
-    }
+    // Botões de PDF e Simulação sempre visíveis para todos os clientes
+    document.getElementById('btn-exposicao').style.display = '';
+    document.getElementById('btn-pdf').style.display = '';
 
     // ── Tipo simplificado: Armazém / Transporte ────────────────────────────
     // Esses segmentos só precisam de RF + IDwall BGC — sem IA, sem financeiros
@@ -945,11 +943,10 @@
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-      document.getElementById('btn-exposicao').style.display = 'none';
-      document.getElementById('btn-pdf').style.display       = 'none';
+      // PDF e Simulação mantidos visíveis mesmo para análise simplificada
 
       // Painel de decisão visível imediatamente (sem exigir análise de IA)
-      if (!['aprovado', 'negado', 'em_comite'].includes(sol.status)) {
+      if (!['aprovado', 'negado'].includes(sol.status)) {
         if (canDecide) document.getElementById('decision-card').style.display = '';
         else           document.getElementById('pending-decision-banner').style.display = '';
       }
@@ -957,7 +954,7 @@
 
     // Painel de decisão visível imediatamente para qualquer tipo de cliente (Trade incluso)
     // Permite que o time financeiro lance limites e decisões sem precisar rodar análise de IA
-    if (!_isSimplificado && !['aprovado', 'negado', 'em_comite'].includes(sol.status)) {
+    if (!_isSimplificado && !['aprovado', 'negado'].includes(sol.status)) {
       if (canDecide) document.getElementById('decision-card').style.display = '';
       else           document.getElementById('pending-decision-banner').style.display = '';
     }
@@ -983,8 +980,8 @@
         `<span class="badge ${DB.utils.statusBadge['em_analise']}">${DB.utils.statusLabel['em_analise']}</span>`;
     }
 
-    // Se já tem decisão
-    if (['aprovado','negado','em_comite'].includes(sol.status)) renderDecisionResult();
+    // Se já tem decisão final, renderiza resultado; em_comite ainda mostra card de decisão
+    if (['aprovado','negado'].includes(sol.status)) renderDecisionResult();
 
     // Bloquear edição em processos finalizados
     if (['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
@@ -1787,7 +1784,7 @@
 
     card.style.display = '';
     document.getElementById('trigger-card').style.display = 'none';
-    document.getElementById('decision-card').style.display = 'none';
+    // decision-card permanece visível para que o analista registre a decisão final após o comitê
   }
 
   /* ── Deliberação inline do Comitê (a partir da tela de análise) ── */
