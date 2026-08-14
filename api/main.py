@@ -4,6 +4,7 @@ FastAPI + BrasilAPI (Receita Federal) + Gemini AI
 """
 
 import asyncio
+import asyncpg
 import base64
 import io
 import json
@@ -11,8 +12,10 @@ import os
 import re
 import secrets
 import smtplib
+import ssl as _ssl_mod
 import uuid
 import zipfile
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -55,48 +58,171 @@ DOCS_DIR.mkdir(exist_ok=True)
 BACKUPS_DIR = _TMP_BASE / "backups"
 BACKUPS_DIR.mkdir(exist_ok=True)
 
-# ── Turso / libSQL ────────────────────────────────────────────────────────────
-_TURSO_URL   = os.getenv("TURSO_URL",   "")
-_TURSO_TOKEN = os.getenv("TURSO_TOKEN", "")
+# ── PostgreSQL / Azure ────────────────────────────────────────────────────────
+_PG_HOST = os.getenv("PG_HOST", "")
+_PG_USER = os.getenv("PG_USER", "")
+_PG_PASS = os.getenv("PG_PASS", "")
+_PG_DB   = os.getenv("PG_DB",   "vdm_projetos")
+_PG_PORT = int(os.getenv("PG_PORT", "5432"))
+
+_PG_POOL: asyncpg.Pool | None = None
 
 
 def _turso_ok() -> bool:
-    return bool(_TURSO_URL and _TURSO_TOKEN)
+    """Retorna True se o pool PostgreSQL está disponível."""
+    return _PG_POOL is not None
 
 
-def _turso_http() -> str:
-    return _TURSO_URL.replace("libsql://", "https://")
+def _mk_ssl() -> _ssl_mod.SSLContext:
+    ctx = _ssl_mod.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode    = _ssl_mod.CERT_NONE
+    return ctx
 
 
-async def _turso(stmts: list) -> dict:
-    if not _turso_ok():
-        raise HTTPException(503, "Banco de dados Turso não configurado.")
-    url = f"{_turso_http()}/v2/pipeline"
-    payload = {"requests": [{"type": "execute", "stmt": s} for s in stmts] + [{"type": "close"}]}
-    async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.post(url, json=payload, headers={"Authorization": f"Bearer {_TURSO_TOKEN}"})
-    r.raise_for_status()
-    return r.json()
+async def _pg_init() -> None:
+    global _PG_POOL
+    if not (_PG_HOST and _PG_USER and _PG_PASS):
+        print("[DB] PG_HOST/PG_USER/PG_PASS não configurados — banco desabilitado.")
+        return
+    try:
+        _PG_POOL = await asyncpg.create_pool(
+            host=_PG_HOST, port=_PG_PORT,
+            user=_PG_USER, password=_PG_PASS,
+            database=_PG_DB,
+            ssl=_mk_ssl(),
+            min_size=1, max_size=8,
+            command_timeout=15,
+        )
+        print(f"[DB] Pool PostgreSQL conectado → {_PG_HOST}/{_PG_DB}")
+    except Exception as exc:
+        print(f"[DB] Falha ao conectar PostgreSQL: {exc}")
+
+
+def _sql_pg(sql: str) -> str:
+    """Converte placeholders ? para $N (asyncpg)."""
+    parts  = sql.split("?")
+    result = parts[0]
+    for i, part in enumerate(parts[1:], 1):
+        result += f"${i}" + part
+    return result
 
 
 async def _turso_query(sql: str, args: list | None = None) -> list[dict]:
-    stmt: dict = {"sql": sql}
-    if args:
-        stmt["args"] = [{"type": "null"} if a is None else {"type": "text", "value": str(a)} for a in args]
-    result = await _turso([stmt])
-    res  = result["results"][0]["response"]["result"]
-    cols = [c["name"] for c in res["cols"]]
-    return [
-        dict(zip(cols, [v.get("value") if v.get("type") != "null" else None for v in row]))
-        for row in res["rows"]
-    ]
+    if _PG_POOL is None:
+        return []
+    async with _PG_POOL.acquire() as conn:
+        rows = await conn.fetch(_sql_pg(sql), *(args or []))
+        return [dict(row) for row in rows]
 
 
 async def _turso_exec(sql: str, args: list | None = None) -> None:
-    stmt: dict = {"sql": sql}
-    if args:
-        stmt["args"] = [{"type": "null"} if a is None else {"type": "text", "value": str(a)} for a in args]
-    await _turso([stmt])
+    if _PG_POOL is None:
+        return
+    async with _PG_POOL.acquire() as conn:
+        await conn.execute(_sql_pg(sql), *(args or []))
+
+
+# ── Criação de tabelas + seed de usuários ─────────────────────────────────────
+
+async def _ensure_tables() -> None:
+    """Cria tabelas ac_* no PostgreSQL se não existirem e semeia usuários iniciais."""
+    if _PG_POOL is None:
+        return
+    async with _PG_POOL.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_users (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL DEFAULT '',
+                email TEXT NOT NULL,
+                hashed_password TEXT DEFAULT '',
+                role TEXT DEFAULT 'Operações',
+                avatar TEXT DEFAULT '',
+                created_at TEXT DEFAULT '',
+                updated_at TEXT DEFAULT '',
+                UNIQUE (email)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_user_passwords (
+                email TEXT PRIMARY KEY,
+                hashed_password TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_password_reset_tokens (
+                token TEXT PRIMARY KEY,
+                email TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                used INTEGER DEFAULT 0
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_solicitacoes (
+                id TEXT PRIMARY KEY,
+                status TEXT DEFAULT 'pendente',
+                created_at TEXT DEFAULT '',
+                updated_at TEXT DEFAULT '',
+                created_by TEXT DEFAULT '',
+                data TEXT DEFAULT ''
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_analises (
+                id TEXT PRIMARY KEY,
+                sol_id TEXT DEFAULT '',
+                empresa TEXT DEFAULT '',
+                cnpj TEXT DEFAULT '',
+                status TEXT DEFAULT '',
+                created_by TEXT DEFAULT '',
+                data TEXT DEFAULT '',
+                created_at TEXT DEFAULT '',
+                updated_at TEXT DEFAULT ''
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_documents (
+                id TEXT PRIMARY KEY,
+                sol_id TEXT DEFAULT '',
+                tipo TEXT DEFAULT '',
+                nome TEXT DEFAULT '',
+                content TEXT DEFAULT '',
+                mime TEXT DEFAULT '',
+                size_bytes INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT ''
+            )
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_sol_status   ON ac_solicitacoes(status)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_sol_created   ON ac_solicitacoes(created_at DESC)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_anal_sol_id   ON ac_analises(sol_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_anal_created  ON ac_analises(created_at DESC)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_docs_sol_id   ON ac_documents(sol_id)")
+
+        # Semeia usuários do users.json se a tabela estiver vazia
+        count = await conn.fetchval("SELECT COUNT(*) FROM ac_users")
+        if count == 0:
+            now_iso = datetime.utcnow().isoformat()
+            for u in _load_users():
+                await conn.execute(
+                    """INSERT INTO ac_users
+                       (id, name, email, hashed_password, role, avatar, created_at, updated_at)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                       ON CONFLICT (email) DO NOTHING""",
+                    u["id"], u.get("name", ""), u.get("email", ""),
+                    u.get("hashed_password", ""), u.get("role", "Operações"),
+                    u.get("avatar", ""), now_iso, now_iso,
+                )
+            print(f"[DB] {len(_load_users())} usuário(s) semeado(s) de users.json")
+
+
+@asynccontextmanager
+async def _lifespan(app):
+    await _pg_init()
+    await _ensure_tables()
+    yield
+    if _PG_POOL:
+        await _PG_POOL.close()
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -105,6 +231,7 @@ app = FastAPI(
     version="2.0.0",
     docs_url=None,   # desabilita /docs em produção
     redoc_url=None,  # desabilita /redoc em produção
+    lifespan=_lifespan,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -225,7 +352,7 @@ async def auth_login(request: Request, response: Response, body: LoginRequest):
     if _turso_ok():
         try:
             rows = await _turso_query(
-                "SELECT id, name, email, hashed_password, role, avatar FROM users WHERE email=?",
+                "SELECT id, name, email, hashed_password, role, avatar FROM ac_users WHERE email=?",
                 [body.email.strip().lower()],
             )
             if rows:
@@ -244,11 +371,12 @@ async def auth_login(request: Request, response: Response, body: LoginRequest):
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
 
     password_hash = user.get("hashed_password", "")
-    # Check password override from user_passwords table if user came from local fallback file
-    if user.get("id") and not password_hash and _turso_ok():
+    # user_passwords tem precedência: é onde o reset de senha salva o novo hash.
+    # Verificar sempre, independente de haver hash no registro principal.
+    if user.get("id") and _turso_ok():
         try:
             pw_rows = await _turso_query(
-                "SELECT hashed_password FROM user_passwords WHERE email=?",
+                "SELECT hashed_password FROM ac_user_passwords WHERE email=?",
                 [body.email.strip().lower()],
             )
             if pw_rows:
@@ -306,16 +434,7 @@ class ResetConfirmModel(BaseModel):
 
 
 async def _ensure_reset_tables() -> None:
-    if not _turso_ok():
-        return
-    await _turso_exec(
-        "CREATE TABLE IF NOT EXISTS password_reset_tokens "
-        "(token TEXT PRIMARY KEY, email TEXT NOT NULL, expires_at TEXT NOT NULL, used INTEGER DEFAULT 0)"
-    )
-    await _turso_exec(
-        "CREATE TABLE IF NOT EXISTS user_passwords "
-        "(email TEXT PRIMARY KEY, hashed_password TEXT NOT NULL, updated_at TEXT NOT NULL)"
-    )
+    pass  # tabelas criadas em _ensure_tables() no startup
 
 
 @app.post("/api/auth/reset-request")
@@ -328,7 +447,7 @@ async def auth_reset_request(request: Request, body: ResetRequestModel):
     if _turso_ok():
         try:
             rows = await _turso_query(
-                "SELECT name, email FROM users WHERE email=?",
+                "SELECT name, email FROM ac_users WHERE email=?",
                 [email],
             )
             if rows:
@@ -348,7 +467,7 @@ async def auth_reset_request(request: Request, body: ResetRequestModel):
     expires_at = (datetime.utcnow() + timedelta(hours=1)).isoformat()
 
     await _turso_exec(
-        "INSERT INTO password_reset_tokens (token, email, expires_at, used) VALUES (?,?,?,0)",
+        "INSERT INTO ac_password_reset_tokens (token, email, expires_at, used) VALUES (?,?,?,0) ON CONFLICT (token) DO NOTHING",
         [token, email, expires_at],
     )
 
@@ -409,7 +528,7 @@ async def auth_reset_confirm(request: Request, body: ResetConfirmModel):
         raise HTTPException(400, "A senha deve ter no mínimo 6 caracteres")
 
     rows = await _turso_query(
-        "SELECT email, expires_at, used FROM password_reset_tokens WHERE token=?",
+        "SELECT email, expires_at, used FROM ac_password_reset_tokens WHERE token=?",
         [body.token],
     )
     if not rows:
@@ -426,17 +545,18 @@ async def auth_reset_confirm(request: Request, body: ResetConfirmModel):
     new_hash = _pwd_ctx.hash(body.password)
     now_iso  = datetime.utcnow().isoformat()
 
-    # Update both the users table and the user_passwords table
+    # Atualiza hash nas duas tabelas
     await _turso_exec(
-        "UPDATE users SET hashed_password=?, updated_at=? WHERE email=?",
+        "UPDATE ac_users SET hashed_password=?, updated_at=? WHERE email=?",
         [new_hash, now_iso, email],
     )
     await _turso_exec(
-        "INSERT OR REPLACE INTO user_passwords (email, hashed_password, updated_at) VALUES (?,?,?)",
+        "INSERT INTO ac_user_passwords (email, hashed_password, updated_at) VALUES (?,?,?)"
+        " ON CONFLICT (email) DO UPDATE SET hashed_password=EXCLUDED.hashed_password, updated_at=EXCLUDED.updated_at",
         [email, new_hash, now_iso],
     )
     await _turso_exec(
-        "UPDATE password_reset_tokens SET used=1 WHERE token=?",
+        "UPDATE ac_password_reset_tokens SET used=1 WHERE token=?",
         [body.token],
     )
     return {"ok": True}
@@ -1023,7 +1143,7 @@ async def salvar_historico(entry: HistoricoSaveRequest, current_user=Depends(_ge
         },
     }
     await _turso_exec(
-        "INSERT INTO analises (id, sol_id, empresa, cnpj, status, created_by, data, created_at, updated_at) "
+        "INSERT INTO ac_analises (id, sol_id, empresa, cnpj, status, created_by, data, created_at, updated_at) "
         "VALUES (?,?,?,?,?,?,?,?,?)",
         [hist_id, entry.solicitacao_id or "", entry.empresa, entry.cnpj,
          record["status_solicitacao"] or "pendente",
@@ -1044,7 +1164,7 @@ async def listar_historico(
     if not _turso_ok():
         raise HTTPException(503, "Banco de dados não configurado.")
     rows = await _turso_query(
-        "SELECT data FROM analises ORDER BY created_at DESC LIMIT ?", [limit * 5]
+        "SELECT data FROM ac_analises ORDER BY created_at DESC LIMIT ?", [limit * 5]
     )
     entries: List[dict] = []
     for row in rows:
@@ -1107,7 +1227,7 @@ async def buscar_historico(hist_id: str, current_user=Depends(_get_current_user)
         raise HTTPException(400, "ID inválido")
     if not _turso_ok():
         raise HTTPException(503, "Banco de dados não configurado.")
-    rows = await _turso_query("SELECT data FROM analises WHERE id=?", [hist_id])
+    rows = await _turso_query("SELECT data FROM ac_analises WHERE id=?", [hist_id])
     if not rows:
         raise HTTPException(404, "Análise não encontrada")
     data = json.loads(rows[0]["data"])
@@ -1124,7 +1244,7 @@ async def atualizar_decisao(hist_id: str, body: Dict[str, Any], current_user=Dep
         raise HTTPException(400, "ID inválido")
     if not _turso_ok():
         raise HTTPException(503, "Banco de dados não configurado.")
-    rows = await _turso_query("SELECT data FROM analises WHERE id=?", [hist_id])
+    rows = await _turso_query("SELECT data FROM ac_analises WHERE id=?", [hist_id])
     if not rows:
         raise HTTPException(404, "Análise não encontrada")
     data    = json.loads(rows[0]["data"])
@@ -1152,7 +1272,7 @@ async def atualizar_decisao(hist_id: str, body: Dict[str, Any], current_user=Dep
     data["timestamps"]["decisao_at"] = decisao_at
     data["atualizado_em"] = now_iso
     await _turso_exec(
-        "UPDATE analises SET data=?, status=?, updated_at=? WHERE id=?",
+        "UPDATE ac_analises SET data=?, status=?, updated_at=? WHERE id=?",
         [json.dumps(data, ensure_ascii=False), decisao_payload["status"] or data.get("status", "pendente"), now_iso, hist_id],
     )
 
@@ -1161,7 +1281,7 @@ async def atualizar_decisao(hist_id: str, body: Dict[str, Any], current_user=Dep
     if sol_id and _SMTP_HOST:
         try:
             sol_rows = await _turso_query(
-                "SELECT created_by FROM solicitacoes WHERE id=?", [sol_id]
+                "SELECT created_by FROM ac_solicitacoes WHERE id=?", [sol_id]
             )
             if sol_rows:
                 cb = json.loads(sol_rows[0].get("created_by") or "{}")
@@ -1234,8 +1354,11 @@ async def upload_docs(
             doc_id = f"{sol_id}__{tipo}__{fname}"
             now    = datetime.utcnow().isoformat()
             await _turso_exec(
-                "INSERT OR REPLACE INTO documents (id, sol_id, tipo, nome, content, mime, size_bytes, created_at) "
-                "VALUES (?,?,?,?,?,?,?,?)",
+                "INSERT INTO ac_documents (id, sol_id, tipo, nome, content, mime, size_bytes, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?)"
+                " ON CONFLICT (id) DO UPDATE SET sol_id=EXCLUDED.sol_id, tipo=EXCLUDED.tipo,"
+                " nome=EXCLUDED.nome, content=EXCLUDED.content, mime=EXCLUDED.mime,"
+                " size_bytes=EXCLUDED.size_bytes, created_at=EXCLUDED.created_at",
                 [doc_id, sol_id, tipo, fname, b64, mime, len(raw), now],
             )
             sal.append(f"{tipo}/{fname}")
@@ -1248,7 +1371,7 @@ async def download_doc(sol_id: str, tipo: str, fname: str, current_user=Depends(
     if not _turso_ok():
         raise HTTPException(503, "Banco de dados não configurado.")
     rows = await _turso_query(
-        "SELECT content, mime, nome FROM documents WHERE sol_id=? AND tipo=? AND nome=?",
+        "SELECT content, mime, nome FROM ac_documents WHERE sol_id=? AND tipo=? AND nome=?",
         [sol_id, tipo, fname],
     )
     if not rows:
@@ -1270,13 +1393,13 @@ async def delete_doc(sol_id: str, nome: str, request: Request, current_user=Depe
     if not _SOL_ID_RE.match(sol_id):
         raise HTTPException(400, "sol_id inválido.")
     rows = await _turso_query(
-        "SELECT id FROM documents WHERE sol_id=? AND nome=?",
+        "SELECT id FROM ac_documents WHERE sol_id=? AND nome=?",
         [sol_id, nome],
     )
     if not rows:
         raise HTTPException(404, "Documento não encontrado.")
     await _turso_exec(
-        "DELETE FROM documents WHERE sol_id=? AND nome=?",
+        "DELETE FROM ac_documents WHERE sol_id=? AND nome=?",
         [sol_id, nome],
     )
     return {"ok": True}
@@ -1638,7 +1761,7 @@ async def extract_financials(
     # Prioridade 1: arquivos salvos no Turso
     if sol_id and _SOL_ID_RE.match(sol_id) and _turso_ok():
         rows = await _turso_query(
-            "SELECT nome, content FROM documents WHERE sol_id=? AND tipo IN ('balanco','dre') ORDER BY tipo, nome",
+            "SELECT nome, content FROM ac_documents WHERE sol_id=? AND tipo IN ('balanco','dre') ORDER BY tipo, nome",
             [sol_id],
         )
         for row in rows:
@@ -1933,7 +2056,7 @@ async def contabil_extrair(sol_id: str, request: Request, current_user=Depends(_
         raise HTTPException(503, "Banco de dados não configurado.")
 
     rows = await _turso_query(
-        "SELECT nome, content FROM documents WHERE sol_id=? AND tipo IN ('balanco','dre') ORDER BY tipo, nome",
+        "SELECT nome, content FROM ac_documents WHERE sol_id=? AND tipo IN ('balanco','dre') ORDER BY tipo, nome",
         [sol_id],
     )
     if not rows:
@@ -2042,14 +2165,14 @@ Retorne APENAS um JSON válido (sem markdown, sem texto extra):
 
     # Salvar na solicitação
     try:
-        sol_rows = await _turso_query("SELECT data FROM solicitacoes WHERE id=?", [sol_id])
+        sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
         if sol_rows:
             sol_data = json.loads(sol_rows[0]["data"] or "{}")
             sol_data["contabil_data"] = extracted
             sol_data["contabil_result"] = contabil_result
             sol_data["contabil_extraido_at"] = datetime.utcnow().isoformat()
             await _turso_exec(
-                "UPDATE solicitacoes SET data=?, updated_at=? WHERE id=?",
+                "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
                 [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
             )
     except Exception:
@@ -2091,7 +2214,7 @@ async def contabil_salvar(sol_id: str, request: Request, current_user=Depends(_g
     if not _turso_ok():
         raise HTTPException(503, "Banco não configurado.")
     patch = await request.json()
-    sol_rows = await _turso_query("SELECT data FROM solicitacoes WHERE id=?", [sol_id])
+    sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
     if not sol_rows:
         raise HTTPException(404, "Solicitação não encontrada")
     sol_data = json.loads(sol_rows[0]["data"] or "{}")
@@ -2114,7 +2237,7 @@ async def contabil_salvar(sol_id: str, request: Request, current_user=Depends(_g
     sol_data["contabil_data"]    = existing
     sol_data["contabil_editado_at"] = datetime.utcnow().isoformat()
     await _turso_exec(
-        "UPDATE solicitacoes SET data=?, updated_at=? WHERE id=?",
+        "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
         [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
     )
     return {"ok": True, "result": sol_data.get("contabil_result")}
@@ -2247,7 +2370,8 @@ async def _create_welcome_token_and_send(name: str, email: str) -> bool:
     token      = secrets.token_urlsafe(32)
     expires_at = (datetime.utcnow() + timedelta(hours=24)).isoformat()
     await _turso_exec(
-        "INSERT INTO password_reset_tokens (token, email, expires_at, used) VALUES (?,?,?,0)",
+        "INSERT INTO ac_password_reset_tokens (token, email, expires_at, used) VALUES (?,?,?,0)"
+        " ON CONFLICT (token) DO NOTHING",
         [token, email, expires_at],
     )
     base_url = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")[0].strip()
@@ -2264,7 +2388,7 @@ async def _create_welcome_token_and_send(name: str, email: str) -> bool:
 @app.get("/api/admin/users")
 async def admin_list_users(current_user=Depends(_require_admin)):
     rows = await _turso_query(
-        "SELECT id, name, email, role, avatar, hashed_password, created_at, updated_at FROM users ORDER BY name"
+        "SELECT id, name, email, role, avatar, hashed_password, created_at, updated_at FROM ac_users ORDER BY name"
     )
     return [
         {
@@ -2293,7 +2417,7 @@ async def admin_create_user(body: UserCreateRequest, current_user=Depends(_requi
     name  = body.name.strip()
     role  = body.role.strip()
 
-    existing = await _turso_query("SELECT id FROM users WHERE email=?", [email])
+    existing = await _turso_query("SELECT id FROM ac_users WHERE email=?", [email])
     if existing:
         raise HTTPException(400, "Já existe um usuário com este e-mail.")
 
@@ -2301,7 +2425,7 @@ async def admin_create_user(body: UserCreateRequest, current_user=Depends(_requi
     avatar  = (name[:2]).upper()
     now_iso = datetime.utcnow().isoformat()
     await _turso_exec(
-        "INSERT INTO users (id, name, email, hashed_password, role, avatar, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT INTO ac_users (id, name, email, hashed_password, role, avatar, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
         [uid, name, email, "", role, avatar, now_iso, now_iso],
     )
 
@@ -2323,7 +2447,7 @@ class UserUpdateRequest(BaseModel):
 
 @app.put("/api/admin/users/{user_id}")
 async def admin_update_user(user_id: str, body: UserUpdateRequest, current_user=Depends(_require_admin)):
-    rows = await _turso_query("SELECT id, name, role, avatar FROM users WHERE id=?", [user_id])
+    rows = await _turso_query("SELECT id, name, role, avatar FROM ac_users WHERE id=?", [user_id])
     if not rows:
         raise HTTPException(404, "Usuário não encontrado.")
     u       = rows[0]
@@ -2332,7 +2456,7 @@ async def admin_update_user(user_id: str, body: UserUpdateRequest, current_user=
     avatar  = (name[:2]).upper()
     now_iso = datetime.utcnow().isoformat()
     await _turso_exec(
-        "UPDATE users SET name=?, role=?, avatar=?, updated_at=? WHERE id=?",
+        "UPDATE ac_users SET name=?, role=?, avatar=?, updated_at=? WHERE id=?",
         [name, role, avatar, now_iso, user_id],
     )
     return {"ok": True}
@@ -2342,15 +2466,15 @@ async def admin_update_user(user_id: str, body: UserUpdateRequest, current_user=
 async def admin_delete_user(user_id: str, current_user=Depends(_require_admin)):
     if current_user.get("sub") == user_id:
         raise HTTPException(400, "Você não pode excluir sua própria conta.")
-    existing = await _turso_query("SELECT id FROM users WHERE id=?", [user_id])
+    existing = await _turso_query("SELECT id FROM ac_users WHERE id=?", [user_id])
     if not existing:
         raise HTTPException(404, "Usuário não encontrado.")
-    await _turso_exec("DELETE FROM users WHERE id=?", [user_id])
+    await _turso_exec("DELETE FROM ac_users WHERE id=?", [user_id])
 
 
 @app.post("/api/admin/users/{user_id}/resend-welcome")
 async def admin_resend_welcome(user_id: str, current_user=Depends(_require_admin)):
-    rows = await _turso_query("SELECT name, email FROM users WHERE id=?", [user_id])
+    rows = await _turso_query("SELECT name, email FROM ac_users WHERE id=?", [user_id])
     if not rows:
         raise HTTPException(404, "Usuário não encontrado.")
     u = rows[0]
@@ -2385,7 +2509,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
     contabil_result: Optional[dict] = None
     if req.sol_id and _SOL_ID_RE.match(req.sol_id) and _turso_ok():
         try:
-            sol_rows = await _turso_query("SELECT data FROM solicitacoes WHERE id=?", [req.sol_id])
+            sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [req.sol_id])
             if sol_rows:
                 sol_data = json.loads(sol_rows[0]["data"] or "{}")
                 contabil_result = sol_data.get("contabil_result")
@@ -2445,7 +2569,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
 @app.get("/api/solicitacoes")
 async def sol_list(current_user=Depends(_get_current_user)):
     rows = await _turso_query(
-        "SELECT id, status, created_at, updated_at, created_by, data FROM solicitacoes ORDER BY created_at DESC"
+        "SELECT id, status, created_at, updated_at, created_by, data FROM ac_solicitacoes ORDER BY created_at DESC"
     )
     items = []
     for row in rows:
@@ -2482,7 +2606,10 @@ async def sol_create(request: Request, current_user=Depends(_get_current_user)):
     body["createdAt"] = created_at
     body["updatedAt"] = updated_at
     await _turso_exec(
-        "INSERT OR REPLACE INTO solicitacoes (id, status, created_at, updated_at, created_by, data) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO ac_solicitacoes (id, status, created_at, updated_at, created_by, data)"
+        " VALUES (?,?,?,?,?,?)"
+        " ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status, created_at=EXCLUDED.created_at,"
+        " updated_at=EXCLUDED.updated_at, created_by=EXCLUDED.created_by, data=EXCLUDED.data",
         [sol_id, status, created_at, updated_at, created_by, json.dumps(body, ensure_ascii=False)],
     )
 
@@ -2510,7 +2637,7 @@ async def sol_create(request: Request, current_user=Depends(_get_current_user)):
 
 @app.get("/api/solicitacoes/stats")
 async def sol_stats(current_user=Depends(_get_current_user)):
-    rows   = await _turso_query("SELECT status, COUNT(*) as cnt FROM solicitacoes GROUP BY status")
+    rows   = await _turso_query("SELECT status, COUNT(*) as cnt FROM ac_solicitacoes GROUP BY status")
     counts = {"total": 0, "aprovado": 0, "negado": 0, "em_analise": 0, "pendente": 0, "em_comite": 0}
     for row in rows:
         st  = row["status"] or "pendente"
@@ -2526,7 +2653,7 @@ async def sol_get(sol_id: str, current_user=Depends(_get_current_user)):
     if not _SOL_ID_RE.match(sol_id):
         raise HTTPException(400, "ID inválido")
     rows = await _turso_query(
-        "SELECT id, status, created_at, updated_at, created_by, data FROM solicitacoes WHERE id=?", [sol_id]
+        "SELECT id, status, created_at, updated_at, created_by, data FROM ac_solicitacoes WHERE id=?", [sol_id]
     )
     if not rows:
         raise HTTPException(404, "Solicitação não encontrada")
@@ -2552,7 +2679,7 @@ async def sol_update(sol_id: str, request: Request, current_user=Depends(_get_cu
     status     = body.get("status", "pendente")
     updated_at = body.get("updatedAt") or datetime.utcnow().isoformat()
     created_at = body.get("createdAt") or updated_at
-    existing   = await _turso_query("SELECT created_by, created_at FROM solicitacoes WHERE id=?", [sol_id])
+    existing   = await _turso_query("SELECT created_by, created_at FROM ac_solicitacoes WHERE id=?", [sol_id])
     if existing:
         created_by = existing[0]["created_by"]
         created_at = existing[0]["created_at"] or created_at
@@ -2563,7 +2690,10 @@ async def sol_update(sol_id: str, request: Request, current_user=Depends(_get_cu
     body["id"]        = sol_id
     body["updatedAt"] = updated_at
     await _turso_exec(
-        "INSERT OR REPLACE INTO solicitacoes (id, status, created_at, updated_at, created_by, data) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO ac_solicitacoes (id, status, created_at, updated_at, created_by, data)"
+        " VALUES (?,?,?,?,?,?)"
+        " ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status, created_at=EXCLUDED.created_at,"
+        " updated_at=EXCLUDED.updated_at, created_by=EXCLUDED.created_by, data=EXCLUDED.data",
         [sol_id, status, created_at, updated_at, created_by, json.dumps(body, ensure_ascii=False)],
     )
     return {"ok": True}
@@ -2575,7 +2705,7 @@ async def sol_delete(sol_id: str, current_user=Depends(_get_current_user)):
         raise HTTPException(400, "ID inválido")
     if not _user_can_decide(current_user):
         raise HTTPException(403, "Apenas analistas podem excluir solicitações")
-    await _turso_exec("DELETE FROM solicitacoes WHERE id=?", [sol_id])
+    await _turso_exec("DELETE FROM ac_solicitacoes WHERE id=?", [sol_id])
     from fastapi.responses import Response as _R
     return _R(status_code=204)
 
