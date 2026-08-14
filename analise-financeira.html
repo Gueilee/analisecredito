@@ -534,6 +534,95 @@
     .confirm-btn-ok.danger { background: var(--red); color: #fff; }
     .confirm-btn-ok:hover { opacity: .88; }
 
+    /* ── Análise Contábil ────────────────────────────────── */
+    .ctbl-periods {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .5rem;
+      margin-bottom: .9rem;
+    }
+    .ctbl-period-input {
+      display: flex; flex-direction: column; gap: .3rem;
+    }
+    .ctbl-period-input label {
+      font-size: .64rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .ctbl-period-input input {
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 6px; padding: .38rem .6rem; font-size: .82rem; color: var(--text-primary);
+      width: 100%;
+    }
+    .ctbl-section-hd {
+      font-size: .63rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+      color: rgba(124,58,237,.7); padding: .6rem 0 .3rem;
+      border-top: 1px solid rgba(255,255,255,.07); margin-top: .4rem;
+    }
+    .ctbl-section-hd:first-child { border-top: none; margin-top: 0; }
+    .ctbl-table { width: 100%; border-collapse: collapse; }
+    .ctbl-table tr:hover td { background: rgba(255,255,255,.025); }
+    .ctbl-table td {
+      padding: .28rem .35rem; font-size: .79rem; border-bottom: 1px solid rgba(255,255,255,.05);
+      vertical-align: middle;
+    }
+    .ctbl-table tr:last-child td { border-bottom: none; }
+    .ctbl-lbl { color: var(--text-secondary); padding-left: .1rem !important; }
+    .ctbl-lbl.sub { padding-left: 1rem !important; color: var(--text-faint); font-size: .74rem; }
+    .ctbl-total { font-weight: 700; color: var(--text-primary); }
+    .ctbl-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ctbl-var { text-align: right; font-size: .72rem; white-space: nowrap; }
+    .ctbl-var.pos { color: #34d399; }
+    .ctbl-var.neg { color: #f87171; }
+    .ctbl-input {
+      width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 4px; padding: .22rem .4rem; font-size: .79rem; color: var(--text-primary);
+      text-align: right; font-variant-numeric: tabular-nums;
+    }
+    .ctbl-input:focus { outline: none; border-color: rgba(124,58,237,.5); background: rgba(124,58,237,.08); }
+    .ctbl-indic-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: .8rem 0;
+    }
+    .ctbl-indic-cell {
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 6px; padding: .5rem .6rem;
+    }
+    .ctbl-indic-lbl { font-size: .6rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: .07em; margin-bottom: .2rem; }
+    .ctbl-indic-vals { display: flex; align-items: baseline; gap: .35rem; }
+    .ctbl-indic-cur { font-size: .92rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ctbl-indic-prev { font-size: .68rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+    .ctbl-sem { display: inline-block; font-size: .6rem; font-weight: 700; padding: .12rem .35rem; border-radius: 3px; text-transform: uppercase; letter-spacing: .05em; margin-top: .2rem; }
+    .ctbl-sem.ok  { background: rgba(52,211,153,.12); color: #34d399; }
+    .ctbl-sem.warn { background: rgba(251,191,36,.12); color: #fbbf24; }
+    .ctbl-sem.bad  { background: rgba(248,113,113,.12); color: #f87171; }
+    .ctbl-sem.nd   { background: rgba(255,255,255,.06); color: var(--text-faint); }
+    .ctbl-credit-box {
+      background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.2);
+      border-radius: 8px; padding: 1rem 1.1rem; margin-top: .8rem;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem;
+    }
+    .ctbl-credit-lbl { font-size: .65rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(129,140,248,.8); }
+    .ctbl-credit-val { font-size: 1.3rem; font-weight: 800; color: #818cf8; font-variant-numeric: tabular-nums; }
+    .ctbl-factor-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-top: .6rem; }
+    .ctbl-factor-row label { font-size: .7rem; color: var(--text-faint); white-space: nowrap; }
+    .ctbl-factor-input {
+      width: 72px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 5px; padding: .3rem .45rem; font-size: .8rem; color: var(--text-primary);
+      text-align: center;
+    }
+    .ctbl-use-btn {
+      background: linear-gradient(135deg,#4f46e5,#7c3aed); color: #fff; border: none;
+      border-radius: 7px; padding: .45rem 1rem; font-size: .78rem; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+    }
+    .ctbl-use-btn:hover { opacity: .88; }
+    .ctbl-warning {
+      background: rgba(251,191,36,.07); border: 1px solid rgba(251,191,36,.2);
+      border-radius: 6px; padding: .6rem .8rem; font-size: .75rem; color: #fbbf24;
+      margin-bottom: .7rem;
+    }
+    @media (max-width: 680px) {
+      .ctbl-indic-grid { grid-template-columns: repeat(2, 1fr); }
+      .ctbl-periods { grid-template-columns: 1fr; }
+    }
+
     /* ── Leitor de Documentos Financeiros ───────────────── */
     .fin-summary-bar {
       font-size: .78rem; color: var(--text-faint); font-weight: 500;
@@ -743,6 +832,262 @@
               <div style="font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:.4rem;">Leitura de Documentos</div>
               <p style="font-size:.72rem;color:var(--text-faint);line-height:1.65;max-width:340px;margin:0 auto .3rem;">Clique em <strong style="color:var(--text-secondary);">Analisar Documentos</strong> para extrair o conteúdo dos arquivos enviados nessa solicitação (balanços, DREs, relatórios.)</p>
               <p style="font-size:.72rem;color:var(--text-faint);line-height:1.65;max-width:340px;margin:0 auto;">Se os documentos não foram anexados, clique em <strong style="color:var(--text-secondary);">Selecionar Arquivos</strong> para enviá-los manualmente.</p>
+            </div>
+          </div>
+
+          <!-- ── Análise Contábil ── -->
+          <div class="card animate-in delay-3" id="contabil-card">
+            <div class="fin-card-hd">
+              <div style="display:flex;align-items:center;gap:.6rem;">
+                <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style="color:var(--purple-light);flex-shrink:0"><rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M7 8h2v5H7zM11 10h2v3h-2zM15 6h2v7h-2z" stroke="currentColor" stroke-width="1.3"/></svg>
+                <span class="card-title">Análise Contábil</span>
+              </div>
+              <div class="fin-actions">
+                <button class="btn-fin-extract" id="btn-contabil-extrair" onclick="runContabilExtracao()">
+                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Extrair dos Documentos
+                </button>
+              </div>
+            </div>
+
+            <!-- Aviso dois períodos -->
+            <div id="contabil-warn-periodo" class="ctbl-warning" style="display:none;">
+              ⚠ Apenas um período encontrado. Preencha manualmente os dados do segundo período para calcular os indicadores.
+            </div>
+
+            <!-- Corpo: aparece após extração ou carregamento -->
+            <div id="contabil-body" style="display:none;">
+
+              <!-- Labels dos períodos -->
+              <div class="ctbl-periods">
+                <div class="ctbl-period-input">
+                  <label>Período 1</label>
+                  <input type="text" id="ctbl-p1-label" placeholder="ex: dez/2024" oninput="ctblScheduleCalc()">
+                </div>
+                <div class="ctbl-period-input">
+                  <label>Período 2</label>
+                  <input type="text" id="ctbl-p2-label" placeholder="ex: jun/2025" oninput="ctblScheduleCalc()">
+                </div>
+              </div>
+
+              <!-- BALANÇO PATRIMONIAL -->
+              <div class="ctbl-section-hd">Balanço Patrimonial</div>
+
+              <!-- Cabeçalho BP -->
+              <table class="ctbl-table" id="ctbl-bp-table">
+                <thead>
+                  <tr>
+                    <td class="ctbl-lbl" style="width:46%;">Conta</td>
+                    <td class="ctbl-num" style="width:22%;font-size:.65rem;color:var(--text-faint);font-weight:600;" id="ctbl-bp-h1">Per. 1</td>
+                    <td class="ctbl-num" style="width:22%;font-size:.65rem;color:var(--text-faint);font-weight:600;" id="ctbl-bp-h2">Per. 2</td>
+                    <td class="ctbl-var" style="width:10%;font-size:.65rem;color:var(--text-faint);font-weight:600;">Var%</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- ATIVO CIRCULANTE -->
+                  <tr><td class="ctbl-lbl" colspan="4" style="font-size:.68rem;color:rgba(124,58,237,.7);font-weight:700;padding-top:.5rem;">ATIVO CIRCULANTE</td></tr>
+                  <tr><td class="ctbl-lbl sub">Disponibilidade</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-disponibilidade" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-disponibilidade" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-disponibilidade">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Contas a Receber</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-contas_receber" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-contas_receber" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-contas_receber">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Estoques</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-estoques" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-estoques" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-estoques">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Impostos a Recuperar</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-impostos_recuperar" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-impostos_recuperar" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-impostos_recuperar">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Outros Ativos Circulantes</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-outros_ac" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-outros_ac" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-outros_ac">—</td></tr>
+                  <tr class="ctbl-total-row">
+                    <td class="ctbl-lbl ctbl-total">= Total Circulante</td>
+                    <td class="ctbl-num ctbl-total" id="tot1-ac">—</td>
+                    <td class="ctbl-num ctbl-total" id="tot2-ac">—</td>
+                    <td class="ctbl-var" id="var-ac">—</td></tr>
+
+                  <!-- ATIVO NÃO CIRCULANTE -->
+                  <tr><td class="ctbl-lbl" colspan="4" style="font-size:.68rem;color:rgba(124,58,237,.7);font-weight:700;padding-top:.5rem;">ATIVO NÃO CIRCULANTE</td></tr>
+                  <tr><td class="ctbl-lbl sub">Imobilizado</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-imobilizado" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-imobilizado" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-imobilizado">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Investimentos</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-investimentos" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-investimentos" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-investimentos">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Outros Créditos / Realizável LP</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-outros_creditos" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-outros_creditos" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-outros_creditos">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Outros ANC</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-outros_anc" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-outros_anc" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-outros_anc">—</td></tr>
+                  <tr>
+                    <td class="ctbl-lbl ctbl-total">= Total ANC</td>
+                    <td class="ctbl-num ctbl-total" id="tot1-anc">—</td>
+                    <td class="ctbl-num ctbl-total" id="tot2-anc">—</td>
+                    <td class="ctbl-var" id="var-anc">—</td></tr>
+                  <tr style="background:rgba(124,58,237,.06);">
+                    <td class="ctbl-lbl ctbl-total" style="color:var(--purple-light);">ATIVO TOTAL</td>
+                    <td class="ctbl-num ctbl-total" style="color:var(--purple-light);" id="tot1-at">—</td>
+                    <td class="ctbl-num ctbl-total" style="color:var(--purple-light);" id="tot2-at">—</td>
+                    <td class="ctbl-var" id="var-at">—</td></tr>
+
+                  <!-- PASSIVO CIRCULANTE -->
+                  <tr><td class="ctbl-lbl" colspan="4" style="font-size:.68rem;color:rgba(124,58,237,.7);font-weight:700;padding-top:.6rem;">PASSIVO CIRCULANTE</td></tr>
+                  <tr><td class="ctbl-lbl sub">Fornecedores</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-fornecedores" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-fornecedores" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-fornecedores">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Adiantamento de Clientes</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-adiantamento_clientes" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-adiantamento_clientes" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-adiantamento_clientes">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Impostos a Pagar</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-impostos_pagar" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-impostos_pagar" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-impostos_pagar">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Empréstimos CP</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-emprestimos_cp" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-emprestimos_cp" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-emprestimos_cp">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Outros Passivos Circulantes</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-outros_pc" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-outros_pc" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-outros_pc">—</td></tr>
+                  <tr>
+                    <td class="ctbl-lbl ctbl-total">= Total PC</td>
+                    <td class="ctbl-num ctbl-total" id="tot1-pc">—</td>
+                    <td class="ctbl-num ctbl-total" id="tot2-pc">—</td>
+                    <td class="ctbl-var" id="var-pc">—</td></tr>
+
+                  <!-- PASSIVO NÃO CIRCULANTE -->
+                  <tr><td class="ctbl-lbl" colspan="4" style="font-size:.68rem;color:rgba(124,58,237,.7);font-weight:700;padding-top:.5rem;">PASSIVO NÃO CIRCULANTE</td></tr>
+                  <tr><td class="ctbl-lbl sub">Empréstimos LP</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-emprestimos_lp" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-emprestimos_lp" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-emprestimos_lp">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Outros PNC</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-outros_pnc" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-outros_pnc" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-outros_pnc">—</td></tr>
+                  <tr>
+                    <td class="ctbl-lbl ctbl-total">= Total PNC</td>
+                    <td class="ctbl-num ctbl-total" id="tot1-pnc">—</td>
+                    <td class="ctbl-num ctbl-total" id="tot2-pnc">—</td>
+                    <td class="ctbl-var" id="var-pnc">—</td></tr>
+
+                  <!-- PATRIMÔNIO LÍQUIDO -->
+                  <tr><td class="ctbl-lbl" colspan="4" style="font-size:.68rem;color:rgba(124,58,237,.7);font-weight:700;padding-top:.5rem;">PATRIMÔNIO LÍQUIDO</td></tr>
+                  <tr style="background:rgba(124,58,237,.06);">
+                    <td class="ctbl-lbl ctbl-total" style="color:var(--purple-light);">Patrimônio Líquido</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp1-patrimonio_liquido" oninput="ctblScheduleCalc()" style="font-weight:700;"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="bp2-patrimonio_liquido" oninput="ctblScheduleCalc()" style="font-weight:700;"></td>
+                    <td class="ctbl-var" id="var-patrimonio_liquido">—</td></tr>
+                </tbody>
+              </table>
+
+              <!-- DRE -->
+              <div class="ctbl-section-hd">DRE — Demonstração do Resultado</div>
+              <table class="ctbl-table" id="ctbl-dre-table">
+                <tbody>
+                  <tr><td class="ctbl-lbl sub">Receita Bruta</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre1-receita_bruta" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre2-receita_bruta" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-receita_bruta">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">(−) Deduções</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre1-deducoes" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre2-deducoes" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-deducoes">—</td></tr>
+                  <tr style="background:rgba(255,255,255,.03);">
+                    <td class="ctbl-lbl ctbl-total">= Receita Líquida</td>
+                    <td class="ctbl-num ctbl-total" id="tot1-rl">—</td>
+                    <td class="ctbl-num ctbl-total" id="tot2-rl">—</td>
+                    <td class="ctbl-var" id="var-rl">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">(−) CPV / CSV</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre1-cpv" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre2-cpv" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-cpv">—</td></tr>
+                  <tr style="background:rgba(255,255,255,.03);">
+                    <td class="ctbl-lbl ctbl-total">= Lucro Bruto</td>
+                    <td class="ctbl-num ctbl-total" id="tot1-lb">—</td>
+                    <td class="ctbl-num ctbl-total" id="tot2-lb">—</td>
+                    <td class="ctbl-var" id="var-lb">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">(−) Despesas Operacionais</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre1-despesas_operacionais" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre2-despesas_operacionais" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-despesas_operacionais">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">Resultado Financeiro</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre1-resultado_financeiro" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre2-resultado_financeiro" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-resultado_financeiro">—</td></tr>
+                  <tr><td class="ctbl-lbl sub">(−) IR / CSLL</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre1-ir_csll" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre2-ir_csll" oninput="ctblScheduleCalc()"></td>
+                    <td class="ctbl-var" id="var-ir_csll">—</td></tr>
+                  <tr style="background:rgba(124,58,237,.06);">
+                    <td class="ctbl-lbl ctbl-total" style="color:var(--purple-light);">= Lucro Líquido</td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre1-lucro_liquido" oninput="ctblScheduleCalc()" style="font-weight:700;color:var(--purple-light);"></td>
+                    <td class="ctbl-num"><input class="ctbl-input" id="dre2-lucro_liquido" oninput="ctblScheduleCalc()" style="font-weight:700;color:var(--purple-light);"></td>
+                    <td class="ctbl-var" id="var-lucro_liquido">—</td></tr>
+                </tbody>
+              </table>
+
+              <!-- Indicadores -->
+              <div class="ctbl-section-hd">Indicadores</div>
+              <div class="ctbl-indic-grid" id="ctbl-indicadores"></div>
+
+              <!-- Crédito -->
+              <div class="ctbl-section-hd">Recomendação de Crédito</div>
+
+              <div style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.5rem;">
+                <div>
+                  <div style="font-size:.63rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem;">Crédito Calculado (base)</div>
+                  <div id="ctbl-credito-base" style="font-size:1rem;font-weight:700;color:var(--text-secondary);font-variant-numeric:tabular-nums;">—</div>
+                  <div style="font-size:.66rem;color:var(--text-faint);">Liq. Geral × PL — teto teórico</div>
+                </div>
+                <div class="ctbl-factor-row">
+                  <label>Fator Risco (%)</label>
+                  <input class="ctbl-factor-input" id="ctbl-fator-risco" value="10" oninput="ctblScheduleCalc()">
+                  <label>Multiplicador (×)</label>
+                  <input class="ctbl-factor-input" id="ctbl-fator-mult" value="1.1" oninput="ctblScheduleCalc()">
+                </div>
+              </div>
+
+              <div class="ctbl-credit-box">
+                <div>
+                  <div class="ctbl-credit-lbl">Crédito Proposto</div>
+                  <div style="font-size:.68rem;color:rgba(129,140,248,.6);">LL × Multiplicador ÷ Fator de Risco</div>
+                </div>
+                <div class="ctbl-credit-val" id="ctbl-credito-proposto">—</div>
+                <button class="ctbl-use-btn" onclick="ctblUsarLimite()">→ Usar como Limite</button>
+              </div>
+
+              <!-- Comentário do analista -->
+              <div class="ctbl-section-hd">Comentários do Analista (Contábil)</div>
+              <textarea id="ctbl-comentario" rows="3"
+                style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:.55rem .7rem;font-size:.82rem;color:var(--text-primary);resize:vertical;font-family:inherit;"
+                placeholder="Observações sobre a análise contábil — pontos de atenção, tendências, contexto..."
+                oninput="ctblScheduleSave()"></textarea>
+
+              <div style="display:flex;justify-content:flex-end;margin-top:.8rem;">
+                <button onclick="ctblSalvar()" style="background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);color:var(--purple-light);border-radius:6px;padding:.4rem .9rem;font-size:.78rem;font-weight:600;cursor:pointer;">Salvar Alterações</button>
+              </div>
+            </div>
+
+            <!-- Estado inicial -->
+            <div id="contabil-hint" style="padding:1.3rem .25rem .6rem;text-align:center;">
+              <svg viewBox="0 0 24 24" fill="none" width="28" height="28" style="color:rgba(124,58,237,.35);margin-bottom:.75rem"><rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="1.5"/><path d="M7 8h2v5H7zM11 10h2v3h-2zM15 6h2v7h-2z" stroke="currentColor" stroke-width="1.3"/></svg>
+              <div style="font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:.4rem;">Análise Contábil</div>
+              <p style="font-size:.72rem;color:var(--text-faint);line-height:1.65;max-width:340px;margin:0 auto;">Clique em <strong style="color:var(--text-secondary);">Extrair dos Documentos</strong> para que a IA identifique automaticamente as linhas do Balanço e DRE. Você pode editar os valores antes de calcular.</p>
             </div>
           </div>
 
@@ -1154,6 +1499,7 @@
     const payload = {
       cnpj: sol.cnpj || '',
       empresa: sol.empresa || '',
+      sol_id: sol.id || '',  // permite enriquecer o prompt com indicadores contábeis
       ramo:                toStr(sol.ramo),
       produto:             toStr(sol.produto),
       modal:               toStr(sol.modal),
@@ -2775,6 +3121,431 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
 } else if (typeof sol !== 'undefined' && sol && sol.idwall_pending) {
   _idwallShowPendingState();
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ANÁLISE CONTÁBIL
+   ────────────────────────────────────────────────────────────────────────── */
+
+const _CTBL_BP_FIELDS  = ['disponibilidade','contas_receber','estoques','impostos_recuperar','outros_ac','outros_creditos','imobilizado','investimentos','outros_anc','fornecedores','adiantamento_clientes','impostos_pagar','emprestimos_cp','outros_pc','emprestimos_lp','outros_pnc','patrimonio_liquido'];
+const _CTBL_DRE_FIELDS = ['receita_bruta','deducoes','receita_liquida','cpv','lucro_bruto','despesas_operacionais','ebitda','resultado_financeiro','lucro_antes_ir','ir_csll','lucro_liquido'];
+
+let _ctblCalcTimer = null;
+let _ctblSaveTimer = null;
+
+// ── Formatação ────────────────────────────────────────────────────────────────
+
+function _ctblFmt(v, decimals = 0) {
+  if (v == null || isNaN(v)) return '—';
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function _ctblFmtPct(v) {
+  if (v == null || isNaN(v)) return '—';
+  return (v * 100).toFixed(1) + '%';
+}
+
+function _ctblFmtBR(v) {
+  if (v == null || isNaN(v)) return '—';
+  return 'R$ ' + _ctblFmt(v, 0);
+}
+
+function _ctblParseInput(id) {
+  const el = document.getElementById(id);
+  if (!el || !el.value.trim()) return null;
+  const s = el.value.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function _ctblSetText(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+
+function _ctblSetVar(id, v1, v2) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (v1 == null || v2 == null || v1 === 0) { el.textContent = '—'; el.className = 'ctbl-var'; return; }
+  const pct = ((v2 - v1) / Math.abs(v1)) * 100;
+  const sign = pct >= 0 ? '+' : '';
+  el.textContent = sign + pct.toFixed(1) + '%';
+  el.className = 'ctbl-var ' + (pct >= 0 ? 'pos' : 'neg');
+}
+
+// ── Leitura dos inputs ────────────────────────────────────────────────────────
+
+function _ctblReadData() {
+  const bp1 = {}, bp2 = {}, dre1 = {}, dre2 = {};
+  _CTBL_BP_FIELDS.forEach(f => {
+    bp1[f]  = _ctblParseInput('bp1-' + f);
+    bp2[f]  = _ctblParseInput('bp2-' + f);
+  });
+  _CTBL_DRE_FIELDS.forEach(f => {
+    dre1[f] = _ctblParseInput('dre1-' + f);
+    dre2[f] = _ctblParseInput('dre2-' + f);
+  });
+  return {
+    periodo1_label: (document.getElementById('ctbl-p1-label') || {}).value || '',
+    periodo2_label: (document.getElementById('ctbl-p2-label') || {}).value || '',
+    bp1, bp2, dre1, dre2,
+    fator_risco:       parseFloat((document.getElementById('ctbl-fator-risco') || {}).value) / 100 || 0.10,
+    fator_multiplicador: parseFloat((document.getElementById('ctbl-fator-mult') || {}).value) || 1.1,
+  };
+}
+
+// ── Cálculo client-side (espelha a lógica Python do backend) ──────────────────
+
+function _ctblCalcPeriod(bp, dre, fr, fm) {
+  const nn = (...vals) => vals.reduce((s, v) => s + (v || 0), 0);
+  const sdiv = (a, b) => (b && b !== 0) ? a / b : null;
+
+  const ac  = nn(bp.disponibilidade, bp.contas_receber, bp.estoques, bp.impostos_recuperar, bp.outros_ac);
+  const anc = nn(bp.outros_creditos, bp.imobilizado, bp.investimentos, bp.outros_anc);
+  const at  = ac + anc;
+  const pc  = nn(bp.fornecedores, bp.adiantamento_clientes, bp.impostos_pagar, bp.emprestimos_cp, bp.outros_pc);
+  const pnc = nn(bp.emprestimos_lp, bp.outros_pnc);
+  const pl  = bp.patrimonio_liquido || 0;
+  const pt  = pc + pnc;
+
+  let rl = dre.receita_liquida;
+  if (!rl && dre.receita_bruta) rl = dre.receita_bruta - Math.abs(dre.deducoes || 0);
+  let lb = dre.lucro_bruto;
+  if (!lb && rl != null) lb = rl - Math.abs(dre.cpv || 0);
+  const ll  = dre.lucro_liquido || 0;
+  const cpv = dre.cpv || 0;
+
+  const liq_seca   = sdiv(ac - (bp.estoques || 0), pc || null);
+  const liq_geral  = sdiv(at || null, pt || null);
+  const roe        = sdiv(ll, pl || null);
+  const roa        = sdiv(ll, at || null);
+  const mb         = sdiv(lb, rl);
+  const ml         = sdiv(ll, rl);
+  const ncg        = nn(bp.contas_receber, bp.estoques, bp.outros_ac) - nn(bp.fornecedores, bp.adiantamento_clientes, bp.outros_pc);
+  const eg         = sdiv(pt || null, at || null);
+  const pmr        = (bp.contas_receber && rl) ? (bp.contas_receber / rl) * 360 : null;
+  const pme        = (bp.estoques && cpv) ? (bp.estoques / Math.abs(cpv)) * 360 : null;
+
+  return {
+    totais: { ac, anc, at, pc, pnc, pt, pl, rl, lb, ll },
+    indicadores: { liq_seca, liq_geral, roe, roa, mb, ml, ncg, eg, pmr, pme },
+    credito: {
+      calculado: (liq_geral && pl) ? liq_geral * pl : null,
+      proposto:  (ll && fr)        ? (ll * fm) / fr : null,
+    },
+  };
+}
+
+function _ctblSemaforo(key, v) {
+  if (v == null) return 'nd';
+  switch (key) {
+    case 'liq_seca':  return v >= 1.0 ? 'ok' : (v >= 0.7 ? 'warn' : 'bad');
+    case 'liq_geral': return v >= 2.0 ? 'ok' : (v >= 1.0 ? 'warn' : 'bad');
+    case 'roe':       return v >= 0.10 ? 'ok' : (v >= 0.05 ? 'warn' : 'bad');
+    case 'roa':       return v >= 0.05 ? 'ok' : (v >= 0.02 ? 'warn' : 'bad');
+    case 'mb':        return v >= 0.25 ? 'ok' : (v >= 0.15 ? 'warn' : 'bad');
+    case 'ml':        return v >= 0.05 ? 'ok' : (v >= 0.01 ? 'warn' : 'bad');
+    case 'eg':        return v <= 0.50 ? 'ok' : (v <= 1.00 ? 'warn' : 'bad');
+    case 'pmr':       return v <= 60 ? 'ok' : (v <= 120 ? 'warn' : 'bad');
+    case 'pme':       return v <= 60 ? 'ok' : (v <= 120 ? 'warn' : 'bad');
+    case 'ncg':       return v >= 0 ? 'ok' : 'bad';
+    default:          return 'nd';
+  }
+}
+
+const _SEM_LABEL = { ok: 'OK', warn: 'Atenção', bad: 'Ruim', nd: '—' };
+
+// ── Renderização dos indicadores ──────────────────────────────────────────────
+
+function _ctblRenderIndicadores(p1, p2) {
+  const specs = [
+    { key: 'mb',       lbl: 'Margem Bruta',      fmt: v => v != null ? (v*100).toFixed(1)+'%' : '—' },
+    { key: 'ml',       lbl: 'Margem Líquida',     fmt: v => v != null ? (v*100).toFixed(1)+'%' : '—' },
+    { key: 'liq_seca', lbl: 'Liquidez Seca',      fmt: v => v != null ? v.toFixed(2)+'×' : '—' },
+    { key: 'liq_geral',lbl: 'Liquidez Geral',     fmt: v => v != null ? v.toFixed(2)+'×' : '—' },
+    { key: 'roe',      lbl: 'ROE',                fmt: v => v != null ? (v*100).toFixed(1)+'%' : '—' },
+    { key: 'roa',      lbl: 'ROA',                fmt: v => v != null ? (v*100).toFixed(1)+'%' : '—' },
+    { key: 'eg',       lbl: 'Endividamento',      fmt: v => v != null ? (v*100).toFixed(1)+'%' : '—' },
+    { key: 'ncg',      lbl: 'NCG',                fmt: v => v != null ? _ctblFmtBR(v) : '—' },
+    { key: 'pmr',      lbl: 'PMR (dias)',          fmt: v => v != null ? Math.round(v)+' d' : '—' },
+    { key: 'pme',      lbl: 'PME (dias)',          fmt: v => v != null ? Math.round(v)+' d' : '—' },
+  ];
+  const grid = document.getElementById('ctbl-indicadores');
+  if (!grid) return;
+  grid.innerHTML = specs.map(s => {
+    const v1   = p1.indicadores[s.key];
+    const v2   = p2.indicadores[s.key];
+    const sem  = _ctblSemaforo(s.key, v2);
+    const prev = p1 ? `<span class="ctbl-indic-prev">← ${s.fmt(v1)}</span>` : '';
+    return `<div class="ctbl-indic-cell">
+      <div class="ctbl-indic-lbl">${s.lbl}</div>
+      <div class="ctbl-indic-vals">
+        <span class="ctbl-indic-cur">${s.fmt(v2)}</span>${prev}
+      </div>
+      <span class="ctbl-sem ${sem}">${_SEM_LABEL[sem]}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Atualização dos totais nas tabelas BP/DRE ─────────────────────────────────
+
+function _ctblUpdateTotals(p1, p2) {
+  const t1 = p1.totais, t2 = p2.totais;
+
+  // BP totais
+  _ctblSetText('tot1-ac',  _ctblFmtBR(t1.ac));
+  _ctblSetText('tot2-ac',  _ctblFmtBR(t2.ac));
+  _ctblSetVar ('var-ac',   t1.ac, t2.ac);
+
+  _ctblSetText('tot1-anc', _ctblFmtBR(t1.anc));
+  _ctblSetText('tot2-anc', _ctblFmtBR(t2.anc));
+  _ctblSetVar ('var-anc',  t1.anc, t2.anc);
+
+  _ctblSetText('tot1-at',  _ctblFmtBR(t1.at));
+  _ctblSetText('tot2-at',  _ctblFmtBR(t2.at));
+  _ctblSetVar ('var-at',   t1.at, t2.at);
+
+  _ctblSetText('tot1-pc',  _ctblFmtBR(t1.pc));
+  _ctblSetText('tot2-pc',  _ctblFmtBR(t2.pc));
+  _ctblSetVar ('var-pc',   t1.pc, t2.pc);
+
+  _ctblSetText('tot1-pnc', _ctblFmtBR(t1.pnc));
+  _ctblSetText('tot2-pnc', _ctblFmtBR(t2.pnc));
+  _ctblSetVar ('var-pnc',  t1.pnc, t2.pnc);
+
+  // DRE totais
+  const rl1 = t1.rl, rl2 = t2.rl;
+  _ctblSetText('tot1-rl',  _ctblFmtBR(rl1));
+  _ctblSetText('tot2-rl',  _ctblFmtBR(rl2));
+  _ctblSetVar ('var-rl',   rl1, rl2);
+
+  _ctblSetText('tot1-lb',  _ctblFmtBR(t1.lb));
+  _ctblSetText('tot2-lb',  _ctblFmtBR(t2.lb));
+  _ctblSetVar ('var-lb',   t1.lb, t2.lb);
+
+  // BP inputs var
+  const bpVars = ['disponibilidade','contas_receber','estoques','impostos_recuperar','outros_ac','imobilizado','investimentos','outros_creditos','outros_anc','fornecedores','adiantamento_clientes','impostos_pagar','emprestimos_cp','outros_pc','emprestimos_lp','outros_pnc','patrimonio_liquido'];
+  bpVars.forEach(f => {
+    const v1 = _ctblParseInput('bp1-'+f), v2 = _ctblParseInput('bp2-'+f);
+    _ctblSetVar('var-'+f, v1, v2);
+  });
+
+  // DRE inputs var
+  const dreVars = ['receita_bruta','deducoes','cpv','despesas_operacionais','resultado_financeiro','ir_csll','lucro_liquido'];
+  dreVars.forEach(f => {
+    const v1 = _ctblParseInput('dre1-'+f), v2 = _ctblParseInput('dre2-'+f);
+    _ctblSetVar('var-'+f, v1, v2);
+  });
+}
+
+// ── Cálculo principal ─────────────────────────────────────────────────────────
+
+function ctblScheduleCalc() {
+  clearTimeout(_ctblCalcTimer);
+  _ctblCalcTimer = setTimeout(ctblCalc, 250);
+}
+
+function ctblCalc() {
+  const data = _ctblReadData();
+  const fr = data.fator_risco;
+  const fm = data.fator_multiplicador;
+  const p1 = _ctblCalcPeriod(data.bp1, data.dre1, fr, fm);
+  const p2 = _ctblCalcPeriod(data.bp2, data.dre2, fr, fm);
+
+  _ctblUpdateTotals(p1, p2);
+  _ctblRenderIndicadores(p1, p2);
+
+  const baseFmt = p2.credito.calculado != null ? _ctblFmtBR(p2.credito.calculado) : '—';
+  const propFmt = p2.credito.proposto   != null ? _ctblFmtBR(p2.credito.proposto)  : '—';
+  _ctblSetText('ctbl-credito-base',     baseFmt);
+  _ctblSetText('ctbl-credito-proposto', propFmt);
+
+  // Update labels on BP/DRE table headers
+  const l1 = data.periodo1_label || 'Per. 1';
+  const l2 = data.periodo2_label || 'Per. 2';
+  const h1 = document.getElementById('ctbl-bp-h1');
+  const h2 = document.getElementById('ctbl-bp-h2');
+  if (h1) h1.textContent = l1;
+  if (h2) h2.textContent = l2;
+
+  ctblScheduleSave();
+}
+
+// ── Save ─────────────────────────────────────────────────────────────────────
+
+function ctblScheduleSave() {
+  clearTimeout(_ctblSaveTimer);
+  _ctblSaveTimer = setTimeout(ctblSalvar, 2000);
+}
+
+async function ctblSalvar() {
+  if (!sol || !sol.id) return;
+  const data = _ctblReadData();
+  const comentario = (document.getElementById('ctbl-comentario') || {}).value || '';
+  data.comentario_contabil = comentario;
+  try {
+    await fetch(`${API_URL}/api/contabil/${sol.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    // Atualiza localStorage
+    if (sol) {
+      sol.contabil_data = data;
+      DB.solicitacoes.save(sol);
+    }
+  } catch (e) { /* silencioso */ }
+}
+
+// ── Popular campos a partir de dados ─────────────────────────────────────────
+
+function _ctblPopulateFields(raw) {
+  if (!raw) return;
+  const setV = (id, v) => {
+    const el = document.getElementById(id);
+    if (el && v != null) {
+      // Formata com duas casas decimais no padrão BR
+      el.value = Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+  };
+  const setS = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+
+  setS('ctbl-p1-label', raw.periodo1_label);
+  setS('ctbl-p2-label', raw.periodo2_label);
+
+  _CTBL_BP_FIELDS.forEach(f => { setV('bp1-'+f, raw.bp1?.[f]); setV('bp2-'+f, raw.bp2?.[f]); });
+  _CTBL_DRE_FIELDS.forEach(f => { setV('dre1-'+f, raw.dre1?.[f]); setV('dre2-'+f, raw.dre2?.[f]); });
+
+  if (raw.fator_risco != null) {
+    const frEl = document.getElementById('ctbl-fator-risco');
+    if (frEl) frEl.value = (raw.fator_risco * 100).toFixed(0);
+  }
+  if (raw.fator_multiplicador != null) {
+    const fmEl = document.getElementById('ctbl-fator-mult');
+    if (fmEl) fmEl.value = raw.fator_multiplicador;
+  }
+  if (raw.comentario_contabil) {
+    const cEl = document.getElementById('ctbl-comentario');
+    if (cEl) cEl.value = raw.comentario_contabil;
+  }
+}
+
+// ── Extração principal ────────────────────────────────────────────────────────
+
+async function runContabilExtracao() {
+  if (!sol || !sol.id) { showToast('Solicitação não carregada.', 'error'); return; }
+
+  const btn = document.getElementById('btn-contabil-extrair');
+  const origHtml = btn.innerHTML;
+  const spin = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="14" height="14"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+  btn.disabled = true;
+  btn.innerHTML = spin + ' Extraindo…';
+
+  try {
+    const res = await fetch(`${API_URL}/api/contabil/extrair/${sol.id}`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const { data, result } = await res.json();
+
+    // Verificar se encontrou dois períodos
+    const hasBothPeriods = data && data.bp2 && Object.values(data.bp2).some(v => v != null);
+    const warn = document.getElementById('contabil-warn-periodo');
+    if (warn) warn.style.display = hasBothPeriods ? 'none' : '';
+
+    // Popular campos
+    _ctblPopulateFields(data);
+
+    // Mostrar corpo
+    document.getElementById('contabil-hint').style.display = 'none';
+    document.getElementById('contabil-body').style.display = '';
+
+    // Calcular
+    ctblCalc();
+
+    // Salvar no localStorage
+    if (sol) {
+      sol.contabil_data   = data;
+      sol.contabil_result = result;
+      DB.solicitacoes.save(sol);
+    }
+
+    showToast('Extração concluída! Revise os valores e salve.', 'success');
+
+    // Fase 4: Re-rodar análise de IA automaticamente com os indicadores contábeis
+    if (typeof runAnalysis === 'function') {
+      setTimeout(() => runAnalysis(), 800);
+    }
+
+  } catch (e) {
+    showToast('Erro na extração: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+  }
+}
+
+// ── Usar como limite na Decisão do Analista ───────────────────────────────────
+
+function ctblUsarLimite() {
+  const data = _ctblReadData();
+  const fr = data.fator_risco;
+  const fm = data.fator_multiplicador;
+  const p2 = _ctblCalcPeriod(data.bp2, data.dre2, fr, fm);
+  const proposto = p2.credito.proposto;
+  if (!proposto) { showToast('Calcule o crédito antes de usar o limite.', 'warning'); return; }
+
+  // Formata como string BR para preencher o campo de limite
+  const limStr = Math.round(proposto).toLocaleString('pt-BR');
+
+  // Tenta preencher o campo de limite no card de decisão
+  const camposLimite = ['dec-limite', 'limite-aprovado', 'decLimiteAprovado'];
+  let preencheu = false;
+  for (const id of camposLimite) {
+    const el = document.getElementById(id);
+    if (el) { el.value = limStr; preencheu = true; break; }
+  }
+
+  // Fallback: procura o primeiro input com "limite" no id dentro do decision-card
+  if (!preencheu) {
+    const dc = document.getElementById('decision-card');
+    if (dc) {
+      const inp = dc.querySelector('input[id*="limite"], input[id*="Limite"]');
+      if (inp) { inp.value = limStr; preencheu = true; }
+    }
+  }
+
+  if (preencheu) {
+    showToast(`Limite de ${_ctblFmtBR(proposto)} pré-preenchido na Decisão.`, 'success');
+    document.getElementById('decision-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    showToast(`Crédito Proposto: ${_ctblFmtBR(proposto)} — preencha manualmente no campo de limite.`, 'info');
+  }
+}
+
+// ── Inicialização: carrega dados salvos ───────────────────────────────────────
+
+(function ctblInit() {
+  if (!sol) return;
+  const saved = sol.contabil_data;
+  if (!saved) return;
+
+  _ctblPopulateFields(saved);
+  document.getElementById('contabil-hint').style.display = 'none';
+  document.getElementById('contabil-body').style.display = '';
+
+  const hasBothPeriods = saved.bp2 && Object.values(saved.bp2).some(v => v != null);
+  const warn = document.getElementById('contabil-warn-periodo');
+  if (warn) warn.style.display = hasBothPeriods ? 'none' : '';
+
+  ctblCalc();
+})();
 </script>
 </body>
 </html>

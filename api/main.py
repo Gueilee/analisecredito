@@ -631,6 +631,7 @@ class AnalyzeRequest(BaseModel):
     desconto: Optional[str] = ""
     # Contexto
     comentario: Optional[str] = ""
+    sol_id: Optional[str] = ""  # passado para enriquecer o prompt com indicadores contábeis
 
     @model_validator(mode='before')
     @classmethod
@@ -761,7 +762,7 @@ async def fetch_receita(cnpj: str) -> dict:
 
 # ── Prompt ───────────────────────────────────────────────────────────────────
 
-def build_prompt(req: AnalyzeRequest, receita: dict) -> str:
+def build_prompt(req: AnalyzeRequest, receita: dict, contabil_result: Optional[dict] = None) -> str:
     d = receita.get("data", {})
     bureau_ok = receita.get("status") == "ok"
 
@@ -817,8 +818,9 @@ CNPJ informado: {req.cnpj}
     exp_total = br_to_float(req.limiteExportador) + br_to_float(req.limiteDesp) + br_to_float(req.limiteImp)
     exp_str = f"R$ {exp_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-    tempo_mercado = calc_tempo_mercado(req.fundacao) if req.fundacao else "Não informado"
-    obs_analista = f"## OBSERVAÇÕES DO ANALISTA\n{req.comentario}" if req.comentario else ""
+    tempo_mercado  = calc_tempo_mercado(req.fundacao) if req.fundacao else "Não informado"
+    obs_analista   = f"## OBSERVAÇÕES DO ANALISTA\n{req.comentario}" if req.comentario else ""
+    contabil_bloco = _build_contabil_section(contabil_result) if contabil_result and contabil_result.get("periodo2") else ""
 
     return f"""Você é um analista de crédito sênior especializado em empresas importadoras no Brasil,
 trabalhando na Vendemmia — empresa de logística de importação (Trading/Account).
@@ -872,7 +874,7 @@ Inadimplência = Vendemmia absorve o custo integralmente.
 - Desembaraço aduaneiro: {req.prazoDesembaraco or '—'} dias
 - Faturamento: {req.prazoFaturamento or '—'} dias
 - Pagamento à Vendemmia: {req.prazoPagtoVendemmia or '—'} dias
-
+{contabil_bloco}
 Retorne APENAS um JSON válido, sem texto adicional antes ou depois:
 
 {{
@@ -1675,6 +1677,449 @@ async def extract_financials(
     return {"documentos": documentos, "resumo": resumo}
 
 
+# ── Análise Contábil ──────────────────────────────────────────────────────────
+
+class PeriodoBP(BaseModel):
+    disponibilidade:      Optional[float] = None
+    contas_receber:       Optional[float] = None
+    estoques:             Optional[float] = None
+    impostos_recuperar:   Optional[float] = None
+    outros_ac:            Optional[float] = None
+    outros_creditos:      Optional[float] = None
+    imobilizado:          Optional[float] = None
+    investimentos:        Optional[float] = None
+    outros_anc:           Optional[float] = None
+    fornecedores:         Optional[float] = None
+    adiantamento_clientes: Optional[float] = None
+    impostos_pagar:       Optional[float] = None
+    emprestimos_cp:       Optional[float] = None
+    outros_pc:            Optional[float] = None
+    emprestimos_lp:       Optional[float] = None
+    outros_pnc:           Optional[float] = None
+    patrimonio_liquido:   Optional[float] = None
+
+
+class PeriodoDRE(BaseModel):
+    receita_bruta:          Optional[float] = None
+    deducoes:               Optional[float] = None
+    receita_liquida:        Optional[float] = None
+    cpv:                    Optional[float] = None
+    lucro_bruto:            Optional[float] = None
+    despesas_operacionais:  Optional[float] = None
+    ebitda:                 Optional[float] = None
+    resultado_financeiro:   Optional[float] = None
+    lucro_antes_ir:         Optional[float] = None
+    ir_csll:                Optional[float] = None
+    lucro_liquido:          Optional[float] = None
+
+
+class ContabilData(BaseModel):
+    periodo1_label:    str = ""
+    periodo2_label:    str = ""
+    bp1:               PeriodoBP  = PeriodoBP()
+    bp2:               PeriodoBP  = PeriodoBP()
+    dre1:              PeriodoDRE = PeriodoDRE()
+    dre2:              PeriodoDRE = PeriodoDRE()
+    fator_risco:       float = 0.10
+    fator_multiplicador: float = 1.1
+
+
+def _sdiv(a: Optional[float], b: Optional[float]) -> Optional[float]:
+    if a is None or b is None or b == 0:
+        return None
+    return a / b
+
+
+def _sem_liq_seca(v):
+    if v is None: return "nd"
+    return "ok" if v >= 1.0 else ("warn" if v >= 0.7 else "bad")
+
+def _sem_liq_geral(v):
+    if v is None: return "nd"
+    return "ok" if v >= 2.0 else ("warn" if v >= 1.0 else "bad")
+
+def _sem_roe(v):
+    if v is None: return "nd"
+    return "ok" if v >= 0.10 else ("warn" if v >= 0.05 else "bad")
+
+def _sem_roa(v):
+    if v is None: return "nd"
+    return "ok" if v >= 0.05 else ("warn" if v >= 0.02 else "bad")
+
+def _sem_endiv(v):
+    if v is None: return "nd"
+    return "ok" if v <= 0.50 else ("warn" if v <= 1.00 else "bad")
+
+def _sem_margem_bruta(v):
+    if v is None: return "nd"
+    return "ok" if v >= 0.25 else ("warn" if v >= 0.15 else "bad")
+
+def _sem_margem_liq(v):
+    if v is None: return "nd"
+    return "ok" if v >= 0.05 else ("warn" if v >= 0.01 else "bad")
+
+def _sem_pmr(v):
+    if v is None: return "nd"
+    return "ok" if v <= 60 else ("warn" if v <= 120 else "bad")
+
+def _sem_pme(v):
+    if v is None: return "nd"
+    return "ok" if v <= 60 else ("warn" if v <= 120 else "bad")
+
+
+def _calc_periodo(bp: PeriodoBP, dre: PeriodoDRE, fator_risco: float, fator_mult: float) -> dict:
+    def nn(*vals):
+        return sum(v for v in vals if v is not None)
+
+    ac  = nn(bp.disponibilidade, bp.contas_receber, bp.estoques, bp.impostos_recuperar, bp.outros_ac)
+    anc = nn(bp.outros_creditos, bp.imobilizado, bp.investimentos, bp.outros_anc)
+    at  = ac + anc if (bp.disponibilidade is not None or bp.imobilizado is not None) else None
+    pc  = nn(bp.fornecedores, bp.adiantamento_clientes, bp.impostos_pagar, bp.emprestimos_cp, bp.outros_pc)
+    pnc = nn(bp.emprestimos_lp, bp.outros_pnc)
+    pl  = bp.patrimonio_liquido
+    passivo_total = pc + pnc if (bp.fornecedores is not None or bp.emprestimos_lp is not None) else None
+
+    # DRE: derivar RL e LB se não fornecidos diretamente
+    rl = dre.receita_liquida
+    if rl is None and dre.receita_bruta is not None:
+        rl = dre.receita_bruta - abs(dre.deducoes or 0)
+    lb = dre.lucro_bruto
+    if lb is None and rl is not None and dre.cpv is not None:
+        lb = rl - abs(dre.cpv)
+    ll  = dre.lucro_liquido
+    cpv = dre.cpv
+
+    liq_seca     = _sdiv((ac - (bp.estoques or 0)) if at is not None else None, pc if pc else None)
+    liq_geral    = _sdiv(at, passivo_total)
+    roe          = _sdiv(ll, pl)
+    roa          = _sdiv(ll, at)
+    margem_bruta = _sdiv(lb, rl)
+    margem_liq   = _sdiv(ll, rl)
+
+    ativ_op = nn(bp.contas_receber, bp.estoques, bp.outros_ac)
+    pass_op = nn(bp.fornecedores, bp.adiantamento_clientes, bp.outros_pc)
+    ncg = ativ_op - pass_op if (bp.contas_receber is not None or bp.fornecedores is not None) else None
+
+    endiv_geral   = _sdiv(passivo_total, at)
+    emp_total     = (bp.emprestimos_cp or 0) + (bp.emprestimos_lp or 0)
+    endiv_oneroso = _sdiv(emp_total if (bp.emprestimos_cp or bp.emprestimos_lp) else None, pl)
+
+    pmr = (bp.contas_receber / rl * 360) if (bp.contas_receber and rl) else None
+    pme = (bp.estoques / abs(cpv) * 360)  if (bp.estoques and cpv) else None
+
+    credito_calculado = (liq_geral * pl)  if (liq_geral and pl) else None
+    credito_proposto  = (ll * fator_mult / fator_risco) if (ll and fator_risco) else None
+
+    def r(v, dec=2):
+        return round(v, dec) if v is not None else None
+
+    def ind(label, formula, valor, status, valor_pct=None, unidade=None):
+        return {
+            "label": label, "formula": formula,
+            "valor": r(valor), "valor_pct": r(valor_pct, 2),
+            "status": status, "unidade": unidade,
+        }
+
+    return {
+        "totais": {
+            "ativo_circulante":    r(ac, 0)  if at is not None else None,
+            "ativo_nao_circulante": r(anc, 0) if at is not None else None,
+            "ativo_total":         r(at, 0),
+            "passivo_circulante":  r(pc, 0)  if passivo_total is not None else None,
+            "passivo_nao_circulante": r(pnc, 0) if passivo_total is not None else None,
+            "passivo_total":       r(passivo_total, 0),
+            "patrimonio_liquido":  r(pl, 0),
+            "receita_liquida":     r(rl, 0),
+            "lucro_bruto":         r(lb, 0),
+            "lucro_liquido":       r(ll, 0),
+        },
+        "indicadores": {
+            "margem_bruta":        ind("Margem Bruta",        "LB ÷ RL",           margem_bruta,  _sem_margem_bruta(margem_bruta), valor_pct=round(margem_bruta*100,1) if margem_bruta is not None else None, unidade="%"),
+            "margem_liquida":      ind("Margem Líquida",      "LL ÷ RL",           margem_liq,    _sem_margem_liq(margem_liq),   valor_pct=round(margem_liq*100,1)   if margem_liq   is not None else None, unidade="%"),
+            "liquidez_seca":       ind("Liquidez Seca",       "(AC−Est) ÷ PC",     liq_seca,      _sem_liq_seca(liq_seca),       unidade="×"),
+            "liquidez_geral":      ind("Liquidez Geral",      "AT ÷ (PC+PNC)",     liq_geral,     _sem_liq_geral(liq_geral),     unidade="×"),
+            "roe":                 ind("ROE",                 "LL ÷ PL",           roe,           _sem_roe(roe),                 valor_pct=round(roe*100,1)           if roe is not None else None, unidade="%"),
+            "roa":                 ind("ROA",                 "LL ÷ AT",           roa,           _sem_roa(roa),                 valor_pct=round(roa*100,1)           if roa is not None else None, unidade="%"),
+            "ncg":                 ind("NCG",                 "(CR+Est+OAC)−(Forn+Adiant+OPC)", ncg, "ok" if ncg is not None and ncg >= 0 else ("bad" if ncg is not None else "nd"), unidade="R$"),
+            "endividamento_geral": ind("Endividamento Geral", "(PC+PNC) ÷ AT",     endiv_geral,   _sem_endiv(endiv_geral),       valor_pct=round(endiv_geral*100,1)   if endiv_geral is not None else None, unidade="%"),
+            "endividamento_oneroso": ind("Endiv. Oneroso",   "(EmpCP+EmpLP) ÷ PL",endiv_oneroso, _sem_endiv(endiv_oneroso),     valor_pct=round(endiv_oneroso*100,1) if endiv_oneroso is not None else None, unidade="%"),
+            "pmr":                 ind("PMR",                 "(CR ÷ RL) × 360",   pmr,           _sem_pmr(pmr),                 unidade="dias"),
+            "pme":                 ind("PME",                 "(Est ÷ CPV) × 360", pme,           _sem_pme(pme),                 unidade="dias"),
+        },
+        "credito": {
+            "calculado":         r(credito_calculado, 0),
+            "proposto":          r(credito_proposto, 0),
+            "fator_risco":       fator_risco,
+            "fator_multiplicador": fator_mult,
+        },
+    }
+
+
+def _build_contabil_section(contabil_result: dict) -> str:
+    """Formata os indicadores contábeis para injeção no prompt do Gemini."""
+    p1  = contabil_result.get("periodo1") or {}
+    p2  = contabil_result.get("periodo2") or {}
+    l1  = contabil_result.get("periodo1_label") or "Período 1"
+    l2  = contabil_result.get("periodo2_label") or "Período 2"
+    t2  = p2.get("totais") or {}
+    i1  = p1.get("indicadores") or {}
+    i2  = p2.get("indicadores") or {}
+    cr2 = p2.get("credito") or {}
+
+    sem_map = {"ok": "✔", "warn": "⚠", "bad": "✗", "nd": "—"}
+
+    def fmtbr(v):
+        if v is None: return "—"
+        return f"R$ {v:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    rows = []
+    for k, (lbl, use_pct) in {
+        "margem_bruta":        ("Margem Bruta", True),
+        "margem_liquida":      ("Margem Líquida", True),
+        "liquidez_seca":       ("Liquidez Seca", False),
+        "liquidez_geral":      ("Liquidez Geral", False),
+        "roe":                 ("ROE", True),
+        "roa":                 ("ROA", True),
+        "endividamento_geral": ("Endividamento Geral", True),
+        "ncg":                 ("NCG", False),
+        "pmr":                 ("PMR (dias)", False),
+        "pme":                 ("PME (dias)", False),
+    }.items():
+        iv1 = i1.get(k) or {}
+        iv2 = i2.get(k) or {}
+        def _fmtv(iv, pct):
+            vp = iv.get("valor_pct")
+            v  = iv.get("valor")
+            u  = iv.get("unidade", "")
+            if pct and vp is not None: return f"{vp}%"
+            if v is not None: return f"{v}{' '+u if u not in ('%','') else ''}"
+            return "—"
+        sem = sem_map.get(iv2.get("status", "nd"), "—")
+        rows.append(f"  - {lbl}: {_fmtv(iv1, use_pct)} → {_fmtv(iv2, use_pct)} {sem}")
+
+    return f"""
+
+## ANÁLISE CONTÁBIL (demonstrativos financeiros)
+Períodos analisados: {l1} → {l2}
+
+### Posição Patrimonial em {l2}
+- Ativo Total: {fmtbr(t2.get('ativo_total'))}
+- Passivo Total: {fmtbr(t2.get('passivo_total'))}
+- Patrimônio Líquido: {fmtbr(t2.get('patrimonio_liquido'))}
+- Receita Líquida: {fmtbr(t2.get('receita_liquida'))}
+- Lucro Líquido: {fmtbr(t2.get('lucro_liquido'))}
+
+### Evolução dos Indicadores ({l1} → {l2})
+{chr(10).join(rows)}
+
+### Capacidade de Crédito Calculada
+- Crédito Base (Liq.Geral × PL): {fmtbr(cr2.get('calculado'))}
+- Crédito Proposto (Calculadora Contábil): {fmtbr(cr2.get('proposto'))}
+
+Leve esses indicadores em conta na análise de proporcionalidade e recomendação de limite.
+"""
+
+
+@app.post("/api/contabil/extrair/{sol_id}")
+@limiter.limit("10/minute")
+async def contabil_extrair(sol_id: str, request: Request, current_user=Depends(_get_current_user)):
+    """Extrai dados contábeis estruturados dos PDFs de BP e DRE via Gemini e salva na solicitação."""
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID inválido")
+    key = _load_key()
+    if not key:
+        raise HTTPException(503, "GEMINI_API_KEY não configurada no servidor.")
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
+
+    rows = await _turso_query(
+        "SELECT nome, content FROM documents WHERE sol_id=? AND tipo IN ('balanco','dre') ORDER BY tipo, nome",
+        [sol_id],
+    )
+    if not rows:
+        raise HTTPException(404, "Nenhum documento de Balanço ou DRE encontrado. Envie os documentos antes de extrair.")
+
+    partes = []
+    for row in rows:
+        ext = Path(row["nome"]).suffix.lower()
+        raw = base64.standard_b64decode(row["content"])
+        doc = _pdf_to_structured(raw, row["nome"]) if ext == ".pdf" else _xlsx_to_structured(raw, row["nome"])
+        linhas = [f"=== DOCUMENTO: {row['nome']} ==="]
+        for sec in doc.get("secoes", []):
+            if sec["tipo"] == "texto":
+                linhas.append(sec["conteudo"])
+            elif sec["tipo"] in ("tabela", "planilha"):
+                for lr in sec.get("linhas", []):
+                    linhas.append(" | ".join(str(c) for c in lr))
+        partes.append("\n".join(linhas))
+
+    texto = "\n\n".join(partes)
+    if not texto.strip():
+        raise HTTPException(422, "Não foi possível extrair texto dos documentos financeiros.")
+
+    gemini_prompt = f"""Você é um analista contábil especializado em demonstrações financeiras brasileiras.
+
+Analise os documentos abaixo e extraia os dados de Balanço Patrimonial (BP) e DRE para DOIS períodos distintos.
+São obrigatoriamente dois períodos (ex: dez/2024 e jun/2025, ou 2023 e 2024).
+
+REGRAS:
+- Valores em REAIS, número puro (float), sem formatação
+- Custos e despesas: valores POSITIVOS (o sistema aplica o sinal)
+- Campo inexistente: null
+- Se só encontrar um período, use null em todo o segundo período
+
+DOCUMENTOS:
+{texto[:18000]}
+
+Retorne APENAS um JSON válido (sem markdown, sem texto extra):
+
+{{
+  "periodo1_label": "<ex: dez/2024>",
+  "periodo2_label": "<ex: jun/2025>",
+  "bp1": {{
+    "disponibilidade": <float|null>,
+    "contas_receber": <float|null>,
+    "estoques": <float|null>,
+    "impostos_recuperar": <float|null>,
+    "outros_ac": <float|null>,
+    "outros_creditos": <float|null>,
+    "imobilizado": <float|null>,
+    "investimentos": <float|null>,
+    "outros_anc": <float|null>,
+    "fornecedores": <float|null>,
+    "adiantamento_clientes": <float|null>,
+    "impostos_pagar": <float|null>,
+    "emprestimos_cp": <float|null>,
+    "outros_pc": <float|null>,
+    "emprestimos_lp": <float|null>,
+    "outros_pnc": <float|null>,
+    "patrimonio_liquido": <float|null>
+  }},
+  "bp2": {{ (mesma estrutura) }},
+  "dre1": {{
+    "receita_bruta": <float|null>,
+    "deducoes": <float|null>,
+    "receita_liquida": <float|null>,
+    "cpv": <float|null>,
+    "lucro_bruto": <float|null>,
+    "despesas_operacionais": <float|null>,
+    "ebitda": <float|null>,
+    "resultado_financeiro": <float|null>,
+    "lucro_antes_ir": <float|null>,
+    "ir_csll": <float|null>,
+    "lucro_liquido": <float|null>
+  }},
+  "dre2": {{ (mesma estrutura) }},
+  "fator_risco": 0.10,
+  "fator_multiplicador": 1.1
+}}"""
+
+    try:
+        raw_resp = _gemini_generate(key, gemini_prompt)
+        extracted = _extract_json(raw_resp)
+    except Exception as exc:
+        raise HTTPException(502, f"Erro ao chamar Gemini: {exc}")
+
+    if not extracted:
+        raise HTTPException(422, "Gemini não retornou JSON válido. Verifique os documentos enviados.")
+
+    # Calcular indicadores imediatamente
+    try:
+        cd = ContabilData(**extracted)
+        p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador)
+        p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador)
+        contabil_result = {
+            "periodo1_label": cd.periodo1_label,
+            "periodo2_label": cd.periodo2_label,
+            "periodo1": p1,
+            "periodo2": p2,
+            "fator_risco": cd.fator_risco,
+            "fator_multiplicador": cd.fator_multiplicador,
+            "raw": extracted,
+        }
+    except Exception:
+        contabil_result = {"raw": extracted}
+
+    # Salvar na solicitação
+    try:
+        sol_rows = await _turso_query("SELECT data FROM solicitacoes WHERE id=?", [sol_id])
+        if sol_rows:
+            sol_data = json.loads(sol_rows[0]["data"] or "{}")
+            sol_data["contabil_data"] = extracted
+            sol_data["contabil_result"] = contabil_result
+            sol_data["contabil_extraido_at"] = datetime.utcnow().isoformat()
+            await _turso_exec(
+                "UPDATE solicitacoes SET data=?, updated_at=? WHERE id=?",
+                [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
+            )
+    except Exception:
+        pass
+
+    return {"ok": True, "data": extracted, "result": contabil_result}
+
+
+@app.post("/api/contabil/calcular")
+@limiter.limit("60/minute")
+async def contabil_calcular(request: Request, current_user=Depends(_get_current_user)):
+    """Recalcula todos os indicadores a partir de dados de BP/DRE editados pelo analista."""
+    body = await request.json()
+    try:
+        raw_data = body.get("data", body)
+        cd = ContabilData(**raw_data)
+    except Exception as exc:
+        raise HTTPException(400, f"Dados inválidos: {exc}")
+
+    p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador)
+    p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador)
+
+    return {
+        "periodo1_label":    cd.periodo1_label,
+        "periodo2_label":    cd.periodo2_label,
+        "periodo1":          p1,
+        "periodo2":          p2,
+        "fator_risco":       cd.fator_risco,
+        "fator_multiplicador": cd.fator_multiplicador,
+    }
+
+
+@app.patch("/api/contabil/{sol_id}")
+@limiter.limit("60/minute")
+async def contabil_salvar(sol_id: str, request: Request, current_user=Depends(_get_current_user)):
+    """Persiste alterações manuais do analista nos dados contábeis."""
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID inválido")
+    if not _turso_ok():
+        raise HTTPException(503, "Banco não configurado.")
+    patch = await request.json()
+    sol_rows = await _turso_query("SELECT data FROM solicitacoes WHERE id=?", [sol_id])
+    if not sol_rows:
+        raise HTTPException(404, "Solicitação não encontrada")
+    sol_data = json.loads(sol_rows[0]["data"] or "{}")
+    existing = sol_data.get("contabil_data") or {}
+    existing.update(patch)
+    # Recalcular após patch
+    try:
+        cd = ContabilData(**existing)
+        p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador)
+        p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador)
+        sol_data["contabil_result"] = {
+            "periodo1_label": cd.periodo1_label,
+            "periodo2_label": cd.periodo2_label,
+            "periodo1": p1, "periodo2": p2,
+            "fator_risco": cd.fator_risco,
+            "fator_multiplicador": cd.fator_multiplicador,
+        }
+    except Exception:
+        pass
+    sol_data["contabil_data"]    = existing
+    sol_data["contabil_editado_at"] = datetime.utcnow().isoformat()
+    await _turso_exec(
+        "UPDATE solicitacoes SET data=?, updated_at=? WHERE id=?",
+        [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
+    )
+    return {"ok": True, "result": sol_data.get("contabil_result")}
+
+
 # ── Notificações por e-mail ───────────────────────────────────────────────────
 
 class NotifyEmailRequest(BaseModel):
@@ -1936,6 +2381,17 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
     # 1. Consulta Receita Federal — sempre executada, nunca bloqueia a resposta
     receita = await fetch_receita(req.cnpj)
 
+    # 1b. Carrega indicadores contábeis se sol_id informado
+    contabil_result: Optional[dict] = None
+    if req.sol_id and _SOL_ID_RE.match(req.sol_id) and _turso_ok():
+        try:
+            sol_rows = await _turso_query("SELECT data FROM solicitacoes WHERE id=?", [req.sol_id])
+            if sol_rows:
+                sol_data = json.loads(sol_rows[0]["data"] or "{}")
+                contabil_result = sol_data.get("contabil_result")
+        except Exception:
+            pass
+
     # 2. Tenta análise com Gemini — falha de forma isolada
     key = _load_key()
     analysis: Optional[Dict[str, Any]] = None
@@ -1944,7 +2400,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
     if not key:
         ai_error = "GEMINI_API_KEY não configurada no servidor."
     else:
-        prompt = build_prompt(req, receita)
+        prompt = build_prompt(req, receita, contabil_result)
         try:
             raw = _gemini_generate(key, prompt)
 
