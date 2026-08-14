@@ -1,0 +1,133 @@
+name: Migrate Turso → PostgreSQL
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Instalar dependências Python
+        run: pip install asyncpg requests
+
+      - name: Executar migração de dados
+        env:
+          TURSO_URL: libsql://analisecredito-gueilee.aws-us-east-1.turso.io
+          TURSO_TOKEN: ${{ secrets.ENV_PROD_TURSO_TOKEN }}
+          PG_HOST: chico-bento-lake-pg-dev.postgres.database.azure.com
+          PG_USER: projetos_admin
+          PG_PASS: ${{ secrets.ENV_PROD_PG_PASS }}
+          PG_DB: vdm_projetos
+        run: |
+          cat << 'EOF' > migrate.py
+          import asyncio, asyncpg, requests, ssl, os, json
+
+          TURSO_URL   = os.environ["TURSO_URL"].replace("libsql://", "https://")
+          TURSO_TOKEN = os.environ["TURSO_TOKEN"]
+          PG_HOST     = os.environ["PG_HOST"]
+          PG_USER     = os.environ["PG_USER"]
+          PG_PASS     = os.environ["PG_PASS"]
+          PG_DB       = os.environ["PG_DB"]
+
+          def turso_query(sql, args=None):
+              payload = {"requests": [{"type": "execute", "stmt": {"sql": sql, "args": [{"type": "text", "value": str(a)} for a in (args or [])]}}]}
+              r = requests.post(f"{TURSO_URL}/v2/pipeline", json=payload,
+                                headers={"Authorization": f"Bearer {TURSO_TOKEN}"}, timeout=30)
+              r.raise_for_status()
+              data = r.json()
+              result = data["results"][0]
+              if result["type"] == "error":
+                  raise Exception(f"Turso error: {result['error']}")
+              cols = [c["name"] for c in result["response"]["result"]["cols"]]
+              rows = result["response"]["result"]["rows"]
+              return [dict(zip(cols, [v["value"] if v["type"] != "null" else None for v in row])) for row in rows]
+
+          async def main():
+              ssl_ctx = ssl.create_default_context()
+              ssl_ctx.check_hostname = False
+              ssl_ctx.verify_mode = ssl.CERT_NONE
+
+              conn = await asyncpg.connect(
+                  host=PG_HOST, user=PG_USER, password=PG_PASS,
+                  database=PG_DB, ssl=ssl_ctx, command_timeout=30,
+              )
+
+              # ── solicitacoes ───────────────────────────────────────────
+              print("\n=== SOLICITACOES ===")
+              rows = turso_query("SELECT * FROM solicitacoes")
+              print(f"Encontrados: {len(rows)}")
+              ok = 0
+              for r in rows:
+                  try:
+                      await conn.execute("""
+                          INSERT INTO ac_solicitacoes
+                            (id, empresa, cnpj, solicitante, email, telefone, tipo_operacao,
+                             valor_solicitado, prazo, garantias, observacoes,
+                             status, created_at, updated_at)
+                          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                          ON CONFLICT (id) DO UPDATE SET
+                            status=EXCLUDED.status, updated_at=EXCLUDED.updated_at
+                      """,
+                      r.get("id"), r.get("empresa"), r.get("cnpj"), r.get("solicitante"),
+                      r.get("email"), r.get("telefone"), r.get("tipo_operacao"),
+                      r.get("valor_solicitado"), r.get("prazo"), r.get("garantias"),
+                      r.get("observacoes"), r.get("status"),
+                      r.get("created_at"), r.get("updated_at"))
+                      ok += 1
+                  except Exception as e:
+                      print(f"  ERRO {r.get('id')}: {e}")
+              print(f"Importados: {ok}/{len(rows)}")
+
+              # ── analises ──────────────────────────────────────────────
+              print("\n=== ANALISES ===")
+              rows = turso_query("SELECT * FROM analises")
+              print(f"Encontrados: {len(rows)}")
+              ok = 0
+              for r in rows:
+                  try:
+                      await conn.execute("""
+                          INSERT INTO ac_analises
+                            (id, sol_id, analista, score, limite_recomendado,
+                             parecer, decisao, created_at, updated_at)
+                          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                          ON CONFLICT (id) DO UPDATE SET
+                            decisao=EXCLUDED.decisao, updated_at=EXCLUDED.updated_at
+                      """,
+                      r.get("id"), r.get("sol_id"), r.get("analista"),
+                      r.get("score"), r.get("limite_recomendado"), r.get("parecer"),
+                      r.get("decisao"), r.get("created_at"), r.get("updated_at"))
+                      ok += 1
+                  except Exception as e:
+                      print(f"  ERRO {r.get('id')}: {e}")
+              print(f"Importados: {ok}/{len(rows)}")
+
+              # ── documents ─────────────────────────────────────────────
+              print("\n=== DOCUMENTS ===")
+              rows = turso_query("SELECT * FROM documents")
+              print(f"Encontrados: {len(rows)}")
+              ok = 0
+              for r in rows:
+                  try:
+                      await conn.execute("""
+                          INSERT INTO ac_documents
+                            (id, sol_id, filename, content_type, data, uploaded_at)
+                          VALUES ($1,$2,$3,$4,$5,$6)
+                          ON CONFLICT (id) DO UPDATE SET
+                            sol_id=EXCLUDED.sol_id
+                      """,
+                      r.get("id"), r.get("sol_id"), r.get("filename"),
+                      r.get("content_type"), r.get("data"), r.get("uploaded_at"))
+                      ok += 1
+                  except Exception as e:
+                      print(f"  ERRO {r.get('id')}: {e}")
+              print(f"Importados: {ok}/{len(rows)}")
+
+              await conn.close()
+              print("\n=== MIGRACAO CONCLUIDA ===")
+
+          asyncio.run(main())
+          EOF
+          python migrate.py
