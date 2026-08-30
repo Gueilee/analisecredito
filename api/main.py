@@ -1084,6 +1084,49 @@ def _load_gemini_model() -> str:
     return os.environ.get("GEMINI_MODEL", "gemini-1.5-flash").strip().strip('"').strip("'") or "gemini-1.5-flash"
 
 
+def _load_anthropic_key() -> str:
+    """Carrega e limpa a chave Anthropic do .env."""
+    load_dotenv(dotenv_path=_ENV_FILE, override=True)
+    raw = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    return raw.strip('"').strip("'").strip()
+
+
+def _claude_extract_json(texto: str, prompt_schema: str, anthropic_key: str) -> Optional[dict]:
+    """
+    Usa a API do Claude (Anthropic) para extrair dados estruturados de texto financeiro.
+    Retorna dict com os dados ou None em caso de falha.
+    """
+    prompt = f"""{prompt_schema}
+
+DOCUMENTOS:
+{texto[:20000]}
+
+Retorne APENAS o JSON válido, sem markdown, sem texto extra."""
+
+    try:
+        resp = httpx.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": anthropic_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": 4096,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=60.0,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:200]}")
+        data = resp.json()
+        raw_text = data["content"][0]["text"]
+        return _extract_json(raw_text)
+    except Exception as exc:
+        raise RuntimeError(f"Anthropic API error: {exc}") from exc
+
+
 _GEMINI_FALLBACK_MODELS = [
     # Tentados em ordem se o modelo configurado falhar por NOT_FOUND
     "gemini-2.0-flash-exp",
@@ -2141,12 +2184,9 @@ Leve esses indicadores em conta na análise de proporcionalidade e recomendaçã
 @app.post("/api/contabil/extrair/{sol_id}")
 @limiter.limit("10/minute")
 async def contabil_extrair(sol_id: str, request: Request, current_user=Depends(_get_current_user)):
-    """Extrai dados contábeis estruturados dos PDFs de BP e DRE via Gemini e salva na solicitação."""
+    """Extrai dados contábeis estruturados dos PDFs de BP e DRE (tenta Gemini, fallback Claude)."""
     if not _SOL_ID_RE.match(sol_id):
         raise HTTPException(400, "ID inválido")
-    key = _load_key()
-    if not key:
-        raise HTTPException(503, "GEMINI_API_KEY não configurada no servidor.")
     if not _turso_ok():
         raise HTTPException(503, "Banco de dados não configurado.")
 
@@ -2233,28 +2273,75 @@ Retorne APENAS um JSON válido (sem markdown, sem texto extra):
 }}"""
 
     extracted = None
-    needs_manual = False
     ai_error_msg = None
-    try:
-        raw_resp = await asyncio.to_thread(_gemini_generate, key, gemini_prompt)
-        extracted = _extract_json(raw_resp)
-    except Exception as exc:
-        ai_error_msg = str(exc)[:300]
-        needs_manual = True
 
-    if not extracted and not needs_manual:
-        needs_manual = True
-        ai_error_msg = "IA não retornou JSON válido"
+    # ── Tentativa 1: Gemini ───────────────────────────────────────────────────
+    gemini_key = _load_key()
+    if gemini_key:
+        try:
+            raw_resp = await asyncio.to_thread(_gemini_generate, gemini_key, gemini_prompt)
+            extracted = _extract_json(raw_resp)
+        except Exception as exc:
+            ai_error_msg = f"Gemini: {str(exc)[:200]}"
 
-    if needs_manual:
-        # IA indisponível — retorna formulário vazio para preenchimento manual pelo analista
+    # ── Tentativa 2: Claude (Anthropic) — fallback automático ─────────────────
+    if not extracted:
+        anthropic_key = _load_anthropic_key()
+        if anthropic_key:
+            try:
+                # Reutiliza o mesmo schema do prompt Gemini — Claude entende igual
+                schema_prompt = """Você é um analista contábil especializado em demonstrações financeiras brasileiras.
+
+Analise os documentos abaixo e extraia os dados de Balanço Patrimonial (BP) e DRE para DOIS períodos distintos.
+São obrigatoriamente dois períodos (ex: dez/2024 e jun/2025, ou 2023 e 2024).
+
+REGRAS:
+- Valores em REAIS, número puro (float), sem formatação
+- Custos e despesas: valores POSITIVOS (o sistema aplica o sinal)
+- Campo inexistente: null
+- Se só encontrar um período, use null em todo o segundo período
+
+Retorne APENAS um JSON válido (sem markdown, sem texto extra):
+
+{
+  "periodo1_label": "<ex: dez/2024>",
+  "periodo2_label": "<ex: jun/2025>",
+  "bp1": {
+    "disponibilidade": null, "contas_receber": null, "estoques": null,
+    "impostos_recuperar": null, "outros_ac": null, "outros_creditos": null,
+    "imobilizado": null, "investimentos": null, "outros_anc": null,
+    "fornecedores": null, "adiantamento_clientes": null, "impostos_pagar": null,
+    "emprestimos_cp": null, "outros_pc": null, "emprestimos_lp": null,
+    "outros_pnc": null, "patrimonio_liquido": null
+  },
+  "bp2": { (mesma estrutura) },
+  "dre1": {
+    "receita_bruta": null, "deducoes": null, "receita_liquida": null,
+    "cpv": null, "lucro_bruto": null, "despesas_operacionais": null,
+    "ebitda": null, "resultado_financeiro": null, "lucro_antes_ir": null,
+    "ir_csll": null, "lucro_liquido": null
+  },
+  "dre2": { (mesma estrutura) },
+  "fator_risco": 0.10,
+  "fator_multiplicador": 1.1
+}"""
+                extracted = await asyncio.to_thread(
+                    _claude_extract_json, texto, schema_prompt, anthropic_key
+                )
+                if extracted:
+                    ai_error_msg = None  # Claude funcionou — limpa erro anterior
+            except Exception as exc:
+                ai_error_msg = (ai_error_msg or "") + f" | Claude: {str(exc)[:200]}"
+
+    # ── Fallback final: formulário vazio para preenchimento manual ─────────────
+    if not extracted:
         return {
             "ok": True,
             "data": {},
             "result": {},
             "needs_manual": True,
             "texto_extraido": texto[:3000] if texto else "",
-            "ai_error": ai_error_msg or "IA indisponível",
+            "ai_error": ai_error_msg or "IA indisponível — configure GEMINI_API_KEY ou ANTHROPIC_API_KEY",
         }
 
     # Calcular indicadores imediatamente
