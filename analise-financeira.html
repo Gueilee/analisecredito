@@ -1647,7 +1647,8 @@
         // IA falhou, mas RF pode ter funcionado — exibe dados da RF normalmente
         btn.disabled = false;
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Iniciar Análise`;
-        document.getElementById('trigger-sub').textContent = 'IA indisponível — tente novamente';
+        const _trigSubErr = document.getElementById('trigger-sub');
+        if (_trigSubErr) _trigSubErr.textContent = 'IA indisponível — tente novamente';
 
         // Renderiza dados da Receita Federal mesmo sem IA
         const rfd = rf.data || {};
@@ -1717,7 +1718,8 @@
 
       btn.disabled = true;
       btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Análise Concluída`;
-      document.getElementById('trigger-sub').textContent = 'Última análise: ' + new Date().toLocaleString('pt-BR');
+      const _trigSub = document.getElementById('trigger-sub');
+      if (_trigSub) _trigSub.textContent = 'Última análise: ' + new Date().toLocaleString('pt-BR');
 
     } catch (e) {
       // Erros de rede / autenticação / servidor
