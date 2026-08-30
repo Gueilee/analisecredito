@@ -433,6 +433,40 @@
     .idwall-proc-state.ok { background:rgba(255,255,255,.08); color:var(--text-faint); }
     @keyframes spin { to { transform:rotate(360deg); } }
 
+    /* ── Botão Análise Completa ──────────────────────────── */
+    .btn-full-analysis {
+      display:inline-flex; align-items:center; gap:.55rem;
+      padding:.65rem 1.4rem;
+      background:linear-gradient(135deg,#422c76,#7c3aed);
+      border:none; border-radius:10px;
+      color:#fff; font-size:.85rem; font-weight:700;
+      cursor:pointer; transition:all .2s; white-space:nowrap;
+      box-shadow:0 4px 15px rgba(124,58,237,.4);
+    }
+    .btn-full-analysis:hover { transform:translateY(-1px); box-shadow:0 6px 22px rgba(124,58,237,.55); }
+    .btn-full-analysis:disabled { opacity:.6; cursor:not-allowed; transform:none; box-shadow:none; }
+    .btn-full-analysis svg { flex-shrink:0; }
+    .btn-full-analysis.done { background:linear-gradient(135deg,#166534,#16a34a); box-shadow:0 4px 15px rgba(22,163,74,.3); }
+
+    /* ── Progress steps (análise completa) ──────────────── */
+    .fa-steps { display:flex; flex-direction:column; gap:.3rem; margin:1rem 0 .5rem; }
+    .fa-step { display:flex; align-items:center; gap:.65rem; padding:.42rem .75rem; border-radius:8px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); font-size:.77rem; transition:background .25s, border-color .25s; }
+    .fa-step-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.12); flex-shrink:0; transition:background .25s; }
+    .fa-step-label { flex:1; color:var(--text-secondary); font-weight:600; }
+    .fa-step-status { font-size:.71rem; color:var(--text-faint); }
+    .fa-step.loading { border-color:rgba(139,92,246,.3); background:rgba(139,92,246,.07); }
+    .fa-step.loading .fa-step-dot { background:#7c3aed; animation:faPulse .9s ease-in-out infinite; }
+    .fa-step.loading .fa-step-label { color:var(--text-primary); }
+    .fa-step.loading .fa-step-status { color:rgba(167,139,250,.9); }
+    .fa-step.done { border-color:rgba(74,222,128,.2); background:rgba(74,222,128,.04); }
+    .fa-step.done .fa-step-dot { background:#4ade80; animation:none; }
+    .fa-step.done .fa-step-label, .fa-step.done .fa-step-status { color:#4ade80; }
+    .fa-step.skip .fa-step-dot { background:#facc15; animation:none; }
+    .fa-step.skip .fa-step-status { color:#facc15; }
+    .fa-step.error .fa-step-dot { background:#f87171; animation:none; }
+    .fa-step.error .fa-step-status { color:#f87171; }
+    @keyframes faPulse { 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+
     /* ── Toast ───────────────────────────────────────────── */
     .toast {
       position: fixed; bottom: 1.5rem; right: 1.5rem; max-width: 420px;
@@ -747,27 +781,64 @@
         <!-- ══ ESQUERDA ════════════════════════════════════ -->
         <div class="analysis-main">
 
-          <!-- Bureau -->
-          <div class="card animate-in delay-1">
-            <div class="card-title" style="margin-bottom:.9rem;">Consultas Iniciais</div>
-            <div class="bureau-grid">
+          <!-- Análise Completa (botão único) -->
+          <div class="card animate-in delay-1" id="full-analysis-card">
+            <!-- rf-icon e rf-status ocultos — mantidos para compatibilidade JS -->
+            <span id="rf-icon" style="display:none;"></span>
+            <span id="rf-status" style="display:none;"></span>
+
+            <!-- Cabeçalho + botão principal -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.9rem;">
+              <div>
+                <div class="card-title" style="margin-bottom:.25rem;">Análise Completa</div>
+                <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall · Documentos · Contábil · IA &mdash; tudo em um clique</div>
+              </div>
+              <button id="btn-run" class="btn-full-analysis" onclick="runFullAnalysis()">
+                <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Iniciar Análise Completa
+              </button>
+            </div>
+
+            <!-- Progress steps (ocultos até iniciar) -->
+            <div class="fa-steps" id="full-analysis-steps" style="display:none;">
+              <div class="fa-step" id="fa-step-idwall">
+                <span class="fa-step-dot"></span>
+                <span class="fa-step-label">IDwall BGC</span>
+                <span class="fa-step-status" id="fa-status-idwall">Aguardando</span>
+              </div>
+              <div class="fa-step" id="fa-step-docs">
+                <span class="fa-step-dot"></span>
+                <span class="fa-step-label">Documentos Financeiros</span>
+                <span class="fa-step-status" id="fa-status-docs">Aguardando</span>
+              </div>
+              <div class="fa-step" id="fa-step-contabil">
+                <span class="fa-step-dot"></span>
+                <span class="fa-step-label">Análise Contábil</span>
+                <span class="fa-step-status" id="fa-status-contabil">Aguardando</span>
+              </div>
+              <div class="fa-step" id="fa-step-ia">
+                <span class="fa-step-dot"></span>
+                <span class="fa-step-label">Análise com IA</span>
+                <span class="fa-step-status" id="fa-status-ia">Aguardando</span>
+              </div>
+            </div>
+
+            <!-- Status IDwall (linha discreta abaixo do botão) -->
+            <div class="bureau-grid" style="margin-top:1rem;">
               <div class="bureau-item">
                 <div class="bureau-icon wait" id="idwall-icon">
                   <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>
                 <div>
-                  <div class="bureau-name">Consulta CNPJ Completo</div>
+                  <div class="bureau-name">Consulta CNPJ Completo (IDwall BGC)</div>
                   <div class="bureau-sub" id="idwall-bureau-sub" style="color:var(--text-faint);">Nenhuma consulta realizada</div>
                   <button class="btn-idwall-consult" id="btn-idwall-consult" onclick="runIdwallConsulta()">
                     <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                    Consultar
+                    Verificar Status
                   </button>
                 </div>
               </div>
             </div>
-            <!-- rf-icon e rf-status ocultos — mantidos para não quebrar referências JS -->
-            <span id="rf-icon" style="display:none;"></span>
-            <span id="rf-status" style="display:none;"></span>
           </div>
 
           <!-- ── IDwall BGC Card ── -->
@@ -2720,6 +2791,133 @@
 
 
 <script>
+/* ── Análise Completa (botão único) ─────────────────── */
+
+let _fullAnalysisRunning = false;
+
+function _faSetStep(id, state, msg) {
+  const step   = document.getElementById('fa-step-' + id);
+  const status = document.getElementById('fa-status-' + id);
+  if (!step) return;
+  step.className = 'fa-step' + (state ? ' ' + state : '');
+  if (status && msg !== undefined) status.textContent = msg;
+}
+
+async function _startIdwallBackground() {
+  if (sol?.idwall || sol?.idwall_pending?.numero || _idwallLoading) return;
+  if (!sol?.id || !sol?.cnpj) return;
+  try {
+    const res = await fetch(`${API_URL}/api/idwall/${sol.id}`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cnpj: sol.cnpj }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.protocolo) return;
+    sol.idwall_pending = { numero: data.protocolo, cnpj: sol.cnpj };
+    DB.solicitacoes.update(sol.id, { idwall_pending: sol.idwall_pending });
+    _idwallShowPendingState();
+  } catch (_) { /* IDwall é complementar — falha silenciosa */ }
+}
+
+async function runFullAnalysis() {
+  const btn = document.getElementById('btn-run');
+  if (btn && btn.disabled) return;
+
+  _fullAnalysisRunning = true;
+  const spinSvg = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+  if (btn) { btn.disabled = true; btn.innerHTML = spinSvg + ' Analisando…'; }
+
+  const stepsEl = document.getElementById('full-analysis-steps');
+  if (stepsEl) stepsEl.style.display = '';
+  _faSetStep('idwall',   '',  'Aguardando');
+  _faSetStep('docs',     '',  'Aguardando');
+  _faSetStep('contabil', '',  'Aguardando');
+  _faSetStep('ia',       '',  'Aguardando');
+
+  /* ── 1. IDwall em background (não bloqueia os próximos passos) ── */
+  if (sol?.idwall) {
+    _faSetStep('idwall', 'done', 'Relatório já disponível');
+  } else {
+    _faSetStep('idwall', 'loading', 'Solicitado — resultado chegará em background');
+    _startIdwallBackground();
+  }
+
+  /* ── 2. Documentos Financeiros ─────────────────────────────────── */
+  _faSetStep('docs', 'loading', 'Lendo documentos…');
+  try {
+    const form = new FormData();
+    form.append('sol_id',  sol.id      || '');
+    form.append('empresa', sol.empresa || '');
+    form.append('cnpj',    sol.cnpj    || '');
+    const res = await fetch(`${API_URL}/api/extract-financials`, {
+      method: 'POST', credentials: 'include', body: form,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (typeof _applyDocReader === 'function') _applyDocReader(data);
+      _faSetStep('docs', 'done', `${(data.documentos || []).length} documento(s) processado(s)`);
+    } else if (res.status === 404) {
+      _faSetStep('docs', 'skip', 'Sem documentos no banco — etapa ignorada');
+    } else {
+      _faSetStep('docs', 'skip', 'Erro na leitura — etapa ignorada');
+    }
+  } catch (_) {
+    _faSetStep('docs', 'skip', 'Sem documentos — etapa ignorada');
+  }
+
+  /* ── 3. Análise Contábil ────────────────────────────────────────── */
+  _faSetStep('contabil', 'loading', 'Extraindo BP e DRE com IA…');
+  try {
+    const res = await fetch(`${API_URL}/api/contabil/extrair/${sol.id}`, {
+      method: 'POST', credentials: 'include',
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.data) {
+        if (typeof _ctblPopulateFields === 'function') _ctblPopulateFields(json.data);
+        const bodyEl = document.getElementById('contabil-body');
+        if (bodyEl) bodyEl.style.display = '';
+        if (typeof ctblCalc === 'function') ctblCalc();
+        sol.contabil_data   = json.data;
+        sol.contabil_result = json.result;
+        DB.solicitacoes.save(sol);
+      }
+      _faSetStep('contabil', 'done', 'Indicadores contábeis extraídos');
+    } else if (res.status === 404) {
+      _faSetStep('contabil', 'skip', 'Sem BP/DRE no banco — etapa ignorada');
+    } else {
+      _faSetStep('contabil', 'skip', 'Erro na extração — etapa ignorada');
+    }
+  } catch (_) {
+    _faSetStep('contabil', 'skip', 'Erro na extração — etapa ignorada');
+  }
+
+  /* ── 4. Análise com IA ──────────────────────────────────────────── */
+  _faSetStep('ia', 'loading', 'Gerando análise de crédito…');
+  try {
+    await runAnalysis();
+    _faSetStep('ia', 'done', 'Análise de crédito concluída');
+  } catch (_) {
+    _faSetStep('ia', 'error', 'Erro ao gerar análise — tente novamente');
+  }
+
+  /* ── Finaliza ───────────────────────────────────────────────────── */
+  _fullAnalysisRunning = false;
+  if (btn) {
+    btn.disabled = false;
+    btn.className = 'btn-full-analysis done';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Análise Concluída`;
+    setTimeout(() => {
+      if (!btn.disabled) {
+        btn.className = 'btn-full-analysis';
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Iniciar Análise Completa`;
+      }
+    }, 6000);
+  }
+}
+
 /* ── IDwall BGC ─────────────────────────────────────── */
 
 let _idwallLoading = false;
@@ -3479,7 +3677,8 @@ async function runContabilExtracao() {
     showToast('Extração concluída! Revise os valores e salve.', 'success');
 
     // Fase 4: Re-rodar análise de IA automaticamente com os indicadores contábeis
-    if (typeof runAnalysis === 'function') {
+    // (Suprimido quando chamado via runFullAnalysis, que controla o passo de IA)
+    if (!_fullAnalysisRunning && typeof runAnalysis === 'function') {
       setTimeout(() => runAnalysis(), 800);
     }
 
