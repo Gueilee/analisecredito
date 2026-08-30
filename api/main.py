@@ -2859,6 +2859,28 @@ async def admin_export_json(current_user=Depends(_require_admin)):
     }
 
 
+@app.get("/api/health")
+async def health():
+    """Diagnóstico de conectividade — não requer autenticação."""
+    pg_ok = _PG_POOL is not None
+    detail = {}
+    if pg_ok:
+        try:
+            async with _PG_POOL.acquire() as conn:
+                count = await conn.fetchval("SELECT COUNT(*) FROM ac_solicitacoes")
+            detail = {"ac_solicitacoes": count}
+        except Exception as exc:
+            detail = {"error": str(exc)}
+    return {
+        "status": "ok" if pg_ok else "degraded",
+        "pool": "connected" if pg_ok else None,
+        "pg_host": _PG_HOST or None,
+        "pg_db":   _PG_DB  or None,
+        "pg_pass_set": bool(_PG_PASS),
+        **detail,
+    }
+
+
 # Serve os arquivos HTML/JS/CSS estáticos na raiz
 _static_dir = os.path.join(os.path.dirname(__file__), "..")
 if os.path.isdir(_static_dir):
