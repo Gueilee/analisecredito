@@ -1083,7 +1083,7 @@ def _gemini_generate(key: str, prompt: str) -> str:
     """Chama a Gemini API (google-genai v1) e retorna o texto gerado."""
     client = google_genai.Client(api_key=key)
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         contents=prompt,
     )
     return response.text
@@ -2558,7 +2558,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
         "analysis": analysis,
         "ai_error": ai_error,
         "bureau_fonte": "BrasilAPI / Receita Federal",
-        "modelo_ia": "gemini-2.0-flash",
+        "modelo_ia": "gemini-2.5-flash",
     }
 
 
