@@ -2556,6 +2556,299 @@ async def admin_resend_welcome(user_id: str, current_user=Depends(_require_admin
     return {"ok": True}
 
 
+def _rule_based_analysis(req: AnalyzeRequest, receita: dict, contabil_result: Optional[dict]) -> dict:
+    """Gera análise determinística quando a IA não está disponível."""
+    d        = receita.get("data", {})
+    bureau   = receita.get("status") == "ok"
+
+    # ── Dados Receita Federal ─────────────────────────────────────────────────
+    razao       = d.get("razao_social") or req.empresa or "Empresa"
+    situacao    = (d.get("descricao_situacao_cadastral") or "").upper()
+    status_ativo = "ATIVA" in situacao
+    capital_social = float(d.get("capital_social") or 0)
+    abertura    = d.get("data_inicio_atividade", "")
+    anos_op     = 0
+    try:
+        anos_op = (date.today() - datetime.strptime(abertura[:10], "%Y-%m-%d").date()).days // 365
+    except Exception:
+        pass
+    simples     = bool(d.get("opcao_pelo_simples"))
+    mei         = bool(d.get("opcao_pelo_mei"))
+    porte       = d.get("descricao_porte") or ""
+    cnae_desc   = d.get("cnae_fiscal_descricao") or req.ramo or "Comércio Exterior"
+    uf          = d.get("uf") or ""
+    qsa         = d.get("qsa") or []
+
+    # ── Indicadores contábeis ─────────────────────────────────────────────────
+    has_contabil   = bool(contabil_result and contabil_result.get("periodo2"))
+    p2             = (contabil_result or {}).get("periodo2") or {}
+    i2             = p2.get("indicadores") or {}
+    t2             = p2.get("totais") or {}
+    cr2            = p2.get("credito") or {}
+    periodo_label  = (contabil_result or {}).get("periodo2_label") or ""
+
+    def _iv(key):
+        iv = i2.get(key) or {}
+        v = iv.get("valor_pct") if iv.get("valor_pct") is not None else iv.get("valor")
+        return float(v) if v is not None else None
+
+    liq_geral  = _iv("liquidez_geral")
+    liq_seca   = _iv("liquidez_seca")
+    endiv      = _iv("endividamento_geral")   # % esperado
+    mg_liq     = _iv("margem_liquida")         # %
+    roe        = _iv("roe")                    # %
+    ativo_tot  = t2.get("ativo_total")
+    pl         = t2.get("patrimonio_liquido")
+    lucro_liq  = t2.get("lucro_liquido")
+    rec_liq    = t2.get("receita_liquida")
+    cred_calc  = cr2.get("calculado")          # limite calculado pelo sistema
+
+    # ── Limites solicitados ───────────────────────────────────────────────────
+    lim_exp    = br_to_float(req.limiteExportador)
+    lim_desp   = br_to_float(req.limiteDesp)
+    lim_imp    = br_to_float(req.limiteImp)
+    exp_total  = lim_exp + lim_desp + lim_imp
+
+    def fmtbr(v):
+        if v is None: return "—"
+        return f"R$ {v:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    # ── Cálculo de pontuação ──────────────────────────────────────────────────
+    score = 50
+
+    # Receita Federal
+    if not bureau:
+        score -= 5                          # sem dados RF, leve penalidade
+    elif not status_ativo:
+        score -= 30                         # situação irregular é crítica
+    else:
+        score += 10                         # empresa ativa
+
+    if anos_op >= 5:
+        score += 10
+    elif anos_op >= 2:
+        score += 5
+    elif anos_op > 0:
+        score -= 5                          # empresa muito nova
+
+    if capital_social >= 1_000_000:
+        score += 5
+    elif capital_social >= 100_000:
+        score += 2
+
+    if mei:
+        score -= 5                          # MEI tem limites estruturais
+
+    # Indicadores contábeis
+    if has_contabil:
+        if liq_geral is not None:
+            if liq_geral >= 1.5:   score += 12
+            elif liq_geral >= 1.2: score += 8
+            elif liq_geral >= 1.0: score += 4
+            elif liq_geral >= 0.8: score -= 8
+            else:                  score -= 18
+
+        if endiv is not None:
+            if endiv <= 40:   score += 10
+            elif endiv <= 60: score += 4
+            elif endiv <= 75: score -= 6
+            else:             score -= 15
+
+        if mg_liq is not None:
+            if mg_liq >= 8:   score += 8
+            elif mg_liq >= 3: score += 4
+            elif mg_liq >= 0: score += 1
+            else:             score -= 12
+
+        if roe is not None:
+            if roe >= 15:  score += 5
+            elif roe >= 5: score += 2
+            elif roe < 0:  score -= 5
+
+        # Proporcionalidade: limite solicitado vs crédito calculado
+        if cred_calc and exp_total > 0:
+            ratio = exp_total / cred_calc
+            if ratio <= 0.5:   score += 5
+            elif ratio <= 1.0: score += 2
+            elif ratio <= 1.5: score -= 5
+            else:              score -= 12
+
+    score = max(0, min(100, score))
+
+    # ── Classificação ────────────────────────────────────────────────────────
+    if score >= 90:   classif, recom = "AA", "aprovar"
+    elif score >= 80: classif, recom = "A",  "aprovar"
+    elif score >= 70: classif, recom = "B",  "aprovar"
+    elif score >= 60: classif, recom = "C",  "revisar"
+    elif score >= 50: classif, recom = "D",  "revisar"
+    else:             classif, recom = "E",  "negar"
+
+    if not status_ativo and bureau:
+        recom = "negar"
+
+    # ── Pontos positivos, atenção e críticos ──────────────────────────────────
+    pontos_pos  = []
+    pontos_at   = []
+    alertas     = []
+
+    if status_ativo:
+        pontos_pos.append(f"Empresa com situação cadastral ATIVA na Receita Federal")
+    else:
+        alertas.append(f"Situação cadastral: {situacao} — operação de crédito contraindicada")
+
+    if anos_op >= 5:
+        pontos_pos.append(f"Histórico operacional consolidado: {anos_op} anos de atividade")
+    elif anos_op >= 2:
+        pontos_at.append(f"Empresa com {anos_op} anos de operação — histórico ainda em formação")
+    elif anos_op > 0:
+        alertas.append(f"Empresa com menos de 2 anos de operação ({anos_op} ano{'s' if anos_op!=1 else ''})")
+
+    if capital_social >= 1_000_000:
+        pontos_pos.append(f"Capital social robusto: {fmtbr(capital_social)}")
+    elif capital_social >= 100_000:
+        pontos_at.append(f"Capital social moderado: {fmtbr(capital_social)}")
+    elif capital_social > 0:
+        pontos_at.append(f"Capital social reduzido: {fmtbr(capital_social)}")
+
+    if simples:
+        pontos_at.append("Optante pelo Simples Nacional — porte limitado")
+    if mei:
+        alertas.append("Empresa enquadrada como MEI — exposição máxima recomendada é muito restrita")
+
+    if has_contabil:
+        if liq_geral is not None:
+            if liq_geral >= 1.2:
+                pontos_pos.append(f"Liquidez geral adequada: {liq_geral:.2f}")
+            elif liq_geral >= 1.0:
+                pontos_at.append(f"Liquidez geral no limite: {liq_geral:.2f}")
+            else:
+                alertas.append(f"Liquidez geral insuficiente: {liq_geral:.2f} (< 1)")
+
+        if endiv is not None:
+            if endiv <= 60:
+                pontos_pos.append(f"Endividamento controlado: {endiv:.1f}%")
+            elif endiv <= 75:
+                pontos_at.append(f"Endividamento elevado: {endiv:.1f}%")
+            else:
+                alertas.append(f"Endividamento crítico: {endiv:.1f}% (risco de insolvência)")
+
+        if mg_liq is not None:
+            if mg_liq >= 3:
+                pontos_pos.append(f"Margem líquida positiva: {mg_liq:.1f}%")
+            elif mg_liq >= 0:
+                pontos_at.append(f"Margem líquida estreita: {mg_liq:.1f}%")
+            else:
+                alertas.append(f"Margem líquida negativa: {mg_liq:.1f}% — empresa com prejuízo")
+
+        if lucro_liq is not None and lucro_liq < 0:
+            alertas.append(f"Resultado líquido negativo no período: {fmtbr(lucro_liq)}")
+
+        if cred_calc and exp_total > 0:
+            ratio = exp_total / cred_calc
+            if ratio > 1.5:
+                alertas.append(f"Limite solicitado ({fmtbr(exp_total)}) excede em {ratio:.1f}x o crédito calculado ({fmtbr(cred_calc)})")
+            elif ratio > 1.0:
+                pontos_at.append(f"Limite solicitado levemente acima do crédito calculado ({fmtbr(cred_calc)})")
+            else:
+                pontos_pos.append(f"Limite solicitado proporcional ao crédito calculado ({fmtbr(cred_calc)})")
+    else:
+        pontos_at.append("Demonstrativos financeiros não analisados — análise baseada apenas em dados cadastrais")
+
+    # ── Limites recomendados ──────────────────────────────────────────────────
+    if cred_calc:
+        base = cred_calc * (score / 100)
+        prop_exp  = fmtbr(min(lim_exp,  base * 0.70)) if lim_exp  else "—"
+        prop_desp = fmtbr(min(lim_desp, base * 0.20)) if lim_desp else "—"
+        prop_imp  = fmtbr(min(lim_imp,  base * 0.10)) if lim_imp  else "—"
+        exp_rec   = fmtbr(base)
+    else:
+        prop_exp  = req.limiteExportador or "—"
+        prop_desp = req.limiteDesp or "—"
+        prop_imp  = req.limiteImp or "—"
+        exp_rec   = fmtbr(exp_total) if exp_total else "—"
+
+    # Prazo
+    prazo_raw = req.prazoPagtoVendemmia or ""
+    try:
+        prazo_rec = int(re.search(r"\d+", prazo_raw).group())
+    except Exception:
+        prazo_rec = 30
+
+    # ── Textos ───────────────────────────────────────────────────────────────
+    tempo_op = calc_tempo_mercado(req.fundacao or abertura)
+
+    if has_contabil and periodo_label:
+        ctx_contabil = f" Os demonstrativos financeiros do período {periodo_label} foram analisados e refletem-se na pontuação."
+    else:
+        ctx_contabil = " Não foram apresentados demonstrativos financeiros; a análise baseia-se exclusivamente em dados cadastrais."
+
+    resumo = (
+        f"{razao} é uma empresa do segmento {cnae_desc}, com {tempo_op} de atividade e situação "
+        f"cadastral {situacao or 'não verificada'} na Receita Federal.{ctx_contabil} "
+        f"Com base nos indicadores disponíveis, a empresa recebeu classificação {classif} "
+        f"(score {score}/100), com recomendação de {recom.upper()} para a operação de crédito solicitada."
+    )
+
+    analise_cad = (
+        f"CNPJ consultado em tempo real via BrasilAPI. "
+        f"Situação cadastral: {situacao or '—'}. "
+        f"Porte: {porte or '—'}. "
+        f"Capital social declarado: {fmtbr(capital_social)}. "
+        f"Natureza jurídica: {d.get('descricao_natureza_juridica') or '—'}. "
+        f"UF sede: {uf}. "
+        f"{'Optante pelo Simples Nacional. ' if simples else ''}"
+        f"{'Enquadrada como MEI. ' if mei else ''}"
+    )
+
+    analise_soc = ""
+    if qsa:
+        socs = [f"{s.get('nome_socio','?')} ({s.get('percentual_capital_social','?')}%)" for s in qsa[:5]]
+        analise_soc = f"Quadro societário identificado: {', '.join(socs)}."
+    else:
+        analise_soc = "Quadro societário não disponível na consulta pública."
+
+    analise_prop = (
+        f"Exposição total solicitada: {fmtbr(exp_total)}. "
+        + (f"Crédito máximo calculado pelos demonstrativos: {fmtbr(cred_calc)}. " if cred_calc else "")
+        + (f"Proporção: {exp_total/cred_calc:.1f}x o limite calculado. " if cred_calc and exp_total else "")
+        + f"Score de {score}/100 aplicado ao dimensionamento dos limites recomendados."
+    )
+
+    analise_op = (
+        f"Produto/modalidade: {req.produto or '—'}. Modal: {req.modal or '—'}. "
+        f"Origens: {req.origens or '—'}. Incoterms: {req.incoterms or '—'}. "
+        f"Tipo de operação: {req.tipoOp or '—'}. Prazo pagamento Vendemmia: {prazo_raw or '—'}."
+    )
+
+    fundament = (
+        f"Análise determinística gerada a partir de dados objetivos — IA temporariamente indisponível. "
+        f"Score {score}/100 composto por: dados cadastrais Receita Federal ({'+10' if status_ativo else '-30'} status; "
+        f"{'+10' if anos_op>=5 else '+5' if anos_op>=2 else '-5' if anos_op>0 else '0'} tempo de operação)"
+        + (f"; indicadores contábeis (liquidez, endividamento, margem)" if has_contabil else "")
+        + f". Classificação {classif} segue escala AA→E conforme política interna Vendemmia."
+    )
+
+    return {
+        "score": score,
+        "classificacao": classif,
+        "recomendacao": recom,
+        "resumo_executivo": resumo,
+        "pontos_positivos": pontos_pos,
+        "pontos_atencao": pontos_at,
+        "alertas_criticos": alertas,
+        "fundamentacao": fundament,
+        "analise_cadastral": analise_cad,
+        "analise_societaria": analise_soc,
+        "analise_proporcionalidade": analise_prop,
+        "analise_operacional": analise_op,
+        "limite_recomendado_exportador": prop_exp,
+        "limite_recomendado_desp": prop_desp,
+        "limite_recomendado_imp": prop_imp,
+        "exposicao_total_recomendada": exp_rec,
+        "prazo_recomendado": prazo_rec,
+    }
+
+
 # ── Endpoints de análise ──────────────────────────────────────────────────────
 
 
@@ -2619,13 +2912,22 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
                 }
 
         except Exception as exc:
-            err_str = str(exc)
             ai_error = f"[{type(exc).__name__}] {exc}"
+
+    # Fallback determinístico quando a IA não retornou resultado
+    ai_fallback = False
+    if analysis is None:
+        try:
+            analysis = _rule_based_analysis(req, receita, contabil_result)
+            ai_fallback = True
+        except Exception:
+            pass
 
     return {
         "cnpj_data": receita,
         "analysis": analysis,
         "ai_error": ai_error,
+        "ai_fallback": ai_fallback,
         "bureau_fonte": "BrasilAPI / Receita Federal",
         "modelo_ia": _load_gemini_model(),
     }
