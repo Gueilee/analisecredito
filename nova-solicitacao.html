@@ -4126,11 +4126,17 @@
           method: 'POST', credentials: 'include', body: form,
         });
         if (!uploadRes.ok) {
-          // Sinaliza que docs precisam ser re-selecionados na análise
           DB.solicitacoes.update(record.id, { _docsUploadPendente: true });
           console.warn('Upload de documentos retornou status', uploadRes.status);
         } else {
-          DB.solicitacoes.update(record.id, { _docsUploadPendente: false });
+          // Registra quais arquivos foram confirmados no servidor
+          const prevConfirmed = DB.solicitacoes.getById(record.id)?.documentosServidor || {};
+          const newConfirmed = { ...prevConfirmed };
+          for (const { file, tipo } of financDocs) {
+            newConfirmed[tipo] = newConfirmed[tipo] || [];
+            if (!newConfirmed[tipo].includes(file.name)) newConfirmed[tipo].push(file.name);
+          }
+          DB.solicitacoes.update(record.id, { _docsUploadPendente: false, documentosServidor: newConfirmed });
         }
       } catch (e) {
         DB.solicitacoes.update(record.id, { _docsUploadPendente: true });
@@ -4352,31 +4358,50 @@
 
     // Restaurar documentos salvos
     if (d.documentos) {
+      // documentosServidor: nomes confirmados no banco após upload bem-sucedido.
+      // Compatibilidade com registros antigos: se não há documentosServidor mas
+      // o upload anterior teve sucesso (_docsUploadPendente===false) ou a solicitação
+      // já foi submetida (status !== 'rascunho'), trata todos como confirmados.
+      const serverDocs = d.documentosServidor || {};
+      const legacyAllConfirmed = !d.documentosServidor &&
+        (d._docsUploadPendente === false || (d.status && d.status !== 'rascunho'));
+
       Object.entries(d.documentos).forEach(([key, names]) => {
         if (!names || names.length === 0) return;
         storedDocNames[key] = [...names];
         const isCustomKey = key === 't-contrato' || key === 'a-contrato';
-        if (!isCustomKey) uploadedDocs[key] = true;
+        const confirmedSet = new Set(serverDocs[key] || []);
         const listEl = document.getElementById(`files-${key}`);
+        let anyConfirmed = false;
+
         if (listEl) {
           names.forEach(name => {
+            const confirmed = legacyAllConfirmed || confirmedSet.has(name);
+            if (confirmed) anyConfirmed = true;
+            const badgeHtml = confirmed
+              ? `<span class="file-size" style="color:var(--green);font-size:.68rem;">✓ Salvo</span>`
+              : `<span class="file-size" style="color:#f59e0b;font-size:.68rem;">⚠ Pendente — re-selecione</span>`;
+            const removeFn = isCustomKey ? 'removeFileCustom' : 'removeStoredFile';
             const item = document.createElement('div');
             item.className = 'file-item';
-            const removeFn = isCustomKey ? 'removeFileCustom' : 'removeStoredFile';
             item.innerHTML = `
               <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/></svg>
               <span class="file-name">${name}</span>
-              <span class="file-size" style="color:var(--green);font-size:.68rem;">✓ Salvo</span>
+              ${badgeHtml}
               <button class="file-remove" onclick="${removeFn}(this,'${key}','${name}')" title="Remover">
                 <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
               </button>`;
             listEl.appendChild(item);
           });
         }
+
         if (isCustomKey) {
           updateCustomDocsProgress(key);
           document.getElementById('chk-contrato')?.classList.add('done');
         } else {
+          // uploadedDocs reflete presença de arquivo (para a barra de progresso);
+          // o badge já distingue se está confirmado no servidor ou pendente.
+          uploadedDocs[key] = true;
           document.getElementById(`chk-${key}`)?.classList.add('done');
           updateDocsProgress();
         }
