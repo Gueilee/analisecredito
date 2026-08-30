@@ -947,13 +947,13 @@
               <div class="card-sub">Selecione o tipo de operação — apenas os campos necessários serão exibidos</div>
             </div>
             <div class="type-selector-grid">
-              <div class="type-card trade" onclick="selectTipoAnalise('trade')">
+              <div class="type-card trade" onclick="showTradeSubSelector()">
                 <div class="type-icon trade">
                   <svg viewBox="0 0 24 24" fill="none"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>
                 <div class="type-name">Trade</div>
-                <div class="type-desc">Importação, exportação e comércio exterior. Análise completa com limites operacionais, câmbio e exposição financeira.</div>
-                <div class="type-footer trade"><span>5 etapas · Análise completa</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="type-desc">Importação, exportação e comércio exterior. Análise completa (Encomenda) ou simplificada (Gestão / Conta e Ordem).</div>
+                <div class="type-footer trade"><span>3 tipos · Escolher subtipo</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
               <div class="type-card transporte" onclick="selectTipoAnalise('transporte')">
                 <div class="type-icon transporte">
@@ -969,6 +969,43 @@
                 </div>
                 <div class="type-name">Armazém</div>
                 <div class="type-desc">Armazenagem e logística de estoque. Análise simplificada com foco em posições e valor estimado mensal da operação.</div>
+                <div class="type-footer armazem"><span>2 etapas · Análise simplificada</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══ TRADE SUB-SELETOR ══════════════════════════════ -->
+          <div id="trade-subtype-selector" class="card animate-in" style="display:none;padding:2rem 1.8rem 1.8rem;">
+            <div style="text-align:center;margin-bottom:1.6rem;">
+              <button onclick="backToTypeSelector()" style="background:none;border:none;color:var(--text-muted);font-size:.8rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;margin:0 auto .9rem;">
+                <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Voltar
+              </button>
+              <div class="card-title" style="font-size:1.15rem;margin-bottom:.35rem;">Qual é o tipo de operação Trade?</div>
+              <div class="card-sub">A análise será adaptada conforme o tipo selecionado</div>
+            </div>
+            <div class="type-selector-grid">
+              <div class="type-card trade" onclick="selectTradeSubType('encomenda')">
+                <div class="type-icon trade">
+                  <svg viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="10" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </div>
+                <div class="type-name">Encomenda</div>
+                <div class="type-desc">Importação por conta da Vendemmia. Análise completa com limites operacionais, câmbio e simulação financeira.</div>
+                <div class="type-footer trade"><span>5 etapas · Análise completa</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </div>
+              <div class="type-card transporte" onclick="selectTradeSubType('conta-ordem')">
+                <div class="type-icon transporte">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </div>
+                <div class="type-name">Conta e Ordem</div>
+                <div class="type-desc">Importação por conta e ordem de terceiros. Análise simplificada com dados básicos e documentos.</div>
+                <div class="type-footer transporte"><span>2 etapas · Análise simplificada</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </div>
+              <div class="type-card armazem" onclick="selectTradeSubType('gestao')">
+                <div class="type-icon armazem">
+                  <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </div>
+                <div class="type-name">Gestão</div>
+                <div class="type-desc">Gestão de importação pelo cliente. Análise simplificada com dados básicos e documentos.</div>
                 <div class="type-footer armazem"><span>2 etapas · Análise simplificada</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
             </div>
@@ -2577,15 +2614,16 @@
 
   /* ── Configuração por tipo ───────────────────────────── */
   const TIPO_CFG = {
-    trade:      { label:'Trade',      cls:'trade',      steps:['Dados Cadastrais','Dados Comerciais','Operação & Exportador','Despesas & Impostos','Documentos'], prefix:'step-'   },
-    transporte: { label:'Transporte', cls:'transporte', steps:['Dados da Operação','Comentário & Documentos'],                                                   prefix:'step-t-' },
-    armazem:    { label:'Armazém',    cls:'armazem',    steps:['Dados da Operação','Comentário & Documentos'],                                                   prefix:'step-a-' },
+    trade:         { label:'Trade · Encomenda', cls:'trade',      steps:['Dados Cadastrais','Dados Comerciais','Operação & Exportador','Despesas & Impostos','Documentos'], prefix:'step-'   },
+    'trade-simples':{ label:'Trade',            cls:'trade',      steps:['Dados da Operação','Documentos'], panels:['step-1','step-5'] },
+    transporte:    { label:'Transporte',        cls:'transporte', steps:['Dados da Operação','Comentário & Documentos'],                                                   prefix:'step-t-' },
+    armazem:       { label:'Armazém',           cls:'armazem',    steps:['Dados da Operação','Comentário & Documentos'],                                                   prefix:'step-a-' },
   };
 
   let tipoAnalise = null;
   let currentStep = 1;
 
-  const SEGMENTO_MAP = { trade: 'IMPORTAÇÃO', transporte: 'TRANSPORTE', armazem: 'ARMAZÉM' };
+  const SEGMENTO_MAP = { trade: 'IMPORTAÇÃO', 'trade-simples': 'IMPORTAÇÃO', transporte: 'TRANSPORTE', armazem: 'ARMAZÉM' };
 
   function selectTipoAnalise(tipo) {
     tipoAnalise = tipo;
@@ -2619,7 +2657,7 @@
     ).join('');
 
     // data padrão
-    const dsId = tipo==='trade'?'data-sol':tipo==='transporte'?'t-data-sol':'a-data-sol';
+    const dsId = (tipo==='trade'||tipo==='trade-simples')?'data-sol':tipo==='transporte'?'t-data-sol':'a-data-sol';
     const ds = document.getElementById(dsId);
     if (ds && !ds.value) ds.valueAsDate = new Date();
 
@@ -2638,19 +2676,39 @@
   function showAllPanels() {
     const cfg = TIPO_CFG[tipoAnalise];
     document.querySelectorAll('.step-panel').forEach(el => el.classList.remove('active'));
-    cfg.steps.forEach((_, i) => {
-      const panel = document.getElementById(cfg.prefix + (i + 1));
-      if (panel) panel.classList.add('active');
-    });
+    const panelIds = cfg.panels || cfg.steps.map((_, i) => cfg.prefix + (i + 1));
+    panelIds.forEach(id => { const p = document.getElementById(id); if (p) p.classList.add('active'); });
+  }
+
+  function showTradeSubSelector() {
+    document.getElementById('type-selector').style.display         = 'none';
+    document.getElementById('trade-subtype-selector').style.display = '';
+  }
+
+  function selectTradeSubType(subtype) {
+    document.getElementById('trade-subtype-selector').style.display = 'none';
+    if (subtype === 'encomenda') {
+      selectTipoAnalise('trade');
+      // pre-seleciona radio Encomenda
+      const radio = document.querySelector('input[name="tipo-op"][value="encomenda"]');
+      if (radio) radio.checked = true;
+    } else {
+      selectTipoAnalise('trade-simples');
+      // pre-seleciona o radio correspondente e pre-preenche tipo-op
+      const val = subtype === 'conta-ordem' ? 'conta-ordem' : 'gestao';
+      const radio = document.querySelector(`input[name="tipo-op"][value="${val}"]`);
+      if (radio) radio.checked = true;
+    }
   }
 
   function backToTypeSelector() {
     tipoAnalise = null;
     currentStep = 1;
     document.querySelectorAll('.step-panel').forEach(el => el.classList.remove('active'));
-    document.getElementById('wizard-area').style.display   = 'none';
-    document.getElementById('type-selector').style.display = '';
-    document.getElementById('form-footer').style.display   = 'none';
+    document.getElementById('wizard-area').style.display            = 'none';
+    document.getElementById('trade-subtype-selector').style.display = 'none';
+    document.getElementById('type-selector').style.display          = '';
+    document.getElementById('form-footer').style.display            = 'none';
     ['chk-balanco','chk-dre','chk-fat'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = '';
@@ -3916,6 +3974,15 @@
     const v = id => document.getElementById(id)?.value || '';
     const r = name => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
 
+    if (tipoAnalise === 'trade-simples') return {
+      tipoAnalise: 'trade-simples', segmento: 'IMPORTAÇÃO',
+      dataSolicitacao: v('data-sol'), empresa: v('empresa'), cnpj: v('cnpj'),
+      fundacao: v('fundacao'), ramo: v('ramo'), produto: v('produto'),
+      descricao: v('descricao'), tipoOp: r('tipo-op'),
+      clienteIntegrado: r('cliente-integrado'), comentario: v('comentario-step5'),
+      documentos: storedDocNames,
+    };
+
     if (tipoAnalise === 'transporte') return {
       tipoAnalise: 'transporte', segmento: 'TRANSPORTE',
       dataSolicitacao: v('t-data-sol'), empresa: v('t-empresa'), cnpj: v('t-cnpj'),
@@ -4369,7 +4436,7 @@
 
   /* ── Checklist de documentos no aside ───────────────── */
   function updateDocChecklist() {
-    const isSimplified = tipoAnalise === 'transporte' || tipoAnalise === 'armazem';
+    const isSimplified = tipoAnalise === 'transporte' || tipoAnalise === 'armazem' || tipoAnalise === 'trade-simples';
     ['chk-balanco', 'chk-dre', 'chk-fat'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = isSimplified ? 'none' : '';
