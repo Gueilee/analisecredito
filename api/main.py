@@ -1073,7 +1073,10 @@ def _extract_json(text: str) -> Optional[dict]:
 def _load_key() -> str:
     """Carrega e limpa a chave Gemini do .env."""
     load_dotenv(dotenv_path=_ENV_FILE, override=True)
-    return os.environ.get("GEMINI_API_KEY", "").strip()
+    raw = os.environ.get("GEMINI_API_KEY", "").strip()
+    # Remove aspas acidentais que python-dotenv pode manter em edge cases
+    raw = raw.strip('"').strip("'").strip()
+    return raw
 
 
 def _gemini_generate(key: str, prompt: str) -> str:
@@ -2486,11 +2489,6 @@ async def admin_resend_welcome(user_id: str, current_user=Depends(_require_admin
 
 # ── Endpoints de análise ──────────────────────────────────────────────────────
 
-@app.get("/api/health")
-async def health():
-    key = _load_key()
-    return {"status": "ok", "version": "2.0.0", "ai_configured": bool(key) and key not in ("sua-chave-aqui", "")}
-
 
 @app.get("/api/receita/{cnpj}")
 @limiter.limit("30/minute")
@@ -2863,21 +2861,33 @@ async def admin_export_json(current_user=Depends(_require_admin)):
 async def health():
     """Diagnóstico de conectividade — não requer autenticação."""
     pg_ok = _PG_POOL is not None
-    detail = {}
+    pg_detail: dict = {}
     if pg_ok:
         try:
             async with _PG_POOL.acquire() as conn:
                 count = await conn.fetchval("SELECT COUNT(*) FROM ac_solicitacoes")
-            detail = {"ac_solicitacoes": count}
+            pg_detail = {"ac_solicitacoes": count}
         except Exception as exc:
-            detail = {"error": str(exc)}
+            pg_detail = {"error": str(exc)}
+
+    # Diagnóstico da chave Gemini — mostra prefixo mascarado e validade aparente
+    gemini_key = _load_key()
+    gemini_ok  = bool(gemini_key) and gemini_key not in ("sua-chave-aqui", "")
+    gemini_info: dict = {
+        "configured": gemini_ok,
+        "length":     len(gemini_key),
+        "prefix":     (gemini_key[:6] + "…") if len(gemini_key) >= 6 else "(vazio)",
+        "looks_valid": gemini_key.startswith("AIzaSy") if gemini_key else False,
+    }
+
     return {
-        "status": "ok" if pg_ok else "degraded",
-        "pool": "connected" if pg_ok else None,
-        "pg_host": _PG_HOST or None,
-        "pg_db":   _PG_DB  or None,
-        "pg_pass_set": bool(_PG_PASS),
-        **detail,
+        "status":       "ok" if (pg_ok and gemini_ok) else "degraded",
+        "pool":         "connected" if pg_ok else None,
+        "pg_host":      _PG_HOST or None,
+        "pg_db":        _PG_DB   or None,
+        "pg_pass_set":  bool(_PG_PASS),
+        "gemini":       gemini_info,
+        **pg_detail,
     }
 
 
