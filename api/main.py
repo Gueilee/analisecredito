@@ -1079,11 +1079,18 @@ def _load_key() -> str:
     return raw
 
 
+def _load_gemini_model() -> str:
+    """Retorna o nome do modelo Gemini — configurável via GEMINI_MODEL no .env."""
+    load_dotenv(dotenv_path=_ENV_FILE, override=True)
+    return os.environ.get("GEMINI_MODEL", "gemini-1.5-flash").strip().strip('"').strip("'") or "gemini-1.5-flash"
+
+
 def _gemini_generate(key: str, prompt: str) -> str:
     """Chama a Gemini API (google-genai v1) e retorna o texto gerado."""
+    model = _load_gemini_model()
     client = google_genai.Client(api_key=key)
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=model,
         contents=prompt,
     )
     return response.text
@@ -2558,7 +2565,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
         "analysis": analysis,
         "ai_error": ai_error,
         "bureau_fonte": "BrasilAPI / Receita Federal",
-        "modelo_ia": "gemini-2.5-flash",
+        "modelo_ia": _load_gemini_model(),
     }
 
 
@@ -2878,6 +2885,7 @@ async def health():
         "length":     len(gemini_key),
         "prefix":     (gemini_key[:6] + "…") if len(gemini_key) >= 6 else "(vazio)",
         "looks_valid": (gemini_key.startswith("AIzaSy") or gemini_key.startswith("AQ.")) if gemini_key else False,
+        "model":       _load_gemini_model(),
     }
 
     return {
