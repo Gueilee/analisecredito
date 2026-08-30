@@ -1917,6 +1917,7 @@ class ContabilData(BaseModel):
     dre2:              PeriodoDRE = PeriodoDRE()
     fator_risco:       float = 0.10
     fator_multiplicador: float = 1.1
+    cdi:               float = 0.149  # CDI anual (default 14,9% aa — atualize conforme mercado)
 
 
 def _sdiv(a: Optional[float], b: Optional[float]) -> Optional[float]:
@@ -1962,7 +1963,7 @@ def _sem_pme(v):
     return "ok" if v <= 60 else ("warn" if v <= 120 else "bad")
 
 
-def _calc_periodo(bp: PeriodoBP, dre: PeriodoDRE, fator_risco: float, fator_mult: float) -> dict:
+def _calc_periodo(bp: PeriodoBP, dre: PeriodoDRE, fator_risco: float, fator_mult: float, cdi: float = 0.149) -> dict:
     def nn(*vals):
         return sum(v for v in vals if v is not None)
 
@@ -2002,8 +2003,26 @@ def _calc_periodo(bp: PeriodoBP, dre: PeriodoDRE, fator_risco: float, fator_mult
     pmr = (bp.contas_receber / rl * 360) if (bp.contas_receber and rl) else None
     pme = (bp.estoques / abs(cpv) * 360)  if (bp.estoques and cpv) else None
 
-    credito_calculado = (liq_geral * pl)  if (liq_geral and pl) else None
-    credito_proposto  = (ll * fator_mult / fator_risco) if (ll and fator_risco) else None
+    # ── Cálculo de limite — 4 passos (metodologia estudo.xlsx) ────────────────
+    # Passo 1: Capacidade de pagamento LP = Liq. Geral × PL
+    cap_pagamento_lp = (liq_geral * pl) if (liq_geral and pl) else None
+
+    # Passo 2: Capacidade de retorno = PL × ROE × (1 + CDI)
+    cap_retorno = (pl * roe * (1 + cdi)) if (pl and roe is not None) else None
+
+    # Passo 3: Fator de cobertura = Cap. Retorno / Lucro Líquido
+    fator_cobertura = _sdiv(cap_retorno, ll)
+
+    # Passo 4: Crédito proposto = Cap. Retorno × Fator Cobertura × (1 - Fator Risco)
+    if cap_retorno is not None and cap_retorno > 0 and fator_cobertura is not None:
+        credito_proposto = cap_retorno * fator_cobertura * (1 - fator_risco)
+    elif cap_retorno is not None and cap_retorno <= 0:
+        credito_proposto = 0.0
+    else:
+        # Fallback quando LL é nulo: usa LL × mult / risco
+        credito_proposto = (ll * fator_mult / fator_risco) if (ll and fator_risco) else None
+
+    credito_calculado = cap_pagamento_lp  # Passo 1 = teto máximo pela liquidez
 
     def r(v, dec=2):
         return round(v, dec) if v is not None else None
@@ -2044,6 +2063,10 @@ def _calc_periodo(bp: PeriodoBP, dre: PeriodoDRE, fator_risco: float, fator_mult
         "credito": {
             "calculado":         r(credito_calculado, 0),
             "proposto":          r(credito_proposto, 0),
+            "cap_pagamento_lp":  r(cap_pagamento_lp, 0),
+            "cap_retorno":       r(cap_retorno, 0),
+            "fator_cobertura":   r(fator_cobertura, 4),
+            "cdi":               cdi,
             "fator_risco":       fator_risco,
             "fator_multiplicador": fator_mult,
         },
@@ -2209,20 +2232,36 @@ Retorne APENAS um JSON válido (sem markdown, sem texto extra):
   "fator_multiplicador": 1.1
 }}"""
 
+    extracted = None
+    needs_manual = False
+    ai_error_msg = None
     try:
         raw_resp = await asyncio.to_thread(_gemini_generate, key, gemini_prompt)
         extracted = _extract_json(raw_resp)
     except Exception as exc:
-        raise HTTPException(502, f"Erro ao chamar Gemini: {exc}")
+        ai_error_msg = str(exc)[:300]
+        needs_manual = True
 
-    if not extracted:
-        raise HTTPException(422, "Gemini não retornou JSON válido. Verifique os documentos enviados.")
+    if not extracted and not needs_manual:
+        needs_manual = True
+        ai_error_msg = "IA não retornou JSON válido"
+
+    if needs_manual:
+        # IA indisponível — retorna formulário vazio para preenchimento manual pelo analista
+        return {
+            "ok": True,
+            "data": {},
+            "result": {},
+            "needs_manual": True,
+            "texto_extraido": texto[:3000] if texto else "",
+            "ai_error": ai_error_msg or "IA indisponível",
+        }
 
     # Calcular indicadores imediatamente
     try:
         cd = ContabilData(**extracted)
-        p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador)
-        p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador)
+        p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador, cd.cdi)
+        p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador, cd.cdi)
         contabil_result = {
             "periodo1_label": cd.periodo1_label,
             "periodo2_label": cd.periodo2_label,
@@ -2264,8 +2303,8 @@ async def contabil_calcular(request: Request, current_user=Depends(_get_current_
     except Exception as exc:
         raise HTTPException(400, f"Dados inválidos: {exc}")
 
-    p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador)
-    p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador)
+    p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador, cd.cdi)
+    p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador, cd.cdi)
 
     return {
         "periodo1_label":    cd.periodo1_label,
@@ -2274,6 +2313,7 @@ async def contabil_calcular(request: Request, current_user=Depends(_get_current_
         "periodo2":          p2,
         "fator_risco":       cd.fator_risco,
         "fator_multiplicador": cd.fator_multiplicador,
+        "cdi":               cd.cdi,
     }
 
 
@@ -2295,8 +2335,8 @@ async def contabil_salvar(sol_id: str, request: Request, current_user=Depends(_g
     # Recalcular após patch
     try:
         cd = ContabilData(**existing)
-        p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador)
-        p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador)
+        p1 = _calc_periodo(cd.bp1, cd.dre1, cd.fator_risco, cd.fator_multiplicador, cd.cdi)
+        p2 = _calc_periodo(cd.bp2, cd.dre2, cd.fator_risco, cd.fator_multiplicador, cd.cdi)
         sol_data["contabil_result"] = {
             "periodo1_label": cd.periodo1_label,
             "periodo2_label": cd.periodo2_label,

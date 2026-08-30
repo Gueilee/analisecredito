@@ -836,6 +836,50 @@
             </div>
           </div>
 
+          <!-- ── Resultado da Análise de Crédito ── -->
+          <div class="card animate-in" id="ai-card" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem;">
+              <div style="display:flex;align-items:center;gap:.55rem;">
+                <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style="color:var(--purple-light);flex-shrink:0"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span class="card-title">Resultado da Análise de Crédito</span>
+                <span id="ai-model-lbl" style="font-size:.67rem;color:var(--text-faint);"></span>
+              </div>
+              <!-- Score gauge compacto -->
+              <div style="display:flex;align-items:center;gap:.75rem;">
+                <svg width="52" height="52" viewBox="0 0 90 90" style="flex-shrink:0;">
+                  <circle cx="45" cy="45" r="40" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/>
+                  <circle id="score-arc" cx="45" cy="45" r="40" fill="none" stroke="url(#scoreGrad)" stroke-width="9"
+                    stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="251"
+                    transform="rotate(-90 45 45)" style="transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)"/>
+                  <defs><linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#01e18e"/>
+                  </linearGradient></defs>
+                  <text id="score-num" x="45" y="50" text-anchor="middle" fill="var(--text-primary)"
+                    font-size="18" font-weight="700" font-family="inherit">—</text>
+                </svg>
+                <div>
+                  <div id="cls-badge-wrap" style="margin-bottom:.3rem;"></div>
+                  <div id="rec-pill-wrap"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resumo executivo -->
+            <div id="score-resumo" style="font-size:.82rem;color:var(--text-muted);line-height:1.65;margin-bottom:1rem;padding:.7rem .9rem;background:rgba(255,255,255,.03);border-left:2px solid rgba(124,58,237,.4);border-radius:0 6px 6px 0;"></div>
+
+            <!-- Alertas críticos -->
+            <div id="alertas-wrap" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem;"></div>
+
+            <!-- Pontos positivos e de atenção -->
+            <div id="points-grid" class="points-grid" style="margin-bottom:1rem;"></div>
+
+            <!-- Análise detalhada (colapsável) -->
+            <div id="detail-card" style="display:none;">
+              <div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-bottom:.6rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.07);">Análise Detalhada</div>
+              <div id="detail-content" style="display:flex;flex-direction:column;gap:.75rem;"></div>
+            </div>
+          </div>
+
           <!-- ── IDwall BGC Card ── -->
           <div class="card animate-in delay-1 idwall-card" id="idwall-card">
             <div class="idwall-card-hd">
@@ -1125,16 +1169,31 @@
                   <input class="ctbl-factor-input" id="ctbl-fator-risco" value="10" oninput="ctblScheduleCalc()">
                   <label>Multiplicador (×)</label>
                   <input class="ctbl-factor-input" id="ctbl-fator-mult" value="1.1" oninput="ctblScheduleCalc()">
+                  <label>CDI (% a.a.)</label>
+                  <input class="ctbl-factor-input" id="ctbl-cdi" value="14.9" oninput="ctblScheduleCalc()">
                 </div>
               </div>
 
               <div class="ctbl-credit-box">
                 <div>
-                  <div class="ctbl-credit-lbl">Crédito Proposto</div>
-                  <div style="font-size:.68rem;color:rgba(129,140,248,.6);">LL × Multiplicador ÷ Fator de Risco</div>
+                  <div class="ctbl-credit-lbl">Limite de Crédito Sugerido</div>
+                  <div style="font-size:.68rem;color:rgba(129,140,248,.6);">PL × ROE × (1+CDI) × Fator Cobertura × (1−Risco)</div>
                 </div>
                 <div class="ctbl-credit-val" id="ctbl-credito-proposto">—</div>
                 <button class="ctbl-use-btn" onclick="ctblUsarLimite()">→ Usar como Limite</button>
+              </div>
+              <!-- Detalhamento dos 4 passos -->
+              <div id="ctbl-credit-steps" style="display:none;margin-top:.6rem;padding:.6rem .8rem;background:rgba(255,255,255,.02);border-radius:6px;border:1px solid rgba(255,255,255,.06);">
+                <div style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-bottom:.5rem;">Metodologia — 4 Passos</div>
+                <div id="ctbl-step1" style="display:flex;justify-content:space-between;font-size:.73rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.04);">
+                  <span style="color:var(--text-muted);">① Cap. Pagamento LP (Liq.Geral × PL)</span><strong id="ctbl-step1-val" style="color:var(--text-secondary);">—</strong></div>
+                <div id="ctbl-step2" style="display:flex;justify-content:space-between;font-size:.73rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.04);">
+                  <span style="color:var(--text-muted);">② Cap. Retorno (PL × ROE × (1+CDI))</span><strong id="ctbl-step2-val" style="color:var(--text-secondary);">—</strong></div>
+                <div id="ctbl-step3" style="display:flex;justify-content:space-between;font-size:.73rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.04);">
+                  <span style="color:var(--text-muted);">③ Fator Cobertura (Cap.Retorno ÷ LL)</span><strong id="ctbl-step3-val" style="color:var(--text-secondary);">—</strong></div>
+                <div id="ctbl-step4" style="display:flex;justify-content:space-between;font-size:.73rem;padding:.2rem 0;">
+                  <span style="color:var(--text-muted);">④ Limite (Passo2 × Passo3 × (1−Risco))</span><strong id="ctbl-step4-val" style="color:var(--brand-neon-green);font-size:.82rem;">—</strong></div>
+                <div style="font-size:.63rem;color:var(--text-faint);margin-top:.4rem;">CDI: <span id="ctbl-cdi-display">14,9%</span> a.a. &nbsp;|&nbsp; Fator risco: <span id="ctbl-risco-display">10%</span></div>
               </div>
 
               <!-- Comentário do analista -->
@@ -2869,14 +2928,22 @@ async function runFullAnalysis() {
   }
 
   /* ── 3. Análise Contábil ────────────────────────────────────────── */
-  _faSetStep('contabil', 'loading', 'Extraindo BP e DRE com IA…');
+  _faSetStep('contabil', 'loading', 'Extraindo BP e DRE dos documentos…');
   try {
     const res = await fetch(`${API_URL}/api/contabil/extrair/${sol.id}`, {
       method: 'POST', credentials: 'include',
     });
     if (res.ok) {
       const json = await res.json();
-      if (json.data) {
+      if (json.needs_manual) {
+        // IA indisponível — abre a seção de entrada manual
+        const bodyEl = document.getElementById('contabil-body');
+        if (bodyEl) bodyEl.style.display = '';
+        const ctblCard = document.getElementById('contabil-card');
+        if (ctblCard) ctblCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        _faSetStep('contabil', 'skip', 'IA indisponível — preencha BP/DRE manualmente e clique em Calcular');
+        showToast('Preencha os campos do Balanço e DRE manualmente para calcular os indicadores.', 'warning');
+      } else if (json.data && Object.keys(json.data).length > 0) {
         if (typeof _ctblPopulateFields === 'function') _ctblPopulateFields(json.data);
         const bodyEl = document.getElementById('contabil-body');
         if (bodyEl) bodyEl.style.display = '';
@@ -2884,15 +2951,17 @@ async function runFullAnalysis() {
         sol.contabil_data   = json.data;
         sol.contabil_result = json.result;
         DB.solicitacoes.save(sol);
+        _faSetStep('contabil', 'done', 'Indicadores contábeis extraídos');
+      } else {
+        _faSetStep('contabil', 'skip', 'Sem dados contábeis — etapa ignorada');
       }
-      _faSetStep('contabil', 'done', 'Indicadores contábeis extraídos');
     } else if (res.status === 404) {
-      _faSetStep('contabil', 'skip', 'Sem BP/DRE no banco — etapa ignorada');
+      _faSetStep('contabil', 'skip', 'Sem BP/DRE no banco — envie os documentos primeiro');
     } else {
       _faSetStep('contabil', 'skip', 'Erro na extração — etapa ignorada');
     }
   } catch (_) {
-    _faSetStep('contabil', 'skip', 'Erro na extração — etapa ignorada');
+    _faSetStep('contabil', 'skip', 'Erro de comunicação — etapa ignorada');
   }
 
   /* ── 4. Análise com IA ──────────────────────────────────────────── */
@@ -3389,12 +3458,14 @@ function _ctblReadData() {
     bp1, bp2, dre1, dre2,
     fator_risco:       parseFloat((document.getElementById('ctbl-fator-risco') || {}).value) / 100 || 0.10,
     fator_multiplicador: parseFloat((document.getElementById('ctbl-fator-mult') || {}).value) || 1.1,
+    cdi:               parseFloat((document.getElementById('ctbl-cdi') || {}).value) / 100 || 0.149,
   };
 }
 
 // ── Cálculo client-side (espelha a lógica Python do backend) ──────────────────
 
-function _ctblCalcPeriod(bp, dre, fr, fm) {
+function _ctblCalcPeriod(bp, dre, fr, fm, cdi) {
+  if (cdi === undefined) cdi = 0.149;
   const nn = (...vals) => vals.reduce((s, v) => s + (v || 0), 0);
   const sdiv = (a, b) => (b && b !== 0) ? a / b : null;
 
@@ -3424,12 +3495,37 @@ function _ctblCalcPeriod(bp, dre, fr, fm) {
   const pmr        = (bp.contas_receber && rl) ? (bp.contas_receber / rl) * 360 : null;
   const pme        = (bp.estoques && cpv) ? (bp.estoques / Math.abs(cpv)) * 360 : null;
 
+  // ── Cálculo de limite — 4 passos (metodologia estudo.xlsx) ──────────────
+  // Passo 1: Capacidade pagamento LP = Liq. Geral × PL
+  const cap_pagamento_lp = (liq_geral && pl) ? liq_geral * pl : null;
+
+  // Passo 2: Capacidade de retorno = PL × ROE × (1 + CDI)
+  const cap_retorno = (pl && roe !== null) ? pl * roe * (1 + cdi) : null;
+
+  // Passo 3: Fator de cobertura = Cap. Retorno / LL
+  const fator_cobertura = (cap_retorno !== null && ll && ll !== 0) ? cap_retorno / ll : null;
+
+  // Passo 4: Crédito proposto com desconto de risco
+  let credito_proposto = null;
+  if (cap_retorno !== null && cap_retorno > 0 && fator_cobertura !== null) {
+    credito_proposto = cap_retorno * fator_cobertura * (1 - fr);
+  } else if (cap_retorno !== null && cap_retorno <= 0) {
+    credito_proposto = 0;
+  } else if (ll && fr) {
+    credito_proposto = (ll * fm) / fr; // fallback
+  }
+
   return {
     totais: { ac, anc, at, pc, pnc, pt, pl, rl, lb, ll },
     indicadores: { liq_seca, liq_geral, roe, roa, mb, ml, ncg, eg, pmr, pme },
     credito: {
-      calculado: (liq_geral && pl) ? liq_geral * pl : null,
-      proposto:  (ll && fr)        ? (ll * fm) / fr : null,
+      calculado:      cap_pagamento_lp,
+      proposto:       credito_proposto,
+      cap_pagamento_lp,
+      cap_retorno,
+      fator_cobertura,
+      cdi,
+      fator_risco:    fr,
     },
   };
 }
@@ -3545,18 +3641,32 @@ function ctblScheduleCalc() {
 
 function ctblCalc() {
   const data = _ctblReadData();
-  const fr = data.fator_risco;
-  const fm = data.fator_multiplicador;
-  const p1 = _ctblCalcPeriod(data.bp1, data.dre1, fr, fm);
-  const p2 = _ctblCalcPeriod(data.bp2, data.dre2, fr, fm);
+  const fr  = data.fator_risco;
+  const fm  = data.fator_multiplicador;
+  const cdi = data.cdi;
+  const p1  = _ctblCalcPeriod(data.bp1, data.dre1, fr, fm, cdi);
+  const p2  = _ctblCalcPeriod(data.bp2, data.dre2, fr, fm, cdi);
 
   _ctblUpdateTotals(p1, p2);
   _ctblRenderIndicadores(p1, p2);
 
-  const baseFmt = p2.credito.calculado != null ? _ctblFmtBR(p2.credito.calculado) : '—';
-  const propFmt = p2.credito.proposto   != null ? _ctblFmtBR(p2.credito.proposto)  : '—';
+  const baseFmt = p2.credito.cap_pagamento_lp != null ? _ctblFmtBR(p2.credito.cap_pagamento_lp) : '—';
+  const propFmt = p2.credito.proposto         != null ? _ctblFmtBR(p2.credito.proposto)          : '—';
   _ctblSetText('ctbl-credito-base',     baseFmt);
   _ctblSetText('ctbl-credito-proposto', propFmt);
+
+  // Detalhamento dos 4 passos
+  const cr = p2.credito;
+  const hasSteps = cr.cap_pagamento_lp != null || cr.cap_retorno != null;
+  const stepsEl = document.getElementById('ctbl-credit-steps');
+  if (stepsEl) stepsEl.style.display = hasSteps ? '' : 'none';
+  const _st = (id, t) => { const e = document.getElementById(id); if (e) e.textContent = t; };
+  _st('ctbl-step1-val', cr.cap_pagamento_lp != null ? _ctblFmtBR(cr.cap_pagamento_lp) : '—');
+  _st('ctbl-step2-val', cr.cap_retorno      != null ? _ctblFmtBR(cr.cap_retorno)      : '—');
+  _st('ctbl-step3-val', cr.fator_cobertura  != null ? cr.fator_cobertura.toFixed(3) + '×' : '—');
+  _st('ctbl-step4-val', cr.proposto         != null ? _ctblFmtBR(cr.proposto)         : '—');
+  _st('ctbl-cdi-display',   (cdi * 100).toFixed(1) + '%');
+  _st('ctbl-risco-display', (fr  * 100).toFixed(0) + '%');
 
   // Update labels on BP/DRE table headers
   const l1 = data.periodo1_label || 'Per. 1';
@@ -3695,9 +3805,10 @@ async function runContabilExtracao() {
 
 function ctblUsarLimite() {
   const data = _ctblReadData();
-  const fr = data.fator_risco;
-  const fm = data.fator_multiplicador;
-  const p2 = _ctblCalcPeriod(data.bp2, data.dre2, fr, fm);
+  const fr  = data.fator_risco;
+  const fm  = data.fator_multiplicador;
+  const cdi = data.cdi;
+  const p2  = _ctblCalcPeriod(data.bp2, data.dre2, fr, fm, cdi);
   const proposto = p2.credito.proposto;
   if (!proposto) { showToast('Calcule o crédito antes de usar o limite.', 'warning'); return; }
 
