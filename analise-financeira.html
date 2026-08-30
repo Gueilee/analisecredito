@@ -1748,30 +1748,34 @@
     const rf  = data.cnpj_data || {};
     const rfd = rf.data        || {};
 
-    // Bureau
+    // Helpers null-safe (elementos podem não existir após refatorações de layout)
+    const _g   = id => document.getElementById(id);
+    const _sh  = (id, h) => { const e = _g(id); if (e) e.innerHTML   = h; };
+    const _st  = (id, t) => { const e = _g(id); if (e) e.textContent = t; };
+    const _vis = id      => { const e = _g(id); if (e) e.style.display = ''; };
+
+    // Bureau (rf-icon e rf-status existem ocultos no HTML para compat. JS)
     if (rf.status === 'ok') {
-      document.getElementById('rf-icon').className = 'bureau-icon ok';
-      document.getElementById('rf-status').textContent = 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK');
-      const _bRf = document.getElementById('btn-rf-consult');
-      if (_bRf) _bRf.style.display = 'none';
+      const ri = _g('rf-icon'); if (ri) ri.className = 'bureau-icon ok';
+      _st('rf-status', 'Consultado — ' + (rfd.descricao_situacao_cadastral || 'OK'));
+      const _bRf = _g('btn-rf-consult'); if (_bRf) _bRf.style.display = 'none';
     } else {
-      document.getElementById('rf-icon').className = 'bureau-icon error';
-      document.getElementById('rf-status').textContent = rf.error || 'Erro na consulta';
+      const ri = _g('rf-icon'); if (ri) ri.className = 'bureau-icon error';
+      _st('rf-status', rf.error || 'Erro na consulta');
     }
 
     // Gauge
     const score = Math.max(0, Math.min(100, an.score || 0));
     requestAnimationFrame(() => {
-      const arc = document.getElementById('score-arc');
+      const arc = _g('score-arc');
       if (arc) arc.style.strokeDashoffset = (251 * (1 - score / 100)).toFixed(1);
-      const num = document.getElementById('score-num');
+      const num = _g('score-num');
       if (num) num.textContent = score;
     });
 
     // Classificação
     const cls = (an.classificacao || 'D').toLowerCase().replace(/\+/g, 'p');
-    document.getElementById('cls-badge-wrap').innerHTML =
-      `<span class="class-badge ${cls}">${an.classificacao || '—'}</span>`;
+    _sh('cls-badge-wrap', `<span class="class-badge ${cls}">${an.classificacao || '—'}</span>`);
 
     // Recomendação
     const rec = an.recomendacao || 'revisar';
@@ -1781,11 +1785,10 @@
       revisar: { icon: '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>', label: 'Recomendação: REVISAR' },
     };
     const rm = recMap[rec] || recMap.revisar;
-    document.getElementById('rec-pill-wrap').innerHTML =
-      `<span class="rec-pill ${rec}"><svg viewBox="0 0 24 24" fill="none">${rm.icon}</svg>${rm.label}</span>`;
+    _sh('rec-pill-wrap', `<span class="rec-pill ${rec}"><svg viewBox="0 0 24 24" fill="none">${rm.icon}</svg>${rm.label}</span>`);
 
-    document.getElementById('score-resumo').textContent = an.resumo_executivo || '';
-    document.getElementById('ai-model-lbl').textContent = '';
+    _st('score-resumo', an.resumo_executivo || '');
+    _st('ai-model-lbl', '');
 
     // Pontos
     const pSVG  = `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -1795,7 +1798,7 @@
       ? arr.map(p => `<div class="point-item"><div class="point-dot ${cls}">${icon}</div><span>${p}</span></div>`).join('')
       : empty;
 
-    document.getElementById('points-grid').innerHTML = `
+    _sh('points-grid', `
       <div>
         <div class="sec-label">Pontos Positivos</div>
         <div class="points-col">${mkPoints(an.pontos_positivos || [], 'pos', pSVG)}</div>
@@ -1803,16 +1806,16 @@
       <div>
         <div class="sec-label">Pontos de Atenção</div>
         <div class="points-col">${mkPoints(an.pontos_atencao || [], 'att', wSVG)}</div>
-      </div>`;
+      </div>`);
 
     const alertas = an.alertas_criticos || [];
-    document.getElementById('alertas-wrap').innerHTML = alertas.length
+    _sh('alertas-wrap', alertas.length
       ? alertas.map(a => `<div class="alert-strip"><svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>${a}</span></div>`).join('')
-      : '';
+      : '');
 
-    document.getElementById('ai-card').style.display = '';
-    document.getElementById('btn-exposicao').style.display = '';
-    document.getElementById('btn-pdf').style.display = '';
+    _vis('ai-card');
+    _vis('btn-exposicao');
+    _vis('btn-pdf');
 
     // Análise detalhada
     const detailBlocks = [
@@ -1824,18 +1827,17 @@
     ].filter(b => an[b.key]);
 
     if (detailBlocks.length) {
-      document.getElementById('detail-content').innerHTML = detailBlocks
+      _sh('detail-content', detailBlocks
         .map(b => `<div class="detail-block"><div class="detail-title">${b.title}</div><div class="detail-text">${an[b.key]}</div></div>`)
-        .join('');
-      document.getElementById('detail-card').style.display = '';
+        .join(''));
+      _vis('detail-card');
     }
 
     // Dados da Receita Federal
     if (rf.status === 'ok' && rfd.razao_social) renderRF(rfd);
 
-    // Painel de limites recomendados
-    const lc = document.getElementById('limits-content');
-    lc.innerHTML = [
+    // Painel de limites — usa limits-content se existir, caso contrário limits-card diretamente
+    const limitsHtml = [
       { k: 'Exportador (câmbio)', v: an.limite_recomendado_exportador },
       { k: 'Despesas alfand.',    v: an.limite_recomendado_desp },
       { k: 'Impostos',           v: an.limite_recomendado_imp },
@@ -1844,19 +1846,21 @@
       <span style="color:var(--text-muted);">${r.k}</span>
       <strong style="color:${r.v && r.v !== 'Não recomendado' ? 'var(--brand-neon-green)' : 'var(--red)'};">${r.v || '—'}</strong>
     </div>`).join('') + (an.prazo_recomendado ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:.6rem;">Prazo recomendado: <strong style="color:var(--text-primary);">${an.prazo_recomendado} dias</strong></div>` : '');
-    document.getElementById('limits-card').style.display = '';
+    const lc = _g('limits-content') || _g('limits-card');
+    if (lc) lc.innerHTML = limitsHtml;
+    _vis('limits-card');
 
     // Preenche prazo recomendado no select
     if (an.prazo_recomendado) {
-      const sel = document.getElementById('dec-prazo');
-      [...sel.options].forEach(o => { if (o.value == an.prazo_recomendado) o.selected = true; });
+      const sel = _g('dec-prazo');
+      if (sel) [...sel.options].forEach(o => { if (o.value == an.prazo_recomendado) o.selected = true; });
     }
 
     // Painel de decisão — apenas para perfis com permissão de decisão (RBAC)
     if (canDecide) {
-      document.getElementById('decision-card').style.display = '';
+      _vis('decision-card');
     } else {
-      document.getElementById('pending-decision-banner').style.display = '';
+      _vis('pending-decision-banner');
     }
   }
 
