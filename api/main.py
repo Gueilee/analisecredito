@@ -2877,7 +2877,7 @@ async def health():
         "configured": gemini_ok,
         "length":     len(gemini_key),
         "prefix":     (gemini_key[:6] + "…") if len(gemini_key) >= 6 else "(vazio)",
-        "looks_valid": gemini_key.startswith("AIzaSy") if gemini_key else False,
+        "looks_valid": (gemini_key.startswith("AIzaSy") or gemini_key.startswith("AQ.")) if gemini_key else False,
     }
 
     return {
