@@ -22,7 +22,6 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from google import genai as google_genai
 import httpx
 import openpyxl
 import pdfplumber
@@ -1085,15 +1084,78 @@ def _load_gemini_model() -> str:
     return os.environ.get("GEMINI_MODEL", "gemini-1.5-flash").strip().strip('"').strip("'") or "gemini-1.5-flash"
 
 
+_GEMINI_FALLBACK_MODELS = [
+    # Tentados em ordem se o modelo configurado falhar por NOT_FOUND
+    "gemini-2.0-flash-exp",
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-2.5-flash-lite-preview-06-17",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-1.0-pro",
+]
+
+
+def _gemini_rest_call(key: str, model: str, prompt: str) -> str:
+    """Chama a Gemini REST API diretamente, tentando v1beta e depois v1."""
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 8192},
+    }
+    params = {"key": key}
+
+    for api_version in ("v1beta", "v1"):
+        url = f"https://generativelanguage.googleapis.com/{api_version}/models/{model}:generateContent"
+        resp = httpx.post(url, params=params, json=body, timeout=120)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+
+        try:
+            err = resp.json().get("error", {})
+        except Exception:
+            err = {}
+        code = err.get("code", resp.status_code)
+        msg  = err.get("message", resp.text)
+        status_str = err.get("status", "")
+
+        # Erros definitivos — não adianta trocar versão de API nem modelo
+        if code in (400, 403) or status_str in ("INVALID_ARGUMENT", "PERMISSION_DENIED"):
+            raise RuntimeError(f"[ClientError] {code} {status_str}: {msg}")
+        if code == 429 or status_str == "RESOURCE_EXHAUSTED":
+            raise RuntimeError(f"[ClientError] 429 RESOURCE_EXHAUSTED: {msg}")
+
+        # 404 NOT_FOUND → tenta próxima versão de API
+        if code == 404:
+            continue
+
+        raise RuntimeError(f"[ClientError] {code} {status_str}: {msg}")
+
+    raise RuntimeError(f"[ClientError] Modelo '{model}' não encontrado em v1beta nem em v1")
+
+
 def _gemini_generate(key: str, prompt: str) -> str:
-    """Chama a Gemini API (google-genai v1) e retorna o texto gerado."""
-    model = _load_gemini_model()
-    client = google_genai.Client(api_key=key)
-    response = client.models.generate_content(
-        model=model,
-        contents=prompt,
-    )
-    return response.text
+    """Chama Gemini com fallback automático de modelo se NOT_FOUND."""
+    configured = _load_gemini_model()
+
+    models_to_try = [configured]
+    for m in _GEMINI_FALLBACK_MODELS:
+        if m != configured:
+            models_to_try.append(m)
+
+    last_err: Exception = RuntimeError("Gemini indisponível")
+    for model in models_to_try:
+        try:
+            return _gemini_rest_call(key, model, prompt)
+        except RuntimeError as exc:
+            msg = str(exc)
+            last_err = exc
+            # Erros de key/quota: não adianta tentar outros modelos
+            if any(x in msg for x in ("INVALID_ARGUMENT", "PERMISSION_DENIED", "RESOURCE_EXHAUSTED", "400", "403", "429")):
+                break
+            # NOT_FOUND → tenta próximo modelo na lista
+            continue
+
+    raise last_err
 
 
 # ── Modelo histórico ─────────────────────────────────────────────────────────
