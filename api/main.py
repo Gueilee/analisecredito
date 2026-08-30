@@ -2138,7 +2138,7 @@ Retorne APENAS um JSON válido (sem markdown, sem texto extra):
 }}"""
 
     try:
-        raw_resp = _gemini_generate(key, gemini_prompt)
+        raw_resp = await asyncio.to_thread(_gemini_generate, key, gemini_prompt)
         extracted = _extract_json(raw_resp)
     except Exception as exc:
         raise HTTPException(502, f"Erro ao chamar Gemini: {exc}")
@@ -2526,7 +2526,7 @@ async def analyze(request: Request, req: AnalyzeRequest, current_user=Depends(_g
     else:
         prompt = build_prompt(req, receita, contabil_result)
         try:
-            raw = _gemini_generate(key, prompt)
+            raw = await asyncio.to_thread(_gemini_generate, key, prompt)
 
             # 3. Extrai JSON com três estratégias em cascata
             analysis = _extract_json(raw)
