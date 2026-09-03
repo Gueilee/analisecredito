@@ -283,29 +283,44 @@
     .exp-legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 
     /* ═══════════════════════════════════════════════════
-       SERASA SECTION
+       IDWALL BGC SECTION
     ═══════════════════════════════════════════════════ */
-    .serasa-placeholder {
-      background: linear-gradient(135deg, #fffbeb, #fef3c7);
-      border: 1.5px dashed #f59e0b;
-      border-radius: 6px; padding: 18px 20px; margin-bottom: 14px;
-      display: flex; align-items: flex-start; gap: 14px;
+    .idwall-verdict-box {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 7px; margin-bottom: 11px; font-size: 10px; font-weight: 700;
     }
-    .serasa-icon {
-      width: 36px; height: 36px; border-radius: 8px;
-      background: rgba(245,158,11,.15); display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; color: #d97706;
+    .idwall-verdict-box.valid   { background: rgba(5,150,105,.09); border: 1px solid rgba(5,150,105,.3); color: #065f46; }
+    .idwall-verdict-box.invalid { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.25); color: #991b1b; }
+    .idwall-verdict-box.error   { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); color: #78350f; }
+    .idwall-verdict-box svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .idwall-rules-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .idwall-rule-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 6px 10px; border-radius: 6px; font-size: 9px;
+      background: #f8fafc; border: 1px solid #e2e8f0;
     }
-    .serasa-icon svg { width: 18px; height: 18px; }
-    .serasa-content {}
-    .serasa-title { font-size: 11px; font-weight: 800; color: #78350f; margin-bottom: 3px; }
-    .serasa-desc  { font-size: 9.5px; color: #92400e; line-height: 1.55; }
-    .serasa-badge {
-      display: inline-block; margin-top: 7px;
-      background: rgba(245,158,11,.2); color: #92400e;
-      font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px;
-      padding: 2px 9px; border-radius: 99px; border: 1px solid rgba(245,158,11,.4);
+    .idwall-rule-ico { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .idwall-rule-ico svg { width: 10px; height: 10px; }
+    .idwall-rule-ico.valid   { background: rgba(5,150,105,.12); color: #059669; }
+    .idwall-rule-ico.invalid { background: rgba(220,38,38,.12); color: #dc2626; }
+    .idwall-rule-ico.error   { background: rgba(245,158,11,.12); color: #d97706; }
+    .idwall-rule-ico.no_data { background: #f1f5f9; color: #94a3b8; }
+    .idwall-rule-name { font-weight: 700; color: #1e293b; }
+    .idwall-rule-desc { color: #64748b; margin-top: 1px; }
+    .idwall-dados-sec { margin-bottom: 12px; }
+    .idwall-dados-sec-title { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #475569; margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px solid #e2e8f0; }
+    .idwall-dados-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; }
+    .idwall-dados-item { display: flex; flex-direction: column; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
+    .idwall-dados-lbl { font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: #94a3b8; margin-bottom: 1px; }
+    .idwall-dados-val { font-size: 9px; color: #1e293b; font-weight: 600; }
+    .idwall-badge-ok   { display:inline-block; padding:2px 7px; border-radius:99px; font-size:8px; font-weight:700; background:rgba(5,150,105,.1); color:#059669; border:1px solid rgba(5,150,105,.25); }
+    .idwall-badge-warn { display:inline-block; padding:2px 7px; border-radius:99px; font-size:8px; font-weight:700; background:rgba(220,38,38,.09); color:#dc2626; border:1px solid rgba(220,38,38,.22); }
+    .idwall-badge-neu  { display:inline-block; padding:2px 7px; border-radius:99px; font-size:8px; font-weight:700; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+    .idwall-pending-box {
+      background: rgba(245,158,11,.06); border: 1px solid rgba(245,158,11,.25); border-radius: 6px;
+      padding: 11px 14px; font-size: 10px; color: #78350f; margin-bottom: 12px;
     }
+    .idwall-pending-box strong { font-size: 11px; display: block; margin-bottom: 3px; }
 
     /* ═══════════════════════════════════════════════════
        AI ANALYSIS
@@ -1691,101 +1706,225 @@ function render() {
   }
 
   /* ══════════════════════════════════════════════
-     5. ANÁLISE SERASA EXPERIENCE
+     5. IDWALL BGC — VERIFICAÇÃO CADASTRAL COMPLETA
   ══════════════════════════════════════════════ */
   html += `
   <div class="sec-head-teal page-break">
     <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    5. Análise Serasa Experience
+    5. IDwall BGC — Verificação Cadastral Completa
   </div>`;
 
   (function() {
-    const s = sol.serasa;
-    if (!s) {
+    const iw = sol.idwall;
+    const iwPend = sol.idwall_pending;
+
+    /* ── Estado: consulta não realizada ───────────────── */
+    if (!iw && !iwPend) {
       html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
-        Consulta Serasa não realizada — dados indisponíveis para este processo.
+        Consulta IDwall BGC não realizada para este processo.
       </div>`;
       return;
     }
 
-    const riskLbl = { baixo:'Risco Baixo', medio:'Risco Médio', alto:'Risco Alto', muito_alto:'Risco Muito Alto' };
-    const riskClr = { baixo:'#059669', medio:'#d97706', alto:'#dc2626', muito_alto:'#dc2626' }[s.risco] || '#d97706';
-    const riskBg  = { baixo:'rgba(5,150,105,.1)', medio:'rgba(217,119,6,.1)', alto:'rgba(220,38,38,.1)', muito_alto:'rgba(220,38,38,.1)' }[s.risco] || 'rgba(217,119,6,.1)';
-    const recMap  = { prazo:'Conceder a prazo', garantias:'Exigir garantias', negar:'Não conceder' };
-    const recClr  = { prazo:'#059669', garantias:'#d97706', negar:'#dc2626' }[s.recomendacaoVenda] || '#94a3b8';
-    const recBg   = { prazo:'rgba(5,150,105,.1)', garantias:'rgba(217,119,6,.1)', negar:'rgba(220,38,38,.1)' }[s.recomendacaoVenda] || 'rgba(148,163,184,.1)';
-    const fmtPct  = v => v != null ? Number(v).toFixed(2) + '%' : null;
-    const fmtBRL  = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR') : null;
-    const dtStr   = s.consultadaEm ? new Date(s.consultadaEm).toLocaleDateString('pt-BR') : '';
+    /* ── Estado: consulta pendente (aguardando resultado) ─ */
+    if (!iw && iwPend) {
+      html += `<div class="idwall-pending-box avoid-break">
+        <strong>&#9201; Análise em Processamento</strong>
+        Protocolo <strong>${esc(iwPend.numero || '—')}</strong> gerado — aguardando resultado da IDwall. Gere o relatório novamente após a conclusão da consulta.
+      </div>`;
+      return;
+    }
 
-    /* ── Score header ─────────────────────────────────── */
+    /* ── Cabeçalho com veredicto geral ───────────────── */
+    const res = (iw.resultado || '').toUpperCase();
+    const isValid   = res === 'VALID';
+    const isInvalid = res === 'INVALID';
+    const vcCls   = isValid ? 'valid' : isInvalid ? 'invalid' : 'error';
+    const vcLabel = isValid
+      ? '&#10003; Sem irregularidades — todas as validações aprovadas'
+      : isInvalid
+        ? '&#10007; Irregularidades encontradas — verifique as regras abaixo'
+        : 'Resultado inconclusivo ou erro na consulta';
+    const dtStr   = iw.consultadaEm ? new Date(iw.consultadaEm + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+    const nomeEmp = iw.nomeEmpresa || '';
+
     html += `
-    <div class="avoid-break" style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;margin-bottom:12px;">
-      <div style="text-align:center;min-width:68px;padding:8px 10px;background:#fff;border-radius:8px;border:1px solid #e2e8f0;flex-shrink:0;">
-        <div style="font-size:26px;font-weight:900;color:#1e1b4b;line-height:1;">${esc(String(s.score ?? '—'))}</div>
-        <div style="font-size:7.5px;color:#94a3b8;margin-top:2px;font-weight:600;">/ 1000</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px;">
+      <div class="idwall-verdict-box ${vcCls}" style="flex:1;margin-bottom:0;">
+        ${isValid
+          ? '<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+          : isInvalid
+            ? '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'}
+        ${vcLabel}
       </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
-        <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;background:${riskBg};color:${riskClr};border:1px solid ${riskClr}4d;">${esc(riskLbl[s.risco] || s.risco || '—')}</span>
-        ${s.recomendacaoVenda ? `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:9px;font-weight:700;background:${recBg};color:${recClr};border:1px solid ${recClr}4d;">${esc(recMap[s.recomendacaoVenda] || s.recomendacaoVenda)}</span>` : ''}
-      </div>
-      ${dtStr ? `<div style="text-align:right;font-size:8px;color:#64748b;flex-shrink:0;">Consultado em<br><strong style="color:#374151;font-size:9px;">${esc(dtStr)}</strong></div>` : ''}
+      ${dtStr ? `<div style="text-align:right;font-size:8px;color:#64748b;flex-shrink:0;">Consultado em<br><strong style="color:#374151;font-size:9px;">${esc(dtStr)}</strong>${nomeEmp ? '<br>' + esc(nomeEmp) : ''}</div>` : ''}
     </div>`;
 
-    /* ── KPIs ─────────────────────────────────────────── */
-    const kpis = [
-      { l:'Prob. Inadimplência', v:fmtPct(s.inadimplencia),      c: s.inadimplencia != null ? (s.inadimplencia < 3 ? '#059669' : s.inadimplencia < 8 ? '#d97706' : '#dc2626') : '' },
-      { l:'Honram Compromissos', v:fmtPct(s.honraCompromisos),   c: '' },
-      { l:'Limite PJ',           v:fmtBRL(s.limitePJ),            c: '#059669' },
-      { l:'Limite Mensal',       v:fmtBRL(s.limiteMensal),        c: '' },
-      { l:'Faturamento Est.',    v:fmtBRL(s.faturamentoEstimado), c: '' },
-      { l:'Score Fraude',        v:s.scoreFraude != null ? s.scoreFraude + '/1000' : null, c: '' },
-      { l:'Consultas/Mês',       v:s.consultasMes != null ? String(s.consultasMes) : null, c: '' },
-      { l:'Consultas/Ano',       v:s.consultasAno != null ? String(s.consultasAno) : null, c: '' },
-    ].filter(k => k.v);
+    /* ── Regras de Validação ──────────────────────────── */
+    const validacoes = iw.validacoes || [];
+    const icoValid   = '<svg viewBox="0 0 24 24" fill="none" width="10" height="10"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const icoInvalid = '<svg viewBox="0 0 24 24" fill="none" width="10" height="10"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>';
+    const icoError   = '<svg viewBox="0 0 24 24" fill="none" width="10" height="10"><line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+    const icoNoData  = '<svg viewBox="0 0 24 24" fill="none" width="10" height="10"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 3"/></svg>';
 
-    if (kpis.length) {
-      html += `<div class="data-grid avoid-break" style="margin-bottom:12px;">
-        ${kpis.map(k => `<div class="d-item"><div class="d-key">${esc(k.l)}</div><div class="d-val" style="${k.c ? 'color:'+k.c+';font-weight:700;' : ''}">${esc(k.v)}</div></div>`).join('')}
+    if (validacoes.length > 0) {
+      html += `<div class="sec-head-alt" style="margin-bottom:6px;">Regras de Validação</div>
+      <div class="idwall-rules-list avoid-break">`;
+      validacoes.forEach(v => {
+        const st  = (v.status || 'NO_DATA').toUpperCase();
+        const cls = st === 'VALID' ? 'valid' : st === 'INVALID' ? 'invalid' : st === 'ERROR' ? 'error' : 'no_data';
+        const ico = st === 'VALID' ? icoValid : st === 'INVALID' ? icoInvalid : st === 'ERROR' ? icoError : icoNoData;
+        const nome = v.nome || v.resultado || 'Regra';
+        const desc = v.mensagem || v.resultado || '';
+        html += `<div class="idwall-rule-row">
+          <div class="idwall-rule-ico ${cls}">${ico}</div>
+          <div>
+            <div class="idwall-rule-name">${esc(nome)}</div>
+            ${desc && desc !== nome ? `<div class="idwall-rule-desc">${esc(desc)}</div>` : ''}
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    } else if (iw.mensagem) {
+      /* Fallback: parser do texto de mensagem */
+      const items = iw.mensagem.split(/\.\s+/).map(s => s.replace(/\.$/, '').trim()).filter(s => s && !/^(inválido|válido)$/i.test(s));
+      if (items.length) {
+        html += `<div class="sec-head-alt" style="margin-bottom:6px;">Detalhamento da Consulta</div>
+        <div class="idwall-rules-list avoid-break">`;
+        items.forEach(item => {
+          const t = item.toLowerCase();
+          const inv = item.includes('[INVALID]') || t.includes('dívida') || t.includes('divida') || t.includes('inadimpl');
+          const ok  = !inv && (t.includes('não constam') || t.includes('sem restrição') || t.includes('habilitado') || t.includes('não foram encontrados'));
+          const cls = inv ? 'invalid' : ok ? 'valid' : 'no_data';
+          const ico = inv ? icoInvalid : ok ? icoValid : icoNoData;
+          html += `<div class="idwall-rule-row">
+            <div class="idwall-rule-ico ${cls}">${ico}</div>
+            <div class="idwall-rule-name">${esc(item.replace('[INVALID]','').replace('[VALID]','').trim())}</div>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+    }
+
+    /* ── Dados estruturados da empresa ───────────────── */
+    const dados = iw.dados || {};
+    const emp   = dados.empresa || {};
+
+    if (emp.razao_social) {
+      const capFmt  = emp.capital_social ? 'R$ ' + Number(emp.capital_social).toLocaleString('pt-BR') : '—';
+      const qsaFmt  = (emp.qsa || []).slice(0,4).join(', ') || '—';
+      const rfE     = sol.rf_extra || {};
+      const simpS   = rfE.simples === true ? 'Sim' : rfE.simples === false ? 'Não' : '';
+      const meiS    = rfE.mei    === true ? 'Sim' : rfE.mei    === false ? 'Não' : '';
+
+      const dadosRows = [
+        emp.razao_social      ? ['Razão Social',       emp.razao_social] : null,
+        rfE.nome_fantasia     ? ['Nome Fantasia',       rfE.nome_fantasia] : null,
+        emp.natureza_juridica ? ['Natureza Jurídica',   emp.natureza_juridica] : null,
+        rfE.porte             ? ['Porte',               rfE.porte] : null,
+        emp.atividade_principal ? ['CNAE Principal',    emp.atividade_principal] : null,
+        ['Capital Social',    capFmt],
+        emp.data_abertura     ? ['Data de Abertura',    emp.data_abertura] : null,
+        emp.cidade            ? ['Localização',         emp.cidade + (emp.estado_uf ? '/' + emp.estado_uf : '')] : null,
+        simpS                 ? ['Simples Nacional',    simpS] : null,
+        meiS                  ? ['MEI',                 meiS] : null,
+        qsaFmt !== '—'        ? ['Quadro Societário',  qsaFmt] : null,
+        emp.email             ? ['E-mail',              emp.email] : null,
+      ].filter(Boolean);
+
+      html += `<div class="idwall-dados-sec avoid-break">
+        <div class="idwall-dados-sec-title">Dados da Empresa — Receita Federal</div>
+        <div class="idwall-dados-grid">
+          ${dadosRows.map(([lbl, val]) => `
+            <div class="idwall-dados-item">
+              <span class="idwall-dados-lbl">${esc(lbl)}</span>
+              <span class="idwall-dados-val">${esc(String(val))}</span>
+            </div>`).join('')}
+        </div>
       </div>`;
     }
 
-    /* ── Anotações Negativas ──────────────────────────── */
-    const anotDefs = [
-      { key:'pefin',          label:'PEFIN' },
-      { key:'refin',          label:'REFIN' },
-      { key:'dividasVencidas',label:'Dívidas Vencidas' },
-      { key:'falencia',       label:'Falência/Recuperação' },
-      { key:'acoesJudiciais', label:'Ações Judiciais' },
-      { key:'protestos',      label:'Protestos' },
-      { key:'cheque',         label:'Cheque sem Fundo' },
-      { key:'sociosAnotacoes',label:'Sócios c/ Anotações' },
-      { key:'adminAnotacoes', label:'Adm. c/ Anotações' },
-    ];
-    const badItems = anotDefs.filter(a => !!s[a.key]);
-    const okItems  = anotDefs.filter(a => !s[a.key]);
-
-    html += `<div class="sec-head-alt" style="margin-top:8px;">Anotações Negativas</div>`;
-
-    if (badItems.length === 0) {
-      html += `<div class="avoid-break" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:6px;font-size:9.5px;color:#059669;margin-bottom:8px;">
-        ✓ Nenhuma anotação negativa — todos os ${anotDefs.length} tipos consultados estão limpos
-      </div>`;
-    } else {
-      html += `<div class="avoid-break" style="margin-bottom:8px;">
-        <div style="padding:6px 10px;background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.18);border-radius:6px;font-size:9px;color:#dc2626;margin-bottom:6px;font-weight:600;">
-          ✗ ${badItems.length} ocorrência${badItems.length > 1 ? 's' : ''} detectada${badItems.length > 1 ? 's' : ''}
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
-          ${badItems.map(a => `<span style="font-size:8.5px;font-weight:700;padding:3px 8px;background:rgba(220,38,38,.09);border:1px solid rgba(220,38,38,.22);border-radius:5px;color:#dc2626;">✗ ${esc(a.label)}</span>`).join('')}
+    /* ── Processos Judiciais ─────────────────────────── */
+    const proc = dados.processos     || {};
+    const trf  = dados.processos_trf || {};
+    if (proc.total !== undefined || trf.total !== undefined) {
+      const ptj  = proc.total || 0;
+      const ptrf = trf.total  || 0;
+      const est  = (proc.estados_com_processos || []).join(', ') || '—';
+      const tclr = (ptj + ptrf) > 0 ? '#dc2626' : '#059669';
+      html += `<div class="idwall-dados-sec avoid-break">
+        <div class="idwall-dados-sec-title">Processos Judiciais</div>
+        <div class="idwall-dados-grid">
+          <div class="idwall-dados-item">
+            <span class="idwall-dados-lbl">Tribunais Estaduais (TJ)</span>
+            <span class="idwall-dados-val" style="color:${ptj > 0 ? '#dc2626' : '#059669'};">${ptj} processo${ptj !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="idwall-dados-item">
+            <span class="idwall-dados-lbl">Tribunais Federais (TRF)</span>
+            <span class="idwall-dados-val" style="color:${ptrf > 0 ? '#dc2626' : '#059669'};">${ptrf} processo${ptrf !== 1 ? 's' : ''}</span>
+          </div>
+          ${est !== '—' ? `<div class="idwall-dados-item" style="grid-column:1/-1;">
+            <span class="idwall-dados-lbl">Estados com Processos</span>
+            <span class="idwall-dados-val">${esc(est)}</span>
+          </div>` : ''}
         </div>
       </div>`;
     }
 
-    if (okItems.length) {
-      html += `<div style="font-size:8px;color:#64748b;display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px;margin-bottom:14px;">
-        <span style="font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#475569;">Limpos:</span>
-        ${okItems.map(a => `<span style="padding:2px 6px;background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.18);border-radius:4px;color:#059669;">✓ ${esc(a.label)}</span>`).join('')}
+    /* ── Dívida Ativa na Fazenda ─────────────────────── */
+    const div = dados.divida_ativa || {};
+    html += `<div class="idwall-dados-sec avoid-break">
+      <div class="idwall-dados-sec-title">Dívida Ativa na Fazenda</div>
+      <div class="idwall-dados-grid">
+        ${div.nome
+          ? `<div class="idwall-dados-item">
+               <span class="idwall-dados-lbl">Devedor</span>
+               <span class="idwall-dados-val" style="color:#dc2626;">${esc(div.nome)}</span>
+             </div>
+             <div class="idwall-dados-item">
+               <span class="idwall-dados-lbl">Valor Devido</span>
+               <span class="idwall-dados-val" style="color:#dc2626;font-weight:800;">R$ ${esc(String(div.valor_devido || '—'))}</span>
+             </div>`
+          : `<div class="idwall-dados-item" style="grid-column:1/-1;">
+               <span class="idwall-dados-val" style="color:#059669;">&#10003; Nenhum registro de dívida ativa encontrado</span>
+             </div>`}
+      </div>
+    </div>`;
+
+    /* ── Contribuinte SINTEGRA/SEFAZ ─────────────────── */
+    const cont = dados.contribuinte || {};
+    if (cont.situacao_ie) {
+      const ieOk  = (cont.situacao_ie || '').toLowerCase() === 'habilitado';
+      const docOk = (cont.situacao_documento || '').toLowerCase().includes('sem restrição') || (cont.situacao_documento || '').toLowerCase().includes('sem restricao');
+      html += `<div class="idwall-dados-sec avoid-break">
+        <div class="idwall-dados-sec-title">Contribuinte — SINTEGRA/SEFAZ</div>
+        <div class="idwall-dados-grid">
+          ${cont.inscricao_estadual ? `<div class="idwall-dados-item">
+            <span class="idwall-dados-lbl">Inscrição Estadual</span>
+            <span class="idwall-dados-val">${esc(cont.inscricao_estadual)}</span>
+          </div>` : ''}
+          <div class="idwall-dados-item">
+            <span class="idwall-dados-lbl">Situação IE</span>
+            <span class="idwall-dados-val"><span class="${ieOk ? 'idwall-badge-ok' : 'idwall-badge-warn'}">${esc(cont.situacao_ie)}</span></span>
+          </div>
+          ${cont.situacao_documento ? `<div class="idwall-dados-item">
+            <span class="idwall-dados-lbl">Situação CNPJ</span>
+            <span class="idwall-dados-val"><span class="${docOk ? 'idwall-badge-ok' : 'idwall-badge-warn'}">${esc(cont.situacao_documento)}</span></span>
+          </div>` : ''}
+          ${cont.tipo_ie ? `<div class="idwall-dados-item">
+            <span class="idwall-dados-lbl">Tipo IE</span>
+            <span class="idwall-dados-val">${esc(cont.tipo_ie)}</span>
+          </div>` : ''}
+          ${cont.regime_tributacao ? `<div class="idwall-dados-item">
+            <span class="idwall-dados-lbl">Regime Tributário</span>
+            <span class="idwall-dados-val">${esc(cont.regime_tributacao)}</span>
+          </div>` : ''}
+          ${cont.municipio ? `<div class="idwall-dados-item">
+            <span class="idwall-dados-lbl">Município</span>
+            <span class="idwall-dados-val">${esc(cont.municipio)}${cont.estado ? '/' + esc(cont.estado) : ''}</span>
+          </div>` : ''}
+        </div>
       </div>`;
     }
   })();
@@ -1897,9 +2036,39 @@ function render() {
           ${clsBadge(an.classificacao)}
           ${recBadge(an.recomendacao)}
         </div>
-        ${an.resumo_executivo ? `<div class="resumo-text">${esc(an.resumo_executivo)}</div>` : ''}
+        ${(an.resumo_executivo || an.resumo) ? `<div class="resumo-text">${esc(an.resumo_executivo || an.resumo)}</div>` : ''}
       </div>
     </div>`;
+
+    /* ── Limites sugeridos pela IA ───────────────────── */
+    const limRec  = an.limite_recomendado  || an.limites_recomendados?.recomendado  || 0;
+    const limCons = an.limite_conservador  || an.limites_recomendados?.conservador  || 0;
+    const limMax  = an.limite_maximo       || an.limites_recomendados?.maximo       || 0;
+    if (limRec || limCons || limMax) {
+      const fmtL = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+      html += `
+      <div class="sec-head-alt" style="margin-bottom:6px;">Limites de Crédito Sugeridos pelo Sistema</div>
+      <table class="data-table avoid-break" style="margin-bottom:14px;">
+        <thead><tr><th>Cenário</th><th>Limite Sugerido (FOB Total)</th><th>Perfil</th></tr></thead>
+        <tbody>
+          <tr style="background:rgba(5,150,105,.05);">
+            <td><strong>Recomendado</strong></td>
+            <td class="td-money" style="color:#059669;font-weight:700;">${fmtL(limRec)}</td>
+            <td style="font-size:8.5px;color:#64748b;">Exposição equilibrada com o perfil do cliente</td>
+          </tr>
+          <tr>
+            <td><strong>Conservador</strong></td>
+            <td class="td-money">${fmtL(limCons)}</td>
+            <td style="font-size:8.5px;color:#64748b;">Risco reduzido — indicado para clientes novos</td>
+          </tr>
+          <tr>
+            <td><strong>Máximo</strong></td>
+            <td class="td-money" style="color:#dc2626;">${fmtL(limMax)}</td>
+            <td style="font-size:8.5px;color:#64748b;">Limite máximo calculado — exige maior cautela</td>
+          </tr>
+        </tbody>
+      </table>`;
+    }
 
     if (an.pontos_positivos?.length || an.pontos_atencao?.length) {
       html += `
@@ -1915,12 +2084,13 @@ function render() {
       </div>`;
     }
 
-    if (an.alertas_criticos?.length) {
+    const _alertas = an.alertas || an.alertas_criticos || [];
+    if (_alertas.length) {
       html += `<div class="avoid-break" style="margin-bottom:12px;">
         <div class="pts-col-hd" style="margin-bottom:6px;">⛔ Alertas Críticos</div>
-        ${an.alertas_criticos.map(a => `<div class="alert-strip">
+        ${_alertas.map(a => `<div class="alert-strip">
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.8"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <span>${esc(a)}</span>
+          <span>${esc(typeof a === 'string' ? a : a.texto || a.mensagem || JSON.stringify(a))}</span>
         </div>`).join('')}
       </div>`;
     }
