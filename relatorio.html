@@ -550,8 +550,59 @@ let rfd = rf.data || {};
 
 /* ── Financial Indicators Data ──────────────────── */
 const afin   = sol.analiseFinanceira || {};
-const finRaw = afin.data  || [{}, {}];
-const finYrs = afin.years || ['Ano 1', 'Ano 2'];
+let finRaw = afin.data  || [{}, {}];
+let finYrs = afin.years || ['Ano 1', 'Ano 2'];
+
+/* Converte sol.contabil_data (formulário BP/DRE) → formato finRaw esperado pelo relatório.
+   Só entra em ação quando finRaw não tem dados (analiseFinanceira.data está vazio). */
+(function() {
+  const cd = sol.contabil_data;
+  if (!cd) return;
+  const alreadyHasData = finRaw.some(d => d && Object.values(d).some(v => v !== '' && v != null));
+  if (alreadyHasData) return;
+
+  const nn = (...vals) => vals.reduce((s, v) => s + (Number(v) || 0), 0);
+
+  function _mapPeriod(bp, dre) {
+    bp  = bp  || {};
+    dre = dre || {};
+    const ac     = nn(bp.disponibilidade, bp.contas_receber, bp.estoques, bp.impostos_recuperar, bp.outros_ac);
+    const anc    = nn(bp.outros_creditos, bp.imobilizado, bp.investimentos, bp.outros_anc);
+    const at     = ac + anc;
+    const pc     = nn(bp.fornecedores, bp.adiantamento_clientes, bp.impostos_pagar, bp.emprestimos_cp, bp.outros_pc);
+    const pnc    = nn(bp.emprestimos_lp, bp.outros_pnc);
+    const pt     = pc + pnc;
+    const divFin = nn(bp.emprestimos_cp, bp.emprestimos_lp);
+    let rl = Number(dre.receita_liquida) || 0;
+    if (!rl && dre.receita_bruta) rl = Number(dre.receita_bruta) - Math.abs(Number(dre.deducoes || 0));
+    let lb = Number(dre.lucro_bruto) || 0;
+    if (!lb && rl) lb = rl - Math.abs(Number(dre.cpv || 0));
+
+    return {
+      receitaBruta:      Number(dre.receita_bruta)     || '',
+      receitaLiquida:    rl  || '',
+      lucroBruto:        lb  || '',
+      lucroLiquido:      Number(dre.lucro_liquido)     || '',
+      ebitda:            Number(dre.ebitda)             || '',
+      ativoCirculante:   ac  || '',
+      realizavelLP:      Number(bp.outros_creditos)     || '',
+      ativoTotal:        at  || '',
+      passivoCirculante: pc  || '',
+      exigivelLP:        pnc || '',
+      passivoTotal:      pt  || '',
+      patrimonioLiquido: Number(bp.patrimonio_liquido)  || '',
+      dividaFinanceira:  divFin || '',
+    };
+  }
+
+  const p1 = _mapPeriod(cd.bp1, cd.dre1);
+  const p2 = _mapPeriod(cd.bp2, cd.dre2);
+  const anyData = [p1, p2].some(p => Object.values(p).some(v => v !== ''));
+  if (anyData) {
+    finRaw = [p1, p2];
+    finYrs = [cd.periodo1_label || 'Período 1', cd.periodo2_label || 'Período 2'];
+  }
+})();
 
 /* ── Utilities ──────────────────────────────────── */
 function esc(v) {
