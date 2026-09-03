@@ -721,11 +721,13 @@ async function loadData() {
       existing.dados_sol = { ...(existing.dados_sol||{}), ...sol };
       existing.status_solicitacao = sol.status || existing.status_solicitacao;
       if (!existing.receita_federal && rfNorm) existing.receita_federal = rfNorm;
-      if (!existing.analise_ia && sol.analise?.analysis) existing.analise_ia = sol.analise.analysis;
+      // Local sempre tem prioridade sobre API para análise IA — pode ser versão mais recente (após PUT)
+      if (sol.analise?.analysis) existing.analise_ia = sol.analise.analysis;
+      if (sol.analise?.modelo_ia) existing.modelo_ia = sol.analise.modelo_ia;
       if (!existing.timestamps) existing.timestamps = {};
-      if (!existing.timestamps.rf_consultada_at && sol.rf_consultada_at) existing.timestamps.rf_consultada_at = sol.rf_consultada_at;
-      if (!existing.timestamps.analise_ia_at    && sol.analise_at)       existing.timestamps.analise_ia_at    = sol.analise_at;
-      if (!existing.timestamps.decisao_at       && sol.decisao_at)       existing.timestamps.decisao_at       = sol.decisao_at;
+      if (sol.rf_consultada_at) existing.timestamps.rf_consultada_at = sol.rf_consultada_at;
+      if (sol.analise_at || sol.analise_salva_em) existing.timestamps.analise_ia_at = sol.analise_salva_em || sol.analise_at;
+      if (sol.decisao_at) existing.timestamps.decisao_at = sol.decisao_at;
       // Preferir data local sobre a data do backend:
       // dataSolicitacao = corrigida manualmente; createdAt = quando foi criada localmente
       if (sol.dataSolicitacao) existing.data_solicitacao = sol.dataSolicitacao;
@@ -1320,20 +1322,26 @@ function renderIA(ia, modelo, ts, eid) {
   const score = ia.score_credito ?? ia.score ?? null;
   const classif = ia.classificacao_risco || ia.classificacao || '—';
   const rec     = ia.recomendacao || '—';
-  const resumo  = ia.resumo || '';
+  const resumo  = ia.resumo_executivo || ia.resumo || '';
 
-  const recClr = rec.toLowerCase().includes('aprovar') || rec.toLowerCase().includes('aprova') ? 'green'
-               : rec.toLowerCase().includes('negar') || rec.toLowerCase().includes('nega') ? 'red' : 'yellow';
+  const recNorm = rec.toLowerCase();
+  const recClr  = recNorm.includes('aprova') ? 'green' : recNorm.includes('nega') ? 'red' : 'yellow';
+  const recLabel = recNorm === 'aprovar' ? 'APROVAR' : recNorm === 'negar' ? 'NEGAR' : recNorm === 'revisar' ? 'REVISAR' : rec.toUpperCase();
 
-  const classifClr = classif.toLowerCase().includes('baixo') ? 'green'
-                   : classif.toLowerCase().includes('alto')  ? 'red'
-                   : classif.toLowerCase().includes('médio') || classif.toLowerCase().includes('medio') ? 'yellow' : 'purple';
+  const clsNorm = classif.toUpperCase().replace(/\+/g, 'P');
+  const classifClr = ['AAA','AAP','AA','AP','A'].includes(clsNorm) ? 'green'
+                   : ['BBB','BB','B'].includes(clsNorm) ? 'yellow'
+                   : clsNorm === 'C' ? 'red' : 'purple';
 
-  const posArr = ia.pontos_positivos || [];
-  const atenArr = ia.pontos_atencao  || ia.pontos_de_atencao || [];
-  const alertArr = ia.alertas_criticos || [];
+  const posArr   = ia.pontos_positivos || [];
+  const atenArr  = ia.pontos_atencao   || ia.pontos_de_atencao || [];
+  const alertArr = ia.alertas          || ia.alertas_criticos  || [];
 
-  const limRec = ia.limites_recomendados || ia.limites || null;
+  // Suporte a limites como campos diretos (novo formato) ou objeto aninhado (formato legado)
+  const limDireto = (ia.limite_recomendado || ia.limite_conservador || ia.limite_maximo)
+    ? { recomendado: ia.limite_recomendado, conservador: ia.limite_conservador, maximo: ia.limite_maximo }
+    : null;
+  const limRec = limDireto || ia.limites_recomendados || ia.limites || null;
 
   const blocks = [
     ['Análise Cadastral',       ia.analise_cadastral],
@@ -1348,8 +1356,8 @@ function renderIA(ia, modelo, ts, eid) {
   <div class="score-row">
     <div class="score-gauge">${score !== null ? scoreGaugeSVG(score) : ''}</div>
     <div class="score-meta">
-      <div><span class="badge-pill ${classifClr}">Risco: ${esc(classif)}</span></div>
-      <div><span class="badge-pill ${recClr}">Recomendação: ${esc(rec)}</span></div>
+      <div><span class="badge-pill ${classifClr}">Classificação: ${esc(classif)}</span></div>
+      <div><span class="badge-pill ${recClr}">Recomendação: ${esc(recLabel)}</span></div>
       ${modelo ? `<div style="font-size:.67rem;color:var(--text-faint);">Modelo: ${esc(modelo)}</div>` : ''}
       ${ts && ts.analise_ia_at ? `<div style="font-size:.62rem;color:rgba(255,255,255,.2);font-family:monospace;">Gerada em: ${fmtDateTime(ts.analise_ia_at)}</div>` : ''}
       ${ts && ts.rf_consultada_at ? `<div style="font-size:.62rem;color:rgba(255,255,255,.2);font-family:monospace;">RF consultada em: ${fmtDateTime(ts.rf_consultada_at)}</div>` : ''}
@@ -1380,17 +1388,26 @@ function renderIA(ia, modelo, ts, eid) {
   }
 
   if (limRec) {
-    const limRows = [
-      ['Exportador / FOB', limRec.exportador_fob || limRec.exportador || limRec.fob || null],
-      ['Despesas Alfand.', limRec.despesas_alfandegarias || limRec.despesas || null],
-      ['Impostos Import.', limRec.impostos_importacao || limRec.impostos || null],
-    ].filter(([,v]) => v);
+    const fmtM = v => v != null ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
+    // Formato direto (novo): { recomendado, conservador, maximo }
+    // Formato legado (objeto aninhado): { exportador_fob, despesas, impostos, ... }
+    const limRows = limRec.recomendado != null || limRec.conservador != null || limRec.maximo != null
+      ? [
+          ['Limite Recomendado', fmtM(limRec.recomendado)],
+          ['Limite Conservador', fmtM(limRec.conservador)],
+          ['Limite Máximo',      fmtM(limRec.maximo)],
+        ].filter(([,v]) => v)
+      : [
+          ['Exportador / FOB',   limRec.exportador_fob || limRec.exportador || limRec.fob || null],
+          ['Despesas Alfand.',   limRec.despesas_alfandegarias || limRec.despesas || null],
+          ['Impostos Import.',   limRec.impostos_importacao || limRec.impostos || null],
+        ].filter(([,v]) => v);
 
     if (limRows.length) {
       html += `<div class="sec-sub-label">Limites Recomendados pela IA</div>
       <table class="lim-table">
-        <thead><tr><th>Componente</th><th>Limite Sugerido</th></tr></thead>
-        <tbody>${limRows.map(([l,v]) => `<tr><td>${l}</td><td class="money">${esc(v)}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>Componente</th><th>Valor Sugerido</th></tr></thead>
+        <tbody>${limRows.map(([l,v]) => `<tr><td>${l}</td><td class="money">${esc(String(v))}</td></tr>`).join('')}</tbody>
       </table>`;
     }
   }
