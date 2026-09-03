@@ -763,6 +763,10 @@
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/></svg>
           Relatório PDF
         </a>
+        <button id="btn-salvar-analise" onclick="salvarAnaliseCompleta()" class="btn btn-sm" style="display:none;background:linear-gradient(135deg,#065f46,#059669);color:#fff;border:none;">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
+          Salvar Análise
+        </button>
       </div>
     </header>
 
@@ -1455,6 +1459,14 @@
     if (['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
 
     // IDwall — renderizado no 2º bloco <script>, depois que renderIdwallCard é definido
+
+    // Se já existe análise salva, renderiza imediatamente sem precisar rodar de novo
+    if (sol.analise?.analysis) {
+      renderAnalysis(sol.analise);
+      document.getElementById('btn-salvar-analise').style.display = '';
+      const _trigSub = document.getElementById('trigger-sub');
+      if (_trigSub) _trigSub.textContent = 'Análise salva: ' + (sol.analise_salva_em ? new Date(sol.analise_salva_em).toLocaleString('pt-BR') : 'disponível');
+    }
   }
 
   /* ── Dados da solicitação ────────────────────────────── */
@@ -1608,6 +1620,67 @@
     }
   }
 
+  /* ── Salva análise completa (botão topbar ou auto-save) ─ */
+  async function salvarAnaliseCompleta(opts = {}) {
+    const silencioso = opts.silencioso || false;
+    sol = DB.solicitacoes.getById(sol.id);
+    if (!sol.analise?.analysis) {
+      if (!silencioso) showToast('Nenhuma análise de crédito para salvar. Execute a análise primeiro.', 'warning');
+      return;
+    }
+    const agora = new Date().toISOString();
+    const histId = sol.hist_id;
+    const payload = {
+      solicitacao_id:        sol.id,
+      empresa:               sol.empresa   || '',
+      cnpj:                  sol.cnpj      || '',
+      status_solicitacao:    sol.status    || '',
+      solicitante:           sol.solicitanteNome || '',
+      data_solicitacao:      sol.dataSolicitacao || sol.createdAt || '',
+      dados_solicitacao:     sol,
+      receita_federal:       sol.analise?.cnpj_data || {},
+      analise_ia:            sol.analise?.analysis  || {},
+      modelo_ia:             sol.analise?.modelo_ia || '',
+      solicitacao_criada_at: sol.createdAt || sol.dataSolicitacao || '',
+      rf_consultada_at:      sol.analise?.rf_consultada_at || agora,
+      analise_ia_at:         agora,
+    };
+    try {
+      let r, h;
+      if (histId) {
+        // Atualiza registro existente
+        r = await fetch(`${API_URL}/api/historico/${histId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        h = r.ok ? await r.json() : null;
+      } else {
+        // Cria novo registro
+        r = await fetch(`${API_URL}/api/historico`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        h = r.ok ? await r.json() : null;
+        if (h?.id) {
+          DB.solicitacoes.update(sol.id, { hist_id: h.id });
+          sol = DB.solicitacoes.getById(sol.id);
+        }
+      }
+      const salvoEm = h?.salvo_em || h?.atualizado_em || agora;
+      DB.solicitacoes.update(sol.id, { analise_salva_em: salvoEm });
+      sol = DB.solicitacoes.getById(sol.id);
+      const btnSalvar = document.getElementById('btn-salvar-analise');
+      if (btnSalvar) btnSalvar.style.display = '';
+      if (!silencioso) showToast('Análise salva com sucesso!', 'success');
+    } catch (e) {
+      if (!silencioso) showToast('Erro ao salvar análise: ' + (e.message || 'falha de rede'), 'error');
+    }
+  }
+
   /* ── Executa análise ─────────────────────────────────── */
   async function runAnalysis() {
     // Clientes Armazém/Transporte não usam análise de IA
@@ -1747,6 +1820,8 @@
 
       renderAnalysis(data);
       showToast('Análise concluída!', 'success');
+      const _btnSalvar = document.getElementById('btn-salvar-analise');
+      if (_btnSalvar) _btnSalvar.style.display = '';
 
       // Salva no histórico backend com timestamps auditáveis
       fetch(`${API_URL}/api/historico`, {
@@ -2986,6 +3061,9 @@ async function runFullAnalysis() {
       }
     }, 6000);
   }
+
+  // Salva análise completa automaticamente ao concluir (independente de IA ter funcionado)
+  await salvarAnaliseCompleta({ silencioso: true });
 }
 
 /* ── IDwall BGC ─────────────────────────────────────── */

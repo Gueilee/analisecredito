@@ -1533,6 +1533,45 @@ async def buscar_historico(hist_id: str, current_user=Depends(_get_current_user)
     return data
 
 
+@app.put("/api/historico/{hist_id}")
+async def atualizar_historico(hist_id: str, entry: HistoricoSaveRequest, current_user=Depends(_get_current_user)):
+    """Atualiza um registro de análise existente (mantém hist_id e decisao_analista)."""
+    if not _hist_id_safe(hist_id):
+        raise HTTPException(400, "ID inválido")
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
+    rows = await _turso_query("SELECT data FROM ac_analises WHERE id=?", [hist_id])
+    if not rows:
+        raise HTTPException(404, "Análise não encontrada")
+    existing = json.loads(rows[0]["data"])
+    if not _record_visible_to(existing, current_user):
+        raise HTTPException(404, "Análise não encontrada")
+    now_iso = datetime.now().isoformat()
+    # Preserva decisao_analista e timestamps anteriores; atualiza o restante
+    timestamps = existing.get("timestamps", {})
+    timestamps["historico_salvo_at"] = now_iso
+    if entry.analise_ia_at:
+        timestamps["analise_ia_at"] = entry.analise_ia_at
+    updated = {
+        **existing,
+        "empresa":           entry.empresa,
+        "cnpj":              entry.cnpj,
+        "status_solicitacao": entry.status_solicitacao or existing.get("status_solicitacao", ""),
+        "dados_solicitacao": entry.dados_solicitacao or existing.get("dados_solicitacao", {}),
+        "receita_federal":   entry.receita_federal   or existing.get("receita_federal", {}),
+        "analise_ia":        entry.analise_ia        or existing.get("analise_ia", {}),
+        "modelo_ia":         entry.modelo_ia         or existing.get("modelo_ia", ""),
+        "timestamps":        timestamps,
+        "atualizado_em":     now_iso,
+    }
+    await _turso_exec(
+        "UPDATE ac_analises SET data=?, empresa=?, cnpj=?, status=?, updated_at=? WHERE id=?",
+        [json.dumps(updated, ensure_ascii=False), entry.empresa, entry.cnpj,
+         updated["status_solicitacao"] or "pendente", now_iso, hist_id],
+    )
+    return {"id": hist_id, "atualizado_em": now_iso}
+
+
 @app.patch("/api/historico/{hist_id}/decisao")
 async def atualizar_decisao(hist_id: str, body: Dict[str, Any], current_user=Depends(_get_current_user)):
     if not _user_can_decide(current_user):

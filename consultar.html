@@ -455,6 +455,10 @@
           <svg viewBox="0 0 24 24" fill="none"><polyline points="9 11 12 14 22 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           Parecer Financeiro
         </button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-analise-ia')" id="btn-tab-analise-ia" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="9" y1="9" x2="9.01" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="9" x2="15.01" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Análise de Crédito
+        </button>
       </div>
 
       <!-- TAB: CADASTRAL ─────────────────────────────── -->
@@ -529,6 +533,11 @@
       <!-- TAB: PARECER ───────────────────────────────── -->
       <div class="tab-panel animate-in" id="tab-parecer">
         <div id="parecer-content"></div>
+      </div>
+
+      <!-- TAB: ANÁLISE DE CRÉDITO IA ─────────────────── -->
+      <div class="tab-panel animate-in" id="tab-analise-ia" style="display:none;">
+        <div id="analise-ia-content"></div>
       </div>
 
     </main>
@@ -688,6 +697,7 @@
     renderDespesas(d);
     renderDocs(d);
     renderParecer(d);
+    renderAnaliseIA(d);
   }
 
   /* ── Timeline ────────────────────────────────────────── */
@@ -1086,6 +1096,97 @@
           </a>
         </div>`;
     }
+  }
+
+  /* ── Análise de Crédito IA ──────────────────────────── */
+  function renderAnaliseIA(d) {
+    const analise = d.analise?.analysis;
+    const tabBtn  = document.getElementById('btn-tab-analise-ia');
+    const panel   = document.getElementById('analise-ia-content');
+    if (!analise) return; // sem análise — aba permanece oculta
+    if (tabBtn) tabBtn.style.display = '';
+    if (!panel) return;
+
+    const fmtM = v => (v != null ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—');
+    const score = Math.max(0, Math.min(100, analise.score || 0));
+    const cls   = (analise.classificacao || 'D').toLowerCase().replace(/\+/g, 'p');
+    const rec   = analise.recomendacao || 'revisar';
+    const recColors = { aprovar: '#10b981', negar: '#ef4444', revisar: '#f59e0b' };
+    const recLabels = { aprovar: 'APROVAR', negar: 'NEGAR', revisar: 'REVISAR' };
+    const clsColors = { aaa: '#10b981', aap: '#059669', aa: '#34d399', ap: '#6ee7b7', a: '#a7f3d0', bbb: '#60a5fa', bb: '#93c5fd', b: '#c4b5fd', c: '#f97316', d: '#ef4444' };
+    const clsColor  = clsColors[cls] || '#9ca3af';
+
+    const positivos = (analise.pontos_positivos || []).map(p => `<li style="margin:.3rem 0;font-size:.84rem;color:var(--text-secondary);">✓ ${p}</li>`).join('');
+    const atencao   = (analise.pontos_atencao   || []).map(p => `<li style="margin:.3rem 0;font-size:.84rem;color:var(--text-secondary);">⚠ ${p}</li>`).join('');
+    const alertas   = (analise.alertas           || []).map(a => `<div style="padding:.5rem .85rem;background:rgba(239,68,68,.08);border-left:3px solid #ef4444;border-radius:4px;font-size:.82rem;color:#ef4444;margin:.35rem 0;">${a}</div>`).join('');
+
+    const limCard = analise.limite_recomendado != null ? `
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem;">
+        <div style="flex:1;min-width:140px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:.85rem 1.1rem;">
+          <div style="font-size:.72rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;">Limite Recomendado</div>
+          <div style="font-size:1.2rem;font-weight:700;color:#10b981;">${fmtM(analise.limite_recomendado)}</div>
+        </div>
+        ${analise.limite_conservador != null ? `<div style="flex:1;min-width:140px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.25);border-radius:8px;padding:.85rem 1.1rem;">
+          <div style="font-size:.72rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;">Limite Conservador</div>
+          <div style="font-size:1.2rem;font-weight:700;color:#60a5fa;">${fmtM(analise.limite_conservador)}</div>
+        </div>` : ''}
+        ${analise.limite_maximo != null ? `<div style="flex:1;min-width:140px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:8px;padding:.85rem 1.1rem;">
+          <div style="font-size:.72rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;">Limite Máximo</div>
+          <div style="font-size:1.2rem;font-weight:700;color:#a78bfa;">${fmtM(analise.limite_maximo)}</div>
+        </div>` : ''}
+      </div>` : '';
+
+    const salvoEm = d.analise_salva_em ? new Date(d.analise_salva_em).toLocaleString('pt-BR') : '';
+
+    panel.innerHTML = `
+      <div style="padding:0;display:flex;flex-direction:column;gap:1.1rem;">
+        ${salvoEm ? `<div style="font-size:.75rem;color:var(--text-faint);text-align:right;">Análise salva em ${salvoEm}</div>` : ''}
+
+        <!-- Score + Classificação + Recomendação -->
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:stretch;">
+          <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:10px;padding:1.2rem 1.6rem;min-width:120px;">
+            <div style="font-size:.7rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;">Score</div>
+            <div style="font-size:2.6rem;font-weight:800;color:${score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444'};line-height:1;">${score}</div>
+            <div style="font-size:.7rem;color:var(--text-faint);margin-top:.25rem;">/ 100</div>
+          </div>
+          <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:10px;padding:1.2rem 1.6rem;min-width:120px;">
+            <div style="font-size:.7rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;">Classificação</div>
+            <div style="font-size:2rem;font-weight:800;color:${clsColor};line-height:1;">${analise.classificacao || 'D'}</div>
+          </div>
+          <div style="flex:1;min-width:160px;display:flex;flex-direction:column;justify-content:center;background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;">
+            <div style="font-size:.7rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;">Recomendação</div>
+            <div style="font-size:1rem;font-weight:700;color:${recColors[rec] || '#9ca3af'};">${recLabels[rec] || rec.toUpperCase()}</div>
+            ${analise.resumo_executivo ? `<p style="font-size:.82rem;color:var(--text-secondary);margin:.5rem 0 0;line-height:1.5;">${analise.resumo_executivo}</p>` : ''}
+          </div>
+        </div>
+
+        ${limCard}
+
+        <!-- Pontos -->
+        ${(positivos || atencao) ? `
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+          ${positivos ? `<div style="flex:1;min-width:200px;background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;">
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);margin-bottom:.5rem;">Pontos Positivos</div>
+            <ul style="list-style:none;margin:0;padding:0;">${positivos}</ul>
+          </div>` : ''}
+          ${atencao ? `<div style="flex:1;min-width:200px;background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;">
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);margin-bottom:.5rem;">Pontos de Atenção</div>
+            <ul style="list-style:none;margin:0;padding:0;">${atencao}</ul>
+          </div>` : ''}
+        </div>` : ''}
+
+        ${alertas ? `<div style="background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;">
+          <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);margin-bottom:.5rem;">Alertas</div>
+          ${alertas}
+        </div>` : ''}
+
+        <div style="text-align:right;">
+          <a href="analise-financeira.html?id=${d.id}" class="btn btn-sm" style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border:none;">
+            <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Abrir Análise Completa
+          </a>
+        </div>
+      </div>`;
   }
 
   /* ── Tabs ────────────────────────────────────────────── */
