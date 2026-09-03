@@ -3088,15 +3088,34 @@ function _idwallSetLoading(on) {
 }
 
 function _idwallShowPendingState() {
+  // Atualiza elementos ocultos (compatibilidade)
   const el   = document.getElementById('idwall-bureau-sub');
   const icon = document.getElementById('idwall-icon');
-  const btn  = document.getElementById('btn-idwall-consult');
-  if (el) {
-    el.innerHTML = 'Relatório em análise — <span style="cursor:pointer;text-decoration:underline;color:var(--text-faint)" onclick="forceNewIdwallConsulta()">criar nova consulta</span>';
-    el.style.color = '#facc15';
-  }
+  const btnH = document.getElementById('btn-idwall-consult');
+  if (el)   { el.innerHTML = 'Relatório em análise — aguardando IDwall'; el.style.color = '#facc15'; }
   if (icon) icon.className = 'bureau-icon wait';
-  if (btn)  { btn.innerHTML = _IDWALL_BTN_VERIFICAR; btn.disabled = false; }
+  if (btnH) { btnH.innerHTML = _IDWALL_BTN_VERIFICAR; btnH.disabled = false; }
+
+  // Torna o card IDwall visível com estado de pendência
+  const card = document.getElementById('idwall-card');
+  if (card) {
+    card.classList.add('visible');
+    const pendNum = sol?.idwall_pending?.numero || '';
+    document.getElementById('idwall-verdict-area').innerHTML = `
+      <div style="display:flex;align-items:center;gap:.85rem;padding:.85rem 1rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:9px;margin-bottom:.75rem;">
+        <svg viewBox="0 0 24 24" fill="none" width="20" height="20" style="color:#f59e0b;flex-shrink:0;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <div style="flex:1;">
+          <div style="font-size:.83rem;font-weight:700;color:#f59e0b;">Análise em Processamento</div>
+          <div style="font-size:.74rem;color:var(--text-faint);margin-top:.2rem;">Protocolo <code style="font-family:monospace;">${pendNum}</code> — aguardando resultado da IDwall.</div>
+        </div>
+        <button onclick="checkIdwallPending()" style="display:inline-flex;align-items:center;gap:.45rem;padding:.45rem .9rem;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);border-radius:7px;color:#f59e0b;font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">
+          <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><polyline points="1 4 1 10 7 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 15a9 9 0 1 0 .49-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Verificar Status
+        </button>
+      </div>`;
+    const rulesEl = document.getElementById('idwall-rules');
+    if (rulesEl) rulesEl.innerHTML = '<div style="font-size:.76rem;color:var(--text-faint);">O resultado será exibido aqui quando a IDwall concluir o processamento.</div>';
+  }
 }
 
 function forceNewIdwallConsulta() {
