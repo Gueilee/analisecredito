@@ -1091,6 +1091,188 @@ def _load_anthropic_key() -> str:
     return raw.strip('"').strip("'").strip()
 
 
+# ── Extração de BP/DRE por regex (sem IA) ────────────────────────────────────
+
+_BR_NUM_RE = re.compile(
+    r'\(\s*[\d]+(?:\.[\d]{3})*(?:,\d{1,2})?\s*\)'  # (1.234,56) negativo
+    r'|[\d]{1,3}(?:\.[\d]{3})+(?:,\d{1,2})?'       # 1.234.567,89
+    r'|[\d]+,\d{2}'                                  # 1234,56
+)
+
+def _parse_br_num(s: str) -> Optional[float]:
+    """Converte string de número brasileiro para float."""
+    if not s:
+        return None
+    s = s.strip()
+    negative = s.startswith('(') and s.endswith(')')
+    s = s.strip('()')
+    s = s.replace('.', '').replace(',', '.')
+    try:
+        v = float(s)
+        return (-v if negative else v) if v != 0 else None
+    except ValueError:
+        return None
+
+def _nums_from_line(text: str) -> list:
+    """Extrai lista de floats de um trecho de texto (formato brasileiro)."""
+    return [v for v in (_parse_br_num(m) for m in _BR_NUM_RE.findall(text)) if v is not None]
+
+_BP_PATS: dict = {
+    'disponibilidade':       [r'caixa\s+e\s+equiv', r'disponibilidade', r'caixa\s+e\s+banco'],
+    'contas_receber':        [r'contas\s+a\s+receber', r'clientes\s*$', r'duplicatas\s+a\s+receber'],
+    'estoques':              [r'\bestoques?\b'],
+    'impostos_recuperar':    [r'impostos?\s+a\s+recuperar', r'tributos?\s+a\s+recuperar', r'ativo\s+fiscal\b'],
+    'outros_ac':             [r'outros\s+ativos?\s+circulant', r'outros\s+cr[eé]ditos\s+circulant'],
+    'outros_creditos':       [r'outros\s+cr[eé]ditos', r'realizável\s+a\s+longo'],
+    'imobilizado':           [r'\bimobilizado\b'],
+    'investimentos':         [r'\binvestimentos?\b'],
+    'outros_anc':            [r'intang[ií]vel', r'outros\s+ativos?\s+n[ãa]o\s+circulant'],
+    'fornecedores':          [r'\bfornecedores?\b'],
+    'adiantamento_clientes': [r'adiantamento.*cliente', r'receitas?\s+diferidas?'],
+    'impostos_pagar':        [r'impostos?\s+(a\s+)?pagar', r'tributos?\s+(a\s+)?pagar', r'obriga[çc][õo]es?\s+fiscais?'],
+    'emprestimos_cp':        [r'empr[eé]stimos?.*(?:curto|circulant)', r'financiamentos?\s+circulant'],
+    'outros_pc':             [r'outros\s+passivos?\s+circulant'],
+    'emprestimos_lp':        [r'empr[eé]stimos?.*(?:longo|n[ãa]o\s+circulant)', r'financiamentos?\s+n[ãa]o\s+circulant'],
+    'outros_pnc':            [r'outros\s+passivos?\s+n[ãa]o\s+circulant'],
+    'patrimonio_liquido':    [r'patrim[ôo]nio\s+l[íi]quido\s*$', r'total.*patrim[ôo]nio'],
+}
+
+_DRE_PATS: dict = {
+    'receita_bruta':         [r'receita\s+(?:operacional\s+)?bruta', r'receita\s+de\s+vendas'],
+    'deducoes':              [r'dedu[çc][õo]es?', r'impostos?\s+sobre\s+(?:venda|fatura|receita)'],
+    'receita_liquida':       [r'receita\s+(?:operacional\s+)?l[íi]quida', r'vendas?\s+l[íi]quidas?'],
+    'cpv':                   [r'custo\s+(?:dos?\s+)?(?:produtos?|mercadoria|servi[çc]os?)\s+vendidos?', r'\bcpv\b', r'\bcmo\b'],
+    'lucro_bruto':           [r'lucro\s+bruto'],
+    'despesas_operacionais': [r'despesas?\s+operacionais?', r'despesas?\s+(?:com\s+)?vendas?', r'despesas?\s+(?:gerais?|administrativas?)'],
+    'ebitda':                [r'\bebitda\b', r'\blajida\b'],
+    'resultado_financeiro':  [r'resultado\s+financeiro', r'receitas?\s+financeiras?'],
+    'lucro_antes_ir':        [r'lucro\s+antes\s+(?:do\s+)?imposto', r'\blair\b'],
+    'ir_csll':               [r'imposto\s+de\s+renda', r'ir\s+e\s+csll', r'irpj'],
+    'lucro_liquido':         [r'lucro\s+(?:l[íi]quido|do\s+per[íi]odo)', r'resultado\s+(?:l[íi]quido|do\s+per[íi]odo)'],
+}
+
+_PERIOD_LABEL_RE = re.compile(
+    r'(?:dez|jun|mar|set|jan|fev|abr|mai|jul|ago|out|nov)[./\s]\d{4}'
+    r'|\d{2}/\d{2}/\d{4}',
+    re.IGNORECASE,
+)
+
+
+def _extract_contabil_regex(texto: str) -> Optional[dict]:
+    """
+    Extrai BP e DRE do texto pdfplumber usando regex — sem IA.
+    Suporta: (a) tabelas com pipe (duas colunas = dois períodos)
+             (b) documentos separados por '=== DOCUMENTO: ==='
+             (c) texto simples com um valor por linha
+    """
+    # Separar seções de documento
+    parts = re.split(r'(=== DOCUMENTO:.*?===)', texto)
+    docs: list[tuple[str, str]] = []  # (nome, texto)
+    cur_name = ''
+    for p in parts:
+        m = re.match(r'=== DOCUMENTO:\s*(.+?)\s*===', p)
+        if m:
+            cur_name = m.group(1)
+        elif p.strip():
+            docs.append((cur_name, p.strip()))
+
+    if not docs:
+        docs = [('', texto)]
+
+    def _period_label(name: str, text: str) -> str:
+        dates = _PERIOD_LABEL_RE.findall(text[:800])
+        if dates:
+            return dates[0]
+        y = re.search(r'20\d{2}', name)
+        return y.group() if y else ''
+
+    def _parse_section(text: str) -> dict:
+        """Retorna bp1, dre1, bp2, dre2 e has_p2 (dois períodos na mesma tabela)."""
+        bp1  = {k: None for k in _BP_PATS}
+        bp2  = {k: None for k in _BP_PATS}
+        dre1 = {k: None for k in _DRE_PATS}
+        dre2 = {k: None for k in _DRE_PATS}
+        has_p2 = False
+
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            ll = line.lower()
+
+            if '|' in line:
+                cols = [c.strip() for c in line.split('|')]
+                label = cols[0].lower()
+                vals: list = []
+                for c in cols[1:]:
+                    vals.extend(_nums_from_line(c))
+                v1 = vals[0] if len(vals) >= 1 else None
+                v2 = vals[1] if len(vals) >= 2 else None
+                if v2 is not None:
+                    has_p2 = True
+            else:
+                label = ll
+                nums = _nums_from_line(line)
+                if not nums:
+                    continue
+                v1, v2 = nums[-1], None
+
+            for field, pats in _BP_PATS.items():
+                if bp1[field] is None and any(re.search(p, label) for p in pats):
+                    bp1[field] = v1
+                    if v2 is not None:
+                        bp2[field] = v2
+                    break
+            else:
+                for field, pats in _DRE_PATS.items():
+                    if dre1[field] is None and any(re.search(p, label) for p in pats):
+                        dre1[field] = v1
+                        if v2 is not None:
+                            dre2[field] = v2
+                        break
+
+        return dict(bp1=bp1, bp2=bp2, dre1=dre1, dre2=dre2, has_p2=has_p2)
+
+    r0 = _parse_section(docs[0][1])
+
+    if r0['has_p2']:
+        # Dois períodos na mesma tabela
+        text0 = docs[0][1]
+        dates = _PERIOD_LABEL_RE.findall(text0[:800])
+        lbl1 = dates[0] if len(dates) > 0 else _period_label(docs[0][0], text0)
+        lbl2 = dates[1] if len(dates) > 1 else 'Período 2'
+        bp1, dre1 = r0['bp1'], r0['dre1']
+        bp2, dre2 = r0['bp2'], r0['dre2']
+    elif len(docs) >= 2:
+        # Documentos separados, um por período
+        r1 = _parse_section(docs[1][1])
+        bp1, dre1 = r0['bp1'], r0['dre1']
+        bp2, dre2 = r1['bp1'], r1['dre1']
+        lbl1 = _period_label(docs[0][0], docs[0][1]) or 'Período 1'
+        lbl2 = _period_label(docs[1][0], docs[1][1]) or 'Período 2'
+    else:
+        bp1, dre1 = r0['bp1'], r0['dre1']
+        bp2 = {k: None for k in _BP_PATS}
+        dre2 = {k: None for k in _DRE_PATS}
+        lbl1 = _period_label(docs[0][0], docs[0][1]) or 'Período 1'
+        lbl2 = ''
+
+    useful = [v for v in list(bp1.values()) + list(dre1.values()) if v is not None]
+    if len(useful) < 3:
+        return None
+
+    return {
+        'periodo1_label':    lbl1,
+        'periodo2_label':    lbl2,
+        'bp1':               bp1,
+        'bp2':               bp2,
+        'dre1':              dre1,
+        'dre2':              dre2,
+        'fator_risco':       0.10,
+        'fator_multiplicador': 1.1,
+    }
+
+
 def _claude_extract_json(texto: str, prompt_schema: str, anthropic_key: str) -> Optional[dict]:
     """
     Usa a API do Claude (Anthropic) para extrair dados estruturados de texto financeiro.
@@ -2333,6 +2515,15 @@ Retorne APENAS um JSON válido (sem markdown, sem texto extra):
             except Exception as exc:
                 ai_error_msg = (ai_error_msg or "") + f" | Claude: {str(exc)[:200]}"
 
+    # ── Tentativa 3: Extração por regex — sem IA, sem chave ──────────────────
+    if not extracted:
+        try:
+            extracted = _extract_contabil_regex(texto)
+            if extracted:
+                ai_error_msg = None  # regex funcionou
+        except Exception as exc:
+            ai_error_msg = (ai_error_msg or "") + f" | Regex: {str(exc)[:100]}"
+
     # ── Fallback final: formulário vazio para preenchimento manual ─────────────
     if not extracted:
         return {
@@ -2341,7 +2532,7 @@ Retorne APENAS um JSON válido (sem markdown, sem texto extra):
             "result": {},
             "needs_manual": True,
             "texto_extraido": texto[:3000] if texto else "",
-            "ai_error": ai_error_msg or "IA indisponível — configure GEMINI_API_KEY ou ANTHROPIC_API_KEY",
+            "ai_error": ai_error_msg or "Não foi possível extrair dados automaticamente",
         }
 
     # Calcular indicadores imediatamente
