@@ -624,32 +624,69 @@ _STATUS_COLOR = {
 }
 
 
-def _email_html(headline: str, color: str, rows: list) -> str:
+def _app_base_url() -> str:
+    """Retorna a URL base do sistema para uso em links de e-mail."""
+    origins = os.getenv("ALLOWED_ORIGINS", "https://analisecredito.vendemmia.dev.br")
+    return origins.split(",")[0].strip().rstrip("/")
+
+
+def _email_html(
+    headline: str,
+    color: str,
+    rows: list,
+    *,
+    intro: str = "",
+    cta_url: str = "",
+    cta_label: str = "Acessar Sistema",
+    footer_note: str = "",
+) -> str:
     rows_html = "".join(
         f'<tr>'
-        f'<td style="padding:7px 0;color:#888;font-size:13px;width:155px;vertical-align:top;">{k}</td>'
-        f'<td style="padding:7px 0;color:#111;font-size:13px;font-weight:600;">{v}</td>'
+        f'<td style="padding:8px 0;color:#64748b;font-size:13px;width:160px;vertical-align:top;border-bottom:1px solid #f1f5f9;">{k}</td>'
+        f'<td style="padding:8px 0;color:#0f172a;font-size:13px;font-weight:600;border-bottom:1px solid #f1f5f9;">{v}</td>'
         f'</tr>'
         for k, v in rows if v
     )
+    intro_block = f'<p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.65;">{intro}</p>' if intro else ""
+    cta_block = (
+        f'<table cellpadding="0" cellspacing="0" style="margin:24px 0 8px;">'
+        f'<tr><td style="background:{color};border-radius:7px;">'
+        f'<a href="{cta_url}" target="_blank" style="display:inline-block;padding:12px 26px;color:#fff;font-size:13px;font-weight:700;text-decoration:none;letter-spacing:.3px;">{cta_label}</a>'
+        f'</td></tr></table>'
+    ) if cta_url else ""
+    footer_extra = f'<br>{footer_note}' if footer_note else ""
+    logo_url = _app_base_url() + "/logo.png"
     return f"""<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f0f0f0;font-family:Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f0f0;padding:32px 0;">
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:36px 0;">
   <tr><td align="center">
-    <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);">
-      <tr><td style="background:#1e1b4b;padding:22px 32px;">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.09);">
+
+      <!-- Header -->
+      <tr><td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:26px 36px;">
         <table width="100%" cellpadding="0" cellspacing="0"><tr>
-          <td style="color:#fff;font-size:17px;font-weight:700;letter-spacing:.3px;">Vendemmia</td>
-          <td align="right" style="color:rgba(255,255,255,.55);font-size:11px;letter-spacing:.3px;text-transform:uppercase;">Análise de Crédito</td>
+          <td>
+            <img src="{logo_url}" alt="Vendemmia" height="38" style="height:38px;max-width:180px;object-fit:contain;display:block;">
+          </td>
+          <td align="right" style="color:rgba(255,255,255,.5);font-size:10px;letter-spacing:.8px;text-transform:uppercase;vertical-align:middle;">Análise de Crédito</td>
         </tr></table>
       </td></tr>
-      <tr><td style="padding:28px 32px 4px;">
-        <span style="display:inline-block;background:{color};color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 11px;border-radius:4px;">{headline}</span>
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #ebebeb;margin-top:18px;">{rows_html}</table>
+
+      <!-- Badge + conteúdo -->
+      <tr><td style="padding:32px 36px 8px;">
+        <span style="display:inline-block;background:{color};color:#fff;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:5px 13px;border-radius:5px;">{headline}</span>
+        <div style="height:20px;"></div>
+        {intro_block}
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #f1f5f9;">
+          {rows_html}
+        </table>
+        {cta_block}
       </td></tr>
-      <tr><td style="padding:20px 32px;background:#f9f9f9;border-top:1px solid #ebebeb;color:#aaa;font-size:11px;text-align:center;">
-        Sistema interno Vendemmia &middot; Não responda este e-mail
+
+      <!-- Footer -->
+      <tr><td style="padding:20px 36px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:11px;text-align:center;line-height:1.6;">
+        Sistema Interno &middot; Vendemmia Comércio Internacional &middot; Não responda este e-mail{footer_extra}
       </td></tr>
     </table>
   </td></tr>
@@ -1613,35 +1650,56 @@ async def atualizar_decisao(hist_id: str, body: Dict[str, Any], current_user=Dep
     )
 
     # Disparo automático de e-mail ao solicitante quando a análise é finalizada
-    sol_id = data.get("solicitacao_id")
-    if sol_id and _SMTP_HOST:
+    _sol_id_dec = data.get("solicitacao_id")
+    if _sol_id_dec and _SMTP_HOST:
         try:
             sol_rows = await _turso_query(
-                "SELECT created_by FROM ac_solicitacoes WHERE id=?", [sol_id]
+                "SELECT created_by FROM ac_solicitacoes WHERE id=?", [_sol_id_dec]
             )
             if sol_rows:
                 cb = json.loads(sol_rows[0].get("created_by") or "{}")
                 solicitante_email = cb.get("email", "")
                 solicitante_nome  = cb.get("name", "Solicitante")
                 if solicitante_email:
-                    empresa  = data.get("empresa", "—")
-                    cnpj     = data.get("cnpj", "")
-                    st_lbl   = _STATUS_LABEL.get(decisao_payload["status"] or "", decisao_payload["status"] or "—")
-                    color    = _STATUS_COLOR.get(decisao_payload["status"] or "", "#6366f1")
-                    now_str  = datetime.now().strftime("%d/%m/%Y às %H:%M")
-                    subject  = f"[Análise Concluída] {empresa} — {st_lbl}"
-                    html     = _email_html(f"Análise de Crédito: {st_lbl}", color, [
-                        ("Empresa",   empresa),
-                        ("CNPJ",      cnpj),
-                        ("Status",    st_lbl),
-                        ("Analista",  current_user.get("name", "—")),
-                        ("Limite",    decisao_payload.get("limiteAprovado") or ""),
-                        ("Prazo",     (decisao_payload.get("prazoAprovado") + " dias") if decisao_payload.get("prazoAprovado") else ""),
-                        ("Data/hora", now_str),
-                    ])
+                    empresa    = data.get("empresa", "—")
+                    cnpj       = data.get("cnpj", "")
+                    dec_status = decisao_payload["status"] or ""
+                    st_lbl     = _STATUS_LABEL.get(dec_status, dec_status or "—")
+                    color      = _STATUS_COLOR.get(dec_status, "#6366f1")
+                    now_str    = datetime.now().strftime("%d/%m/%Y às %H:%M")
+                    analista   = current_user.get("name", "—")
+                    lim_aprov  = decisao_payload.get("limiteAprovado") or ""
+                    prazo      = decisao_payload.get("prazoAprovado") or ""
+                    parecer    = (decisao_payload.get("parecerTecnico") or "")[:500]
+                    app_url    = _app_base_url()
+                    link_rel   = f"{app_url}/relatorio.html?id={_sol_id_dec}"
+                    subject    = f"[Análise Concluída — {st_lbl}] {empresa}"
+
+                    rows_sol = [
+                        ("Empresa",    empresa),
+                        ("CNPJ",       cnpj),
+                        ("Decisão",    f'<strong style="color:{color};">{st_lbl}</strong>'),
+                        ("Analista",   analista),
+                        ("Limite FOB", lim_aprov),
+                        ("Prazo",      (prazo + " dias") if prazo else ""),
+                        ("Data/hora",  now_str),
+                    ]
+                    intro_sol = (
+                        f"Olá, <strong>{solicitante_nome}</strong>! "
+                        f"A análise de crédito da empresa <strong>{empresa}</strong> foi concluída pelo analista <strong>{analista}</strong>."
+                    )
+                    if parecer:
+                        intro_sol += f'<br><br><em style="color:#64748b;">&ldquo;{parecer}&rdquo;</em>'
+                    html_sol = _email_html(
+                        f"Análise Concluída: {st_lbl}", color, rows_sol,
+                        intro=intro_sol,
+                        cta_url=link_rel,
+                        cta_label="Ver Relatório Completo",
+                        footer_note="O relatório completo em PDF está disponível no sistema para impressão ou download.",
+                    )
                     asyncio.create_task(_send_email(
-                        subject, html, [solicitante_email],
-                        from_name=current_user.get("name", ""),
+                        subject, html_sol, [solicitante_email],
+                        from_name=analista,
                         from_email=current_user.get("email", ""),
                     ))
         except Exception:
@@ -2684,6 +2742,7 @@ class NotifyEmailRequest(BaseModel):
     prazo:       Optional[str] = ""
     analista:    Optional[str] = ""
     deliberacao: Optional[str] = ""
+    sol_id:      Optional[str] = ""   # ID da solicitação — usado para links e lookup de e-mail
 
 
 @app.post("/api/notify/email")
@@ -2693,63 +2752,120 @@ async def notify_email(
     body: NotifyEmailRequest,
     current_user=Depends(_get_current_user),
 ):
-    if not _NOTIFY_EMAILS:
-        return {"ok": False, "reason": "NOTIFY_EMAILS não configurado"}
-
-    now_str = datetime.now().strftime("%d/%m/%Y às %H:%M")
-    empresa = body.empresa or "—"
-    cnpj    = body.cnpj or ""
+    now_str  = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    empresa  = body.empresa or "—"
+    cnpj     = body.cnpj    or ""
+    sol_id_n = (body.sol_id or "").strip()
+    app_url  = _app_base_url()
+    analista = body.analista or current_user.get("name", "—")
 
     if body.event == "nova_solicitacao":
-        subject  = f"[Nova Solicitação] {empresa}"
-        headline = "Nova Solicitação de Crédito"
-        color    = "#6366f1"
-        rows = [
-            ("Empresa",     empresa),
-            ("CNPJ",        cnpj),
-            ("Solicitante", body.solicitante or current_user.get("name", "—")),
-            ("Data/hora",   now_str),
+        # Enviado pela nova-solicitacao.html — mas agora POST /api/solicitacoes já envia ao time.
+        # Mantemos aqui para compatibilidade com clientes antigos ou rascunhos que não sincronizaram.
+        if not _NOTIFY_EMAILS:
+            return {"ok": False, "reason": "NOTIFY_EMAILS não configurado"}
+        sol_link = f"{app_url}/analise-financeira.html?id={sol_id_n}" if sol_id_n else f"{app_url}/solicitacoes.html"
+        subject  = f"[Nova Solicitação] {empresa} — Aguardando Análise"
+        solicitante = body.solicitante or current_user.get("name", "—")
+        html = _email_html(
+            "Nova Solicitação de Crédito", "#6366f1",
+            [
+                ("Empresa",     empresa),
+                ("CNPJ",        cnpj),
+                ("Solicitante", solicitante),
+                ("Data/hora",   now_str),
+            ],
+            intro=f"Nova solicitação registrada por <strong>{solicitante}</strong> aguarda avaliação.",
+            cta_url=sol_link,
+            cta_label="Abrir Análise de Crédito",
+        )
+        asyncio.create_task(_send_email(
+            subject, html, _NOTIFY_EMAILS,
+            from_name=current_user.get("name", ""),
+            from_email=current_user.get("email", ""),
+        ))
+        return {"ok": True}
+
+    elif body.event in ("analista_decisao", "comite_decisao"):
+        st_lbl = _STATUS_LABEL.get(body.status or "", body.status or "—")
+        color  = _STATUS_COLOR.get(body.status or "", "#6366f1")
+        link_rel = f"{app_url}/relatorio.html?id={sol_id_n}" if sol_id_n else f"{app_url}/historico.html"
+        link_ana = f"{app_url}/analise-financeira.html?id={sol_id_n}" if sol_id_n else f"{app_url}/historico.html"
+
+        is_comite = body.event == "comite_decisao"
+        headline  = f"Decisão do Comitê: {st_lbl}" if is_comite else f"Decisão do Analista: {st_lbl}"
+        subject   = f"[{'Comitê' if is_comite else 'Analista'} — {st_lbl}] {empresa}"
+
+        rows_team = [
+            ("Empresa",      empresa),
+            ("CNPJ",         cnpj),
+            ("Status",       f'<strong style="color:{color};">{st_lbl}</strong>'),
+            ("Analista",     analista),
+            ("Limite FOB",   body.limite  or ""),
+            ("Prazo",        (body.prazo + " dias") if body.prazo else ""),
+            ("Deliberação",  body.deliberacao or "") if is_comite else ("", ""),
+            ("Data/hora",    now_str),
         ]
 
-    elif body.event == "analista_decisao":
-        st_lbl   = _STATUS_LABEL.get(body.status or "", body.status or "—")
-        color    = _STATUS_COLOR.get(body.status or "", "#6366f1")
-        subject  = f"[{st_lbl}] {empresa} — Decisão do Analista"
-        headline = f"Decisão do Analista: {st_lbl}"
-        rows = [
-            ("Empresa",    empresa),
-            ("CNPJ",       cnpj),
-            ("Status",     st_lbl),
-            ("Analista",   body.analista or current_user.get("name", "—")),
-            ("Limite",     body.limite or ""),
-            ("Prazo",      (body.prazo + " dias") if body.prazo else ""),
-            ("Data/hora",  now_str),
-        ]
+        # 1. E-mail para o time financeiro
+        if _NOTIFY_EMAILS:
+            html_team = _email_html(
+                headline, color, rows_team,
+                intro=f"Decisão registrada para <strong>{empresa}</strong>.",
+                cta_url=link_ana,
+                cta_label="Ver Análise Completa",
+            )
+            asyncio.create_task(_send_email(
+                subject, html_team, _NOTIFY_EMAILS,
+                from_name=current_user.get("name", ""),
+                from_email=current_user.get("email", ""),
+            ))
 
-    elif body.event == "comite_decisao":
-        st_lbl   = _STATUS_LABEL.get(body.status or "", body.status or "—")
-        color    = _STATUS_COLOR.get(body.status or "", "#f59e0b")
-        subject  = f"[Comitê — {st_lbl}] {empresa}"
-        headline = f"Decisão do Comitê: {st_lbl}"
-        rows = [
-            ("Empresa",       empresa),
-            ("CNPJ",          cnpj),
-            ("Status Final",  st_lbl),
-            ("Deliberação",   body.deliberacao or "—"),
-            ("Limite Final",  body.limite or ""),
-            ("Data/hora",     now_str),
-        ]
+        # 2. E-mail para o requisitante (lookup via sol_id no banco)
+        if sol_id_n and _SMTP_HOST:
+            try:
+                sol_rows = await _turso_query(
+                    "SELECT created_by FROM ac_solicitacoes WHERE id=?", [sol_id_n]
+                )
+                if sol_rows:
+                    cb = json.loads(sol_rows[0].get("created_by") or "{}")
+                    req_email = cb.get("email", "")
+                    req_nome  = cb.get("name", "Solicitante")
+                    if req_email:
+                        rows_req = [
+                            ("Empresa",    empresa),
+                            ("CNPJ",       cnpj),
+                            ("Decisão",    f'<strong style="color:{color};">{st_lbl}</strong>'),
+                            ("Analista",   analista),
+                            ("Limite FOB", body.limite  or ""),
+                            ("Prazo",      (body.prazo + " dias") if body.prazo else ""),
+                            ("Data/hora",  now_str),
+                        ]
+                        intro_req = (
+                            f"Olá, <strong>{req_nome}</strong>! "
+                            f"A análise de crédito de <strong>{empresa}</strong> foi concluída."
+                        )
+                        if body.deliberacao:
+                            intro_req += f'<br><br><em style="color:#64748b;">&ldquo;{body.deliberacao[:400]}&rdquo;</em>'
+                        html_req = _email_html(
+                            f"Análise Concluída: {st_lbl}", color, rows_req,
+                            intro=intro_req,
+                            cta_url=link_rel,
+                            cta_label="Ver Relatório Completo",
+                            footer_note="O relatório em PDF está disponível no sistema.",
+                        )
+                        asyncio.create_task(_send_email(
+                            f"[Análise Concluída — {st_lbl}] {empresa}", html_req, [req_email],
+                            from_name=analista,
+                            from_email=current_user.get("email", ""),
+                        ))
+            except Exception:
+                pass
+
+        return {"ok": True}
 
     else:
         return {"ok": False, "reason": "Evento desconhecido"}
-
-    html = _email_html(headline, color, rows)
-    asyncio.create_task(_send_email(
-        subject, html, _NOTIFY_EMAILS,
-        from_name=current_user.get("name", ""),
-        from_email=current_user.get("email", ""),
-    ))
-    return {"ok": True}
 
 
 # ── Admin: Gestão de Usuários ─────────────────────────────────────────────────
@@ -3344,18 +3460,35 @@ async def sol_create(request: Request, current_user=Depends(_get_current_user)):
         empresa     = body.get("empresa") or body.get("nomeEmpresa") or body.get("razaoSocial") or "—"
         cnpj        = body.get("cnpj") or ""
         solicitante = current_user.get("name", "—")
+        sol_email   = current_user.get("email", "")
         now_str     = datetime.now().strftime("%d/%m/%Y às %H:%M")
-        subject     = f"[Nova Solicitação] {empresa}"
-        html        = _email_html("Nova Solicitação de Crédito", "#6366f1", [
-            ("Empresa",     empresa),
-            ("CNPJ",        cnpj),
-            ("Solicitante", solicitante),
-            ("Data/hora",   now_str),
-        ])
+        modal       = body.get("modal") or body.get("modalLogistico") or ""
+        produto     = body.get("produto") or body.get("produtoImportado") or ""
+        vol_pot     = body.get("volumePotencial") or body.get("volume_potencial") or ""
+        lim_exp     = body.get("limiteExportador") or ""
+        subject     = f"[Nova Solicitação] {empresa} — Aguardando Análise de Crédito"
+        app_url     = _app_base_url()
+        link_analise = f"{app_url}/analise-financeira.html?id={sol_id}"
+        html = _email_html(
+            "Nova Solicitação de Crédito", "#6366f1",
+            [
+                ("Empresa",           empresa),
+                ("CNPJ",              cnpj),
+                ("Solicitante",       f"{solicitante} &lt;{sol_email}&gt;" if sol_email else solicitante),
+                ("Modal",             modal),
+                ("Produto",           produto),
+                ("Volume Potencial",  vol_pot),
+                ("Limite FOB",        lim_exp),
+                ("Data/hora",         now_str),
+            ],
+            intro=f"Uma nova solicitação de análise de crédito foi registrada por <strong>{solicitante}</strong> e aguarda avaliação do time financeiro.",
+            cta_url=link_analise,
+            cta_label="Abrir Análise de Crédito",
+        )
         asyncio.create_task(_send_email(
             subject, html, _NOTIFY_EMAILS,
             from_name=solicitante,
-            from_email=current_user.get("email", ""),
+            from_email=sol_email,
         ))
 
     return {"ok": True, "id": sol_id}

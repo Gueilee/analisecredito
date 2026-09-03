@@ -4101,12 +4101,17 @@
     } else {
       record = DB.solicitacoes.create({ ...data, status: 'pendente' });
       sessionStorage.setItem('vd_saved', `Solicitação "${data.empresa}" enviada para análise!`);
-      const _sess = DB.auth.getSession() || {};
-      App.notifyEmail('nova_solicitacao', {
-        empresa:     data.empresa,
-        cnpj:        data.cnpj,
-        solicitante: _sess.name || '',
-      });
+      // Sincroniza ao backend para registrar created_by (email do requisitante)
+      // O backend dispara automaticamente o e-mail ao time financeiro
+      try {
+        const _apiBase = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+        await fetch(`${_apiBase}/api/solicitacoes`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...record }),
+        });
+      } catch (_e) { /* silencioso — não bloqueia o fluxo */ }
     }
 
     // Envia todos os documentos anexados para o servidor

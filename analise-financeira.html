@@ -2123,6 +2123,7 @@
       analista: session ? session.name : '',
       limite:   limite || '',
       prazo:    prazo  || '',
+      sol_id:   sol.id,
     });
     const label = newStatus === 'aprovado' ? 'Crédito aprovado!' : 'Crédito negado.';
     sessionStorage.setItem('vd_saved', label);
@@ -2154,6 +2155,7 @@
       analista: session ? session.name : '',
       limite:   (document.getElementById('dec-limite')?.value || '').trim(),
       prazo:    document.getElementById('dec-prazo')?.value || '',
+      sol_id:   sol.id,
     });
     sessionStorage.setItem('vd_saved', 'Análise encaminhada ao Comitê de Crédito!');
     location.href = 'index.html';
@@ -2367,6 +2369,7 @@
       status:      decision,
       deliberacao: deliberacao,
       limite:      sol.limiteAprovado || limite || '',
+      sol_id:      sol.id,
     });
   }
 
