@@ -2805,25 +2805,29 @@ def _anthropic_scanner(
     media_type: Optional[str],
     anthropic_key: str,
 ) -> dict:
-    """Chama Claude para extrair e mapear dados financeiros de qualquer documento."""
-    if mode in ('pdf', 'image'):
-        b64 = base64.standard_b64encode(content).decode('ascii')
-        if mode == 'pdf':
-            doc_block: dict = {
-                "type": "document",
-                "source": {"type": "base64", "media_type": "application/pdf", "data": b64},
-            }
-        else:
-            doc_block = {
-                "type": "image",
-                "source": {"type": "base64", "media_type": media_type or "image/jpeg", "data": b64},
-            }
-        messages = [{"role": "user", "content": [doc_block, {"type": "text", "text": _SCANNER_PROMPT}]}]
-    else:
-        text = _scanner_excel_to_text(content, filename) if mode == 'excel' else _scanner_word_to_text(content)
-        messages = [{"role": "user", "content": f"Arquivo: {filename}\n\n{text[:28000]}\n\n{_SCANNER_PROMPT}"}]
+    """Chama Claude para extrair e mapear dados financeiros de qualquer documento.
 
-    _MODELS = ["claude-sonnet-5", "claude-sonnet-4-5", "claude-haiku-4-5-20251001"]
+    PDFs são convertidos por pdfplumber (texto) — sem document blocks nem beta headers.
+    Imagens usam vision (image block). Excel/Word via extração de texto.
+    """
+    if mode == 'image':
+        b64 = base64.standard_b64encode(content).decode('ascii')
+        img_block = {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type or "image/jpeg", "data": b64},
+        }
+        messages = [{"role": "user", "content": [img_block, {"type": "text", "text": _SCANNER_PROMPT}]}]
+    elif mode == 'pdf':
+        text = _pdf_to_text(content, filename)
+        messages = [{"role": "user", "content": f"{text[:28000]}\n\n{_SCANNER_PROMPT}"}]
+    elif mode == 'excel':
+        text = _scanner_excel_to_text(content, filename)
+        messages = [{"role": "user", "content": f"{text[:28000]}\n\n{_SCANNER_PROMPT}"}]
+    else:
+        text = _scanner_word_to_text(content)
+        messages = [{"role": "user", "content": f"{text[:28000]}\n\n{_SCANNER_PROMPT}"}]
+
+    _MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
     last_err: Exception = RuntimeError("Nenhum modelo disponível.")
 
     for model in _MODELS:
@@ -2833,9 +2837,6 @@ def _anthropic_scanner(
                 "anthropic-version": "2023-06-01",
                 "content-type": "application/json",
             }
-            if mode == 'pdf':
-                hdrs["anthropic-beta"] = "pdfs-2024-09-25"
-
             resp = httpx.post(
                 "https://api.anthropic.com/v1/messages",
                 headers=hdrs,
@@ -2851,7 +2852,7 @@ def _anthropic_scanner(
                 last_err = RuntimeError(f"Resposta incompleta do modelo {model}")
                 continue
             elif resp.status_code in (400, 404):
-                last_err = RuntimeError(f"Modelo {model} não disponível ({resp.status_code})")
+                last_err = RuntimeError(f"Modelo {model} retornou {resp.status_code}: {resp.text[:200]}")
                 continue
             else:
                 raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:300]}")
@@ -2916,50 +2917,51 @@ async def scanner_contabil(
 
 
 def _anthropic_scanner_multi(file_list: list[tuple[bytes, str]], anthropic_key: str) -> dict:
-    """Scanner para múltiplos arquivos já armazenados (ex: documentos da solicitação)."""
+    """Scanner para múltiplos arquivos já armazenados (ex: documentos da solicitação).
+
+    PDFs extraídos via pdfplumber (texto). Imagens via vision block. Excel/Word via texto.
+    Sem document blocks nem beta headers — mesma abordagem do restante do sistema.
+    """
     import mimetypes
-    content_blocks: list[dict] = []
-    text_parts: list[str] = []
-    needs_pdf_header = False
+    image_blocks: list[dict] = []
+    text_parts:   list[str]  = []
 
     for file_bytes, filename in file_list:
         ext  = Path(filename).suffix.lower()
         mime = mimetypes.guess_type(filename)[0] or ''
-        b64  = base64.standard_b64encode(file_bytes).decode('ascii')
 
         if ext in ('.jpg', '.jpeg', '.png', '.webp') or mime.startswith('image/'):
+            b64   = base64.standard_b64encode(file_bytes).decode('ascii')
             media = mime if mime.startswith('image/') else f"image/{ext.lstrip('.').replace('jpg','jpeg')}"
-            content_blocks.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": b64}})
+            image_blocks.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": b64}})
         elif ext == '.pdf' or 'pdf' in mime:
-            content_blocks.append({"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}})
-            needs_pdf_header = True
+            text_parts.append(_pdf_to_text(file_bytes, filename))
         elif ext in ('.xlsx', '.xls') or 'spreadsheet' in mime or 'excel' in mime:
             text_parts.append(_scanner_excel_to_text(file_bytes, filename))
         elif ext in ('.docx', '.doc') or 'word' in mime:
             text_parts.append(_scanner_word_to_text(file_bytes))
         else:
-            content_blocks.append({"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}})
-            needs_pdf_header = True
+            # Fallback: tenta extrair como PDF
+            text_parts.append(_pdf_to_text(file_bytes, filename))
 
-    if content_blocks:
-        if text_parts:
-            combined_text = "\n\n---\n\n".join(text_parts)
-            content_blocks.append({"type": "text", "text": f"Conteúdo adicional:\n{combined_text[:10000]}"})
-        content_blocks.append({"type": "text", "text": _SCANNER_PROMPT})
-        messages = [{"role": "user", "content": content_blocks}]
-    elif text_parts:
-        combined_text = "\n\n---\n\n".join(text_parts)
-        messages = [{"role": "user", "content": f"{combined_text[:28000]}\n\n{_SCANNER_PROMPT}"}]
+    combined_text = "\n\n---\n\n".join(text_parts)[:28000]
+
+    if image_blocks:
+        content: list[dict] = image_blocks
+        if combined_text:
+            content.append({"type": "text", "text": f"Texto extraído dos documentos:\n{combined_text}"})
+        content.append({"type": "text", "text": _SCANNER_PROMPT})
+        messages = [{"role": "user", "content": content}]
+    elif combined_text:
+        messages = [{"role": "user", "content": f"{combined_text}\n\n{_SCANNER_PROMPT}"}]
     else:
-        raise RuntimeError("Nenhum arquivo processável.")
+        raise RuntimeError("Nenhum conteúdo extraído dos arquivos.")
 
-    _MODELS = ["claude-sonnet-5", "claude-sonnet-4-5", "claude-haiku-4-5-20251001"]
+    _MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
     last_err: Exception = RuntimeError("Nenhum modelo disponível.")
     for model in _MODELS:
         try:
             hdrs = {"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
-            if needs_pdf_header:
-                hdrs["anthropic-beta"] = "pdfs-2024-09-25"
             resp = httpx.post(
                 "https://api.anthropic.com/v1/messages",
                 headers=hdrs,
@@ -2975,7 +2977,7 @@ def _anthropic_scanner_multi(file_list: list[tuple[bytes, str]], anthropic_key: 
                 last_err = RuntimeError(f"Resposta incompleta do modelo {model}")
                 continue
             elif resp.status_code in (400, 404):
-                last_err = RuntimeError(f"Modelo {model} não disponível ({resp.status_code})")
+                last_err = RuntimeError(f"Modelo {model} retornou {resp.status_code}: {resp.text[:200]}")
                 continue
             else:
                 raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:300]}")
