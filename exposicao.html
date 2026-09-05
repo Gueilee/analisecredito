@@ -79,9 +79,9 @@
     .exp-table td { padding:.55rem .7rem; color:var(--text-secondary); border-bottom:1px solid rgba(255,255,255,.03); white-space:nowrap; }
     .exp-table tr:last-child td { border-bottom:none; }
     .exp-table .total-row td { color:var(--text-primary); font-weight:700; border-top:1px solid rgba(255,255,255,.08); }
-    .td-money { color:var(--brand-neon-green) !important; font-weight:600; }
-    .td-red   { color:var(--red) !important; }
-    .td-yellow { color:var(--yellow) !important; }
+    .td-money  { color:var(--brand-neon-green) !important; font-weight:600; }
+    .td-red    { color:var(--red) !important; }
+    .td-yellow { color:#fbbf24 !important; }
 
     /* ── Cycle color dots ─────────────────────────────────── */
     .cycle-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:.35rem; flex-shrink:0; }
@@ -466,6 +466,15 @@
         <div id="ciclos-container"></div>
       </div>
 
+      <!-- ── Timeline Consolidada — Pico de Exposição ─── -->
+      <div class="card" style="margin-top:1.2rem;">
+        <div class="card-title" style="margin-bottom:.3rem;">Fluxo de Caixa Consolidado — Pico de Exposição</div>
+        <div class="chart-subtitle" style="margin-bottom:1rem;">Sobreposição dos 3 ciclos em uma única linha do tempo. Identifique quando a exposição acumulada atinge o pico e como os ciclos se combinam.</div>
+        <div class="chart-scroll">
+          <div id="timeline-consolidated"></div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -817,6 +826,7 @@
 
     renderGantt(cycles, curve);
     renderDetailTable(cycles, totalCost, totalRevenue, P);
+    renderConsolidatedTimeline(cycles, curve, P);
   }
 
   /* ══════════════════════════════════════════════════════
@@ -1304,6 +1314,245 @@
 
     html += '</div>';
     document.getElementById('ciclos-container').innerHTML = html;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     TIMELINE CONSOLIDADA — sobreposição dos 3 ciclos
+     Stacked area chart (pc[] por ciclo) + cronologia de eventos
+  ══════════════════════════════════════════════════════ */
+  function renderConsolidatedTimeline(cycles, curve, P) {
+    const el = document.getElementById('timeline-consolidated');
+    if (!el || !curve || !curve.pts || curve.pts.length < 2) return;
+
+    const CYC_CLR  = ['#a855f7', '#60a5fa', '#22d3ee'];
+    const CYC_NAME = ['Ciclo 1', 'Ciclo 2', 'Ciclo 3'];
+
+    // ── Dimensões SVG ───────────────────────────────────────
+    const W        = 1060;
+    const PAD_L    = 106, PAD_R = 20;
+    const CW       = W - PAD_L - PAD_R;
+    const STRIP_Y  = 8;
+    const STRIP_H  = 57;   // 3 lanes de eventos acima do gráfico
+    const CHART_Y  = STRIP_Y + STRIP_H;
+    const CHART_H  = 195;
+    const AXIS_H   = 33;
+    const H        = STRIP_Y + STRIP_H + CHART_H + AXIS_H;
+    const CHART_BOT = CHART_Y + CHART_H;
+    const LANE_H   = STRIP_H / 3;
+
+    const { pts, maxExposure, peakTime, minT, maxT } = curve;
+    const span   = maxT - minT;
+    const maxExp = maxExposure || 1;
+
+    function tx(t)   { return PAD_L + (t - minT) / span * CW; }
+    function ty(v)   { return CHART_BOT - Math.max(0, v) / maxExp * CHART_H; }
+    function laneY(ci) { return STRIP_Y + ci * LANE_H + LANE_H / 2; }
+
+    // ── Eventos de cada ciclo ───────────────────────────────
+    const evts = [];
+    cycles.forEach((c, ci) => {
+      c.fobPayments.forEach(fp => evts.push({
+        t: fp.date.getTime(), ci, kind: 'out',
+        label: 'Pagto. FOB', amount: fp.amount
+      }));
+      if (c.desp + c.imp > 0) evts.push({
+        t: c.dDesemb.getTime(), ci, kind: 'out',
+        label: 'Desp. + Impostos', amount: c.desp + c.imp
+      });
+      evts.push({
+        t: c.dRec.getTime(), ci, kind: 'in',
+        label: 'Recebimento VDM', amount: c.fob + c.desp + c.imp
+      });
+    });
+    evts.sort((a, b) => a.t - b.t);
+
+    // ── SVG ────────────────────────────────────────────────
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;font-family:inherit;">
+<defs>
+  <linearGradient id="tl-c0" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#a855f7" stop-opacity=".5"/>
+    <stop offset="100%" stop-color="#a855f7" stop-opacity=".05"/>
+  </linearGradient>
+  <linearGradient id="tl-c1" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#60a5fa" stop-opacity=".5"/>
+    <stop offset="100%" stop-color="#60a5fa" stop-opacity=".05"/>
+  </linearGradient>
+  <linearGradient id="tl-c2" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#22d3ee" stop-opacity=".5"/>
+    <stop offset="100%" stop-color="#22d3ee" stop-opacity=".05"/>
+  </linearGradient>
+</defs>`;
+
+    // Fundo do gráfico
+    s += `<rect x="${PAD_L}" y="${CHART_Y}" width="${CW}" height="${CHART_H}" fill="rgba(255,255,255,.007)" rx="4"/>`;
+
+    // Separador entre strip de eventos e gráfico
+    s += `<line x1="${PAD_L}" y1="${CHART_Y}" x2="${PAD_L+CW}" y2="${CHART_Y}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>`;
+
+    // Grid Y + rótulos
+    [0.25, 0.5, 0.75, 1.0].forEach(pct => {
+      const yp  = CHART_BOT - pct * CHART_H;
+      const val = maxExp * pct;
+      const stroke = pct === 1 ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.05)';
+      s += `<line x1="${PAD_L}" y1="${yp.toFixed(1)}" x2="${(PAD_L+CW).toFixed(1)}" y2="${yp.toFixed(1)}" stroke="${stroke}" stroke-width="1"/>`;
+      s += `<text x="${(PAD_L-6).toFixed(1)}" y="${(yp+4).toFixed(1)}" text-anchor="end" fill="rgba(255,255,255,.28)" font-size="8.5">${fmtBRL(val,true)}</text>`;
+    });
+
+    // Linha de zero
+    s += `<line x1="${PAD_L}" y1="${CHART_BOT}" x2="${(PAD_L+CW).toFixed(1)}" y2="${CHART_BOT}" stroke="rgba(255,255,255,.2)" stroke-width="1.2"/>`;
+    s += `<text x="${(PAD_L-6).toFixed(1)}" y="${(CHART_BOT+4).toFixed(1)}" text-anchor="end" fill="rgba(255,255,255,.3)" font-size="8.5">R$ 0</text>`;
+
+    // Grid X + datas
+    const totalDays = Math.ceil(span / 86400000);
+    const gi = totalDays <= 120 ? 10 : totalDays <= 210 ? 15 : 20;
+    for (let d = 0; d <= totalDays; d += gi) {
+      const gx = PAD_L + (d / totalDays) * CW;
+      const gd = new Date(minT + d * 86400000);
+      const isM = gd.getDate() === 1;
+      s += `<line x1="${gx.toFixed(1)}" y1="${CHART_Y}" x2="${gx.toFixed(1)}" y2="${CHART_BOT}" stroke="${isM?'rgba(255,255,255,.08)':'rgba(255,255,255,.03)'}" stroke-width="${isM?1.2:.8}"/>`;
+      s += `<text x="${gx.toFixed(1)}" y="${(CHART_BOT+AXIS_H-5).toFixed(1)}" text-anchor="middle" fill="rgba(255,255,255,.3)" font-size="8.5" font-weight="${isM?700:400}">${fmtDateFull(gd)}</text>`;
+    }
+
+    // ── Áreas empilhadas por ciclo (C0 na base, C2 no topo) ──
+    for (let ci = 0; ci < 3; ci++) {
+      const topEdge = pts.map(pt => {
+        let sum = 0;
+        for (let j = 0; j <= ci; j++) sum += (pt.pc[j] || 0);
+        return `${tx(pt.t).toFixed(1)},${ty(sum).toFixed(1)}`;
+      });
+
+      let bottomEdge;
+      if (ci === 0) {
+        bottomEdge = [...pts].reverse().map(pt =>
+          `${tx(pt.t).toFixed(1)},${CHART_BOT}`);
+      } else {
+        bottomEdge = [...pts].reverse().map(pt => {
+          let sum = 0;
+          for (let j = 0; j < ci; j++) sum += (pt.pc[j] || 0);
+          return `${tx(pt.t).toFixed(1)},${ty(sum).toFixed(1)}`;
+        });
+      }
+
+      s += `<polygon points="${[...topEdge, ...bottomEdge].join(' ')}" fill="url(#tl-c${ci})" stroke="none"/>`;
+      s += `<polyline points="${topEdge.join(' ')}" fill="none" stroke="${CYC_CLR[ci]}" stroke-width="1.8" stroke-linejoin="round" opacity=".85"/>`;
+    }
+
+    // Linha do total (pontilhada âmbar) — topo das 3 áreas
+    const totalLine = pts.map(pt => {
+      const sum = (pt.pc[0]||0) + (pt.pc[1]||0) + (pt.pc[2]||0);
+      return `${tx(pt.t).toFixed(1)},${ty(sum).toFixed(1)}`;
+    }).join(' ');
+    s += `<polyline points="${totalLine}" fill="none" stroke="rgba(251,191,36,.45)" stroke-width="1.2" stroke-dasharray="5,3" stroke-linejoin="round"/>`;
+
+    // ── Marcador de pico ────────────────────────────────────
+    const peakX  = tx(peakTime);
+    const peakY  = ty(maxExposure);
+    const peakDt = fmtDateFull(new Date(peakTime));
+
+    s += `<line x1="${peakX.toFixed(1)}" y1="${CHART_Y}" x2="${peakX.toFixed(1)}" y2="${CHART_BOT}" stroke="rgba(251,191,36,.7)" stroke-width="2" stroke-dasharray="5,3"/>`;
+    // Halo + círculo central
+    s += `<circle cx="${peakX.toFixed(1)}" cy="${peakY.toFixed(1)}" r="11" fill="rgba(251,191,36,.12)" stroke="rgba(251,191,36,.35)" stroke-width="1.5"/>`;
+    s += `<circle cx="${peakX.toFixed(1)}" cy="${peakY.toFixed(1)}" r="5" fill="#fbbf24" stroke="rgba(0,0,0,.5)" stroke-width="1.5"/>`;
+
+    // Callout
+    const bW = 150, bH = 52;
+    let bX = peakX - bW / 2;
+    if (bX < PAD_L + 2)       bX = PAD_L + 2;
+    if (bX + bW > PAD_L + CW) bX = PAD_L + CW - bW;
+    const bY = Math.max(CHART_Y + 6, peakY - bH - 18);
+    s += `<line x1="${peakX.toFixed(1)}" y1="${(peakY-12).toFixed(1)}" x2="${peakX.toFixed(1)}" y2="${(bY+bH).toFixed(1)}" stroke="rgba(251,191,36,.4)" stroke-width="1"/>`;
+    s += `<rect x="${bX.toFixed(1)}" y="${bY.toFixed(1)}" width="${bW}" height="${bH}" rx="7" fill="rgba(10,6,26,.96)" stroke="rgba(251,191,36,.55)" stroke-width="1.5"/>`;
+    s += `<text x="${(bX+bW/2).toFixed(1)}" y="${(bY+15).toFixed(1)}" text-anchor="middle" fill="#fbbf24" font-size="7.5" font-weight="800" letter-spacing=".7">▲ PICO DE EXPOSIÇÃO</text>`;
+    s += `<text x="${(bX+bW/2).toFixed(1)}" y="${(bY+34).toFixed(1)}" text-anchor="middle" fill="#fbbf24" font-size="15" font-weight="900">${fmtBRL(maxExposure,true)}</text>`;
+    s += `<text x="${(bX+bW/2).toFixed(1)}" y="${(bY+49).toFixed(1)}" text-anchor="middle" fill="rgba(251,191,36,.55)" font-size="8">${peakDt}</text>`;
+
+    // ── Strip de eventos: 3 lanes (uma por ciclo) ──────────
+    // Rótulos das lanes
+    CYC_CLR.forEach((clr, ci) => {
+      const ly = laneY(ci);
+      s += `<circle cx="11" cy="${ly.toFixed(1)}" r="4.5" fill="${clr}" opacity=".88"/>`;
+      s += `<text x="20" y="${(ly+3.5).toFixed(1)}" fill="${clr}" font-size="8" font-weight="700">${CYC_NAME[ci]}</text>`;
+    });
+
+    // Dots de eventos
+    evts.forEach(ev => {
+      const ex   = tx(ev.t);
+      const ey   = laneY(ev.ci);
+      const isIn = ev.kind === 'in';
+      const clr  = isIn ? '#01E18E' : CYC_CLR[ev.ci];
+      const r    = isIn ? 5.5 : 4;
+
+      // Linha pontilhada descendo até o gráfico
+      s += `<line x1="${ex.toFixed(1)}" y1="${(ey+r+1).toFixed(1)}" x2="${ex.toFixed(1)}" y2="${(CHART_Y-1).toFixed(1)}" stroke="${clr}" stroke-width=".6" stroke-opacity=".3" stroke-dasharray="2,2"/>`;
+      if (isIn) {
+        s += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${r+5}" fill="${clr}" fill-opacity=".1" stroke="none"/>`;
+      }
+      s += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${r}" fill="${clr}" stroke="rgba(0,0,0,.45)" stroke-width="${isIn?1.5:1}" opacity="${isIn?1:.82}"/>`;
+    });
+
+    // Marcador de HOJE
+    const nowT = Date.now();
+    if (nowT >= minT && nowT <= maxT) {
+      const nx = tx(nowT);
+      s += `<line x1="${nx.toFixed(1)}" y1="${STRIP_Y}" x2="${nx.toFixed(1)}" y2="${CHART_BOT}" stroke="rgba(1,225,142,.45)" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+      s += `<rect x="${(nx-14).toFixed(1)}" y="${STRIP_Y}" width="28" height="11" rx="3" fill="rgba(1,225,142,.12)"/>`;
+      s += `<text x="${nx.toFixed(1)}" y="${(STRIP_Y+9).toFixed(1)}" text-anchor="middle" fill="rgba(1,225,142,.8)" font-size="7.5" font-weight="800">HOJE</text>`;
+    }
+
+    s += '</svg>';
+
+    // ── Tabela cronológica de eventos ────────────────────────
+    let runExp = 0;
+    let tbl = `
+<div style="margin-top:1.1rem;overflow-x:auto;">
+  <div style="font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--text-faint);margin-bottom:.6rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="display:inline-block;width:3px;height:12px;border-radius:2px;background:linear-gradient(to bottom,#fbbf24,#a855f7);flex-shrink:0;"></span>
+    Cronologia de Eventos — Todos os Ciclos
+  </div>
+  <table class="exp-table" style="min-width:680px;">
+    <thead><tr>
+      <th>Data</th>
+      <th>Ciclo</th>
+      <th>Evento</th>
+      <th style="text-align:right">Saída (−)</th>
+      <th style="text-align:right">Entrada (+)</th>
+      <th style="text-align:right">Exposição Acum.</th>
+    </tr></thead>
+    <tbody>`;
+
+    evts.forEach(ev => {
+      const isIn = ev.kind === 'in';
+      if (isIn) runExp = Math.max(0, runExp - ev.amount);
+      else      runExp += ev.amount;
+
+      const saida   = !isIn ? `<span class="td-red">- ${fmtBRL(ev.amount)}</span>` : '<span style="color:var(--text-faint)">—</span>';
+      const entrada = isIn  ? `<span class="td-money">+ ${fmtBRL(ev.amount)}</span>` : '<span style="color:var(--text-faint)">—</span>';
+      const isPeak  = runExp >= maxExposure * 0.98;
+      const expTxt  = runExp > 100
+        ? `<strong class="${isPeak ? 'td-yellow' : 'td-red'}" style="${isPeak?'text-decoration:underline dotted;':''}">${fmtBRL(runExp, true)}</strong>`
+        : '<span style="color:var(--text-faint)">—</span>';
+
+      tbl += `<tr>
+        <td>${fmtDateFull(new Date(ev.t))}</td>
+        <td><span class="cycle-dot c${ev.ci}"></span>${CYC_NAME[ev.ci]}</td>
+        <td style="color:${isIn ? '#01E18E' : CYC_CLR[ev.ci]}">${ev.label}</td>
+        <td style="text-align:right">${saida}</td>
+        <td style="text-align:right">${entrada}</td>
+        <td style="text-align:right">${expTxt}</td>
+      </tr>`;
+    });
+
+    tbl += `</tbody></table></div>`;
+
+    // Legenda do gráfico
+    const legendHtml = `
+<div style="display:flex;flex-wrap:wrap;gap:.5rem 1.2rem;margin-top:.8rem;margin-bottom:-.3rem;">
+  ${CYC_CLR.map((c,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${c};"></div>${CYC_NAME[i]}</div>`).join('')}
+  <div class="leg-item"><div class="leg-dot" style="background:rgba(251,191,36,.6);border-radius:1px;"></div>Total (pontilhado âmbar)</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#01E18E;border-radius:50%;"></div>Recebimento VDM</div>
+</div>`;
+
+    el.innerHTML = legendHtml + s + tbl;
   }
 </script>
 </body>
