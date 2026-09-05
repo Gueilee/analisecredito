@@ -2667,6 +2667,254 @@ Retorne APENAS um JSON válido (sem markdown, sem texto extra):
     return {"ok": True, "data": extracted, "result": contabil_result}
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  SCANNER INTELIGENTE DE DOCUMENTOS CONTÁBEIS
+# ══════════════════════════════════════════════════════════════════════════════
+
+_SCANNER_PROMPT = """Você é um especialista em contabilidade e análise financeira brasileira.
+
+Analise este documento financeiro e extraia todos os dados de Balanço Patrimonial (BP) e/ou DRE.
+
+INSTRUÇÕES OBRIGATÓRIAS:
+1. Preserve os nomes ORIGINAIS de cada conta exatamente como constam no documento
+2. Identifique os períodos (geralmente 2 colunas de valores — ex: 31/12/2024 e 31/12/2025)
+3. Valores entre parênteses são negativos — retorne como POSITIVOS (o sistema aplica o sinal)
+4. Se documento usa "em milhares" ou "em milhões", converta para valor real em Reais
+5. Mapeamento de campos Vendemmia:
+   - "disponibilidade": soma de caixa + bancos + equivalentes + aplicações financeiras CP
+   - "contas_receber": soma de todos os recebíveis de clientes
+   - "outros_ac": ativos circulantes restantes não classificados acima
+   - "outros_anc": inclua intangíveis, ágio, direitos LP não classificados
+   - "outros_pc": passivos circulantes restantes não classificados
+   - "outros_pnc": provisões, contingências e outros passivos LP
+6. Campo inexistente no documento → retorne null
+
+Retorne APENAS este JSON válido, sem markdown, sem texto adicional:
+
+{
+  "empresa": "nome completo ou null",
+  "cnpj": "XX.XXX.XXX/XXXX-XX ou null",
+  "tipo_documento": "BP" | "DRE" | "BP+DRE",
+  "periodos": ["período 1 como aparece no doc", "período 2 ou null"],
+  "periodo1_label": "dez/2024",
+  "periodo2_label": "dez/2025 ou null",
+  "dados_originais": {
+    "bp": {
+      "periodo1": {"Nome da Conta": valor_float},
+      "periodo2": {"Nome da Conta": valor_float}
+    },
+    "dre": {
+      "periodo1": {"Nome da Conta": valor_float},
+      "periodo2": {"Nome da Conta": valor_float}
+    }
+  },
+  "mapeamento": {
+    "bp1": {
+      "disponibilidade": float_ou_null, "contas_receber": float_ou_null,
+      "estoques": float_ou_null, "impostos_recuperar": float_ou_null,
+      "outros_ac": float_ou_null, "outros_creditos": float_ou_null,
+      "imobilizado": float_ou_null, "investimentos": float_ou_null,
+      "outros_anc": float_ou_null, "fornecedores": float_ou_null,
+      "adiantamento_clientes": float_ou_null, "impostos_pagar": float_ou_null,
+      "emprestimos_cp": float_ou_null, "outros_pc": float_ou_null,
+      "emprestimos_lp": float_ou_null, "outros_pnc": float_ou_null,
+      "patrimonio_liquido": float_ou_null
+    },
+    "bp2": {"disponibilidade": float_ou_null, "contas_receber": float_ou_null,
+      "estoques": float_ou_null, "impostos_recuperar": float_ou_null,
+      "outros_ac": float_ou_null, "outros_creditos": float_ou_null,
+      "imobilizado": float_ou_null, "investimentos": float_ou_null,
+      "outros_anc": float_ou_null, "fornecedores": float_ou_null,
+      "adiantamento_clientes": float_ou_null, "impostos_pagar": float_ou_null,
+      "emprestimos_cp": float_ou_null, "outros_pc": float_ou_null,
+      "emprestimos_lp": float_ou_null, "outros_pnc": float_ou_null,
+      "patrimonio_liquido": float_ou_null},
+    "dre1": {
+      "receita_bruta": float_ou_null, "deducoes": float_ou_null,
+      "receita_liquida": float_ou_null, "cpv": float_ou_null,
+      "lucro_bruto": float_ou_null, "despesas_operacionais": float_ou_null,
+      "ebitda": float_ou_null, "resultado_financeiro": float_ou_null,
+      "lucro_antes_ir": float_ou_null, "ir_csll": float_ou_null,
+      "lucro_liquido": float_ou_null
+    },
+    "dre2": {"receita_bruta": float_ou_null, "deducoes": float_ou_null,
+      "receita_liquida": float_ou_null, "cpv": float_ou_null,
+      "lucro_bruto": float_ou_null, "despesas_operacionais": float_ou_null,
+      "ebitda": float_ou_null, "resultado_financeiro": float_ou_null,
+      "lucro_antes_ir": float_ou_null, "ir_csll": float_ou_null,
+      "lucro_liquido": float_ou_null}
+  },
+  "alertas": [
+    "Disponibilidade = 'Caixa e equiv.' (R$X) + 'Aplicações financeiras' (R$Y)"
+  ],
+  "confianca": 0.95
+}"""
+
+
+def _scanner_excel_to_text(content: bytes, filename: str) -> str:
+    """Extrai texto tabular de XLSX/XLS para processamento pelo scanner."""
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+        lines = [f"Arquivo: {filename}"]
+        for sheet_name in wb.sheetnames[:6]:
+            ws = wb[sheet_name]
+            lines.append(f"\n=== Aba: {sheet_name} ===")
+            row_count = 0
+            for row in ws.iter_rows(values_only=True):
+                vals = []
+                for c in row:
+                    if c is None:
+                        vals.append("")
+                    elif isinstance(c, float) and c == int(c):
+                        vals.append(str(int(c)))
+                    else:
+                        vals.append(str(c))
+                line = "\t".join(vals)
+                if any(v.strip() for v in vals):
+                    lines.append(line)
+                    row_count += 1
+                    if row_count > 600:
+                        lines.append("... (truncado)")
+                        break
+        return "\n".join(lines)
+    except Exception as exc:
+        raise RuntimeError(f"Erro ao ler Excel: {exc}") from exc
+
+
+def _scanner_word_to_text(content: bytes) -> str:
+    """Extrai texto de DOCX via zipfile (sem python-docx)."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(content), 'r') as z:
+            if 'word/document.xml' not in z.namelist():
+                raise RuntimeError("DOCX inválido ou sem conteúdo.")
+            xml = z.read('word/document.xml').decode('utf-8', errors='replace')
+            xml = re.sub(r'<w:p[ >]', '\n', xml)
+            xml = re.sub(r'<w:tr[ >]', '\n', xml)
+            xml = re.sub(r'<w:tc[ >]', '\t', xml)
+            xml = re.sub(r'<[^>]+>', '', xml)
+            xml = re.sub(r'\n{3,}', '\n\n', xml).strip()
+            return xml
+    except zipfile.BadZipFile:
+        raise RuntimeError("Arquivo .doc antigo não é suportado. Converta para .docx.")
+
+
+def _anthropic_scanner(
+    content: bytes,
+    filename: str,
+    mode: str,
+    media_type: Optional[str],
+    anthropic_key: str,
+) -> dict:
+    """Chama Claude para extrair e mapear dados financeiros de qualquer documento."""
+    if mode in ('pdf', 'image'):
+        b64 = base64.standard_b64encode(content).decode('ascii')
+        if mode == 'pdf':
+            doc_block: dict = {
+                "type": "document",
+                "source": {"type": "base64", "media_type": "application/pdf", "data": b64},
+            }
+        else:
+            doc_block = {
+                "type": "image",
+                "source": {"type": "base64", "media_type": media_type or "image/jpeg", "data": b64},
+            }
+        messages = [{"role": "user", "content": [doc_block, {"type": "text", "text": _SCANNER_PROMPT}]}]
+    else:
+        text = _scanner_excel_to_text(content, filename) if mode == 'excel' else _scanner_word_to_text(content)
+        messages = [{"role": "user", "content": f"Arquivo: {filename}\n\n{text[:28000]}\n\n{_SCANNER_PROMPT}"}]
+
+    _MODELS = ["claude-sonnet-5", "claude-sonnet-4-5", "claude-haiku-4-5-20251001"]
+    last_err: Exception = RuntimeError("Nenhum modelo disponível.")
+
+    for model in _MODELS:
+        try:
+            hdrs = {
+                "x-api-key": anthropic_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            }
+            if mode == 'pdf':
+                hdrs["anthropic-beta"] = "pdfs-2024-09-25"
+
+            resp = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=hdrs,
+                json={"model": model, "max_tokens": 8192, "messages": messages},
+                timeout=180.0,
+            )
+            if resp.status_code == 200:
+                raw = resp.json()["content"][0]["text"]
+                parsed = _extract_json(raw)
+                if parsed and "mapeamento" in parsed:
+                    parsed["_model"] = model
+                    return parsed
+                last_err = RuntimeError(f"Resposta incompleta do modelo {model}")
+                continue
+            elif resp.status_code in (400, 404):
+                last_err = RuntimeError(f"Modelo {model} não disponível ({resp.status_code})")
+                continue
+            else:
+                raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:300]}")
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            last_err = exc
+            continue
+
+    raise last_err
+
+
+@app.post("/api/scanner/contabil")
+@limiter.limit("10/minute")
+async def scanner_contabil(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user=Depends(_get_current_user),
+):
+    """
+    Scanner inteligente de documentos contábeis.
+    Aceita PDF, XLSX, XLS, DOCX, JPG, PNG, WEBP.
+    Usa Claude (vision + document API) para extrair e mapear campos,
+    preservando a nomenclatura original do documento.
+    """
+    anthropic_key = _load_anthropic_key()
+    if not anthropic_key:
+        raise HTTPException(503, "Chave Anthropic não configurada.")
+
+    content = await file.read()
+    if len(content) > 25 * 1024 * 1024:
+        raise HTTPException(413, "Arquivo muito grande (máximo 25 MB).")
+    if not content:
+        raise HTTPException(400, "Arquivo vazio.")
+
+    filename = (file.filename or "documento").strip()
+    ext      = Path(filename).suffix.lower()
+    mime     = (file.content_type or "").lower()
+
+    if ext in ('.jpg', '.jpeg', '.png', '.webp') or mime.startswith('image/'):
+        mode       = 'image'
+        media_type: Optional[str] = mime if mime.startswith('image/') else f"image/{ext.lstrip('.').replace('jpg','jpeg')}"
+    elif ext == '.pdf' or 'pdf' in mime:
+        mode, media_type = 'pdf', 'application/pdf'
+    elif ext in ('.xlsx', '.xls') or 'spreadsheet' in mime or 'excel' in mime:
+        mode, media_type = 'excel', None
+    elif ext in ('.docx', '.doc') or 'word' in mime:
+        mode, media_type = 'word', None
+    else:
+        mode, media_type = 'pdf', 'application/pdf'
+
+    try:
+        result = await asyncio.to_thread(
+            _anthropic_scanner, content, filename, mode, media_type, anthropic_key
+        )
+    except RuntimeError as exc:
+        raise HTTPException(422, str(exc))
+    except Exception as exc:
+        raise HTTPException(500, f"Erro interno: {str(exc)[:200]}")
+
+    return result
+
+
 @app.post("/api/contabil/calcular")
 @limiter.limit("60/minute")
 async def contabil_calcular(request: Request, current_user=Depends(_get_current_user)):

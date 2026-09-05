@@ -573,6 +573,123 @@
     .confirm-btn-ok.danger { background: var(--red); color: #fff; }
     .confirm-btn-ok:hover { opacity: .88; }
 
+    /* ── Scanner de Documentos ──────────────────────────── */
+    .ctbl-scanner-wrap {
+      margin: -.25rem -.25rem .85rem;
+      border-radius: 10px 10px 0 0;
+      overflow: hidden;
+      border-bottom: 1px solid rgba(124,58,237,.18);
+    }
+    .ctbl-drop-zone {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: .55rem;
+      padding: 1.5rem 1rem;
+      background: rgba(124,58,237,.04);
+      border: 2px dashed rgba(124,58,237,.25);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+      text-align: center;
+    }
+    .ctbl-drop-zone:hover, .ctbl-drop-zone.drag-over {
+      background: rgba(124,58,237,.1);
+      border-color: rgba(124,58,237,.5);
+    }
+    .ctbl-drop-icon { color: rgba(124,58,237,.5); }
+    .ctbl-drop-title { font-size: .82rem; font-weight: 700; color: var(--text-secondary); }
+    .ctbl-drop-sub   { font-size: .71rem; color: var(--text-faint); line-height: 1.5; }
+    .ctbl-drop-types { display: flex; gap: .45rem; flex-wrap: wrap; justify-content: center; margin-top: .15rem; }
+    .ctbl-type-pill  {
+      font-size: .62rem; font-weight: 700; padding: .12rem .5rem; border-radius: 20px;
+      background: rgba(124,58,237,.12); color: var(--purple-light); border: 1px solid rgba(124,58,237,.2);
+    }
+
+    .ctbl-scan-progress {
+      display: flex; align-items: center; gap: .8rem;
+      padding: 1rem 1.2rem;
+      background: rgba(124,58,237,.06);
+      border-radius: 10px;
+    }
+    .ctbl-scan-spinner {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2.5px solid rgba(124,58,237,.2);
+      border-top-color: var(--purple-light);
+      animation: spin .8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ctbl-scan-msg { font-size: .8rem; color: var(--text-secondary); flex: 1; }
+
+    .ctbl-scan-result {
+      border-radius: 10px;
+      border: 1px solid rgba(124,58,237,.2);
+      overflow: hidden;
+    }
+    .ctbl-scan-result-hd {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .7rem 1rem;
+      background: rgba(124,58,237,.1);
+      border-bottom: 1px solid rgba(124,58,237,.15);
+      flex-wrap: wrap; row-gap: .3rem;
+    }
+    .ctbl-scan-empresa { font-size: .82rem; font-weight: 700; color: var(--text-primary); flex: 1; min-width: 120px; }
+    .ctbl-scan-confianca {
+      font-size: .68rem; font-weight: 700; padding: .15rem .55rem; border-radius: 20px;
+    }
+    .ctbl-scan-confianca.alta  { background: rgba(1,225,142,.12); color: var(--brand-neon-green); border: 1px solid rgba(1,225,142,.3); }
+    .ctbl-scan-confianca.media { background: rgba(245,158,11,.1);  color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
+    .ctbl-scan-confianca.baixa { background: rgba(239,68,68,.1);   color: var(--red);  border: 1px solid rgba(239,68,68,.3); }
+
+    .ctbl-scan-tabs { display: flex; gap: .3rem; padding: .6rem 1rem 0; background: rgba(0,0,0,.08); }
+    .ctbl-scan-tab  {
+      padding: .3rem .75rem; font-size: .72rem; font-weight: 700;
+      border-radius: 6px 6px 0 0; cursor: pointer; color: var(--text-faint);
+      background: transparent; border: none; font-family: inherit;
+      transition: background .15s, color .15s;
+    }
+    .ctbl-scan-tab.active { background: rgba(255,255,255,.08); color: var(--text-primary); }
+    .ctbl-scan-tab:hover:not(.active) { color: var(--text-secondary); }
+
+    .ctbl-scan-body { padding: .85rem 1rem; max-height: 340px; overflow-y: auto; }
+    .ctbl-orig-table { width: 100%; border-collapse: collapse; font-size: .77rem; }
+    .ctbl-orig-table th { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-faint); padding: .3rem .5rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); white-space: nowrap; }
+    .ctbl-orig-table td { padding: .32rem .5rem; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text-secondary); }
+    .ctbl-orig-table td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+    .ctbl-orig-table td.arrow { text-align: center; color: var(--purple-light); font-size: .8rem; }
+    .ctbl-orig-table td.mapped { font-size: .7rem; color: rgba(168,85,247,.8); font-style: italic; }
+    .ctbl-orig-table tr:last-child td { border-bottom: none; }
+
+    .ctbl-alertas {
+      padding: .65rem .85rem; margin: .5rem 0 0;
+      background: rgba(245,158,11,.06); border-radius: 7px;
+      border-left: 3px solid rgba(245,158,11,.5);
+    }
+    .ctbl-alertas-title { font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #f59e0b; margin-bottom: .35rem; }
+    .ctbl-alerta-item { font-size: .72rem; color: var(--text-secondary); margin-bottom: .2rem; line-height: 1.5; }
+    .ctbl-alerta-item::before { content: '⚠ '; }
+
+    .ctbl-scan-actions {
+      display: flex; align-items: center; gap: .6rem; padding: .75rem 1rem;
+      background: rgba(0,0,0,.1);
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .ctbl-scan-apply {
+      display: flex; align-items: center; gap: .5rem;
+      background: linear-gradient(135deg,#7c3aed,#a855f7);
+      color: #fff; border: none; border-radius: 8px;
+      padding: .5rem 1.1rem; font-size: .8rem; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      transition: opacity .15s;
+    }
+    .ctbl-scan-apply:hover { opacity: .88; }
+    .ctbl-scan-new {
+      background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+      color: var(--text-secondary); border-radius: 8px;
+      padding: .5rem .9rem; font-size: .78rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: background .15s;
+    }
+    .ctbl-scan-new:hover { background: rgba(255,255,255,.11); }
+
     /* ── Análise Contábil ────────────────────────────────── */
     .ctbl-periods {
       display: grid; grid-template-columns: 1fr 1fr; gap: .5rem;
@@ -957,10 +1074,73 @@
                 <span class="card-title">Análise Contábil</span>
               </div>
               <div class="fin-actions">
-                <button class="btn-fin-extract" id="btn-contabil-extrair" onclick="runContabilExtracao()">
-                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 2h6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Extrair dos Documentos
+                <button class="btn-fin-extract" onclick="ctblScannerToggle()" id="btn-scanner-toggle">
+                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  Scanner de Documentos
                 </button>
+                <button class="btn-fin-extract" id="btn-contabil-extrair" onclick="runContabilExtracao()" style="opacity:.7;font-size:.7rem;">
+                  <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                  Extrair Enviados
+                </button>
+              </div>
+            </div>
+
+            <!-- ── Scanner Panel ── -->
+            <div id="ctbl-scanner-panel" style="display:none;margin-bottom:.9rem;">
+              <!-- Drop Zone -->
+              <div id="ctbl-drop-zone" class="ctbl-drop-zone"
+                   onclick="document.getElementById('ctbl-file-input').click()"
+                   ondragover="ctblScannerDragOver(event)"
+                   ondragleave="ctblScannerDragLeave(event)"
+                   ondrop="ctblScannerDrop(event)">
+                <svg class="ctbl-drop-icon" viewBox="0 0 24 24" fill="none" width="36" height="36">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.5"/>
+                  <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M12 12v5M9 14l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="ctbl-drop-title">Arraste o documento ou clique para selecionar</div>
+                <div class="ctbl-drop-sub">Balanço Patrimonial, DRE ou documento combinado.<br>O scanner lê a nomenclatura original e mapeia automaticamente.</div>
+                <div class="ctbl-drop-types">
+                  <span class="ctbl-type-pill">PDF</span>
+                  <span class="ctbl-type-pill">Excel</span>
+                  <span class="ctbl-type-pill">Word</span>
+                  <span class="ctbl-type-pill">JPG / PNG</span>
+                </div>
+                <input type="file" id="ctbl-file-input" style="display:none"
+                       accept=".pdf,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png,.webp"
+                       onchange="ctblScannerFileChange(event)">
+              </div>
+              <!-- Progress -->
+              <div id="ctbl-scan-progress" style="display:none;" class="ctbl-scan-progress">
+                <div class="ctbl-scan-spinner"></div>
+                <div class="ctbl-scan-msg" id="ctbl-scan-msg-text">Lendo documento…</div>
+              </div>
+              <!-- Result -->
+              <div id="ctbl-scan-result" style="display:none;" class="ctbl-scan-result">
+                <div class="ctbl-scan-result-hd">
+                  <svg viewBox="0 0 24 24" fill="none" width="15" height="15" style="color:var(--brand-neon-green);flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span class="ctbl-scan-empresa" id="ctbl-scan-empresa-lbl">—</span>
+                  <span id="ctbl-scan-periodos-lbl" style="font-size:.72rem;color:var(--text-muted);">—</span>
+                  <span class="ctbl-scan-confianca" id="ctbl-scan-confianca-badge">—</span>
+                </div>
+                <div class="ctbl-scan-tabs">
+                  <button class="ctbl-scan-tab active" onclick="ctblScannerTab('original',this)">Dados Originais</button>
+                  <button class="ctbl-scan-tab" onclick="ctblScannerTab('mapeamento',this)">Mapeamento</button>
+                  <button class="ctbl-scan-tab" onclick="ctblScannerTab('alertas',this)">Alertas</button>
+                </div>
+                <div class="ctbl-scan-body">
+                  <div id="ctbl-tab-original"></div>
+                  <div id="ctbl-tab-mapeamento" style="display:none;"></div>
+                  <div id="ctbl-tab-alertas" style="display:none;"></div>
+                </div>
+                <div class="ctbl-scan-actions">
+                  <button class="ctbl-scan-apply" onclick="ctblScannerApply()">
+                    <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M5 12l5 5L20 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Aplicar ao Formulário
+                  </button>
+                  <button class="ctbl-scan-new" onclick="ctblScannerReset()">Novo Scanner</button>
+                  <button class="ctbl-scan-new" onclick="ctblScannerToggle()" style="margin-left:auto;">Fechar</button>
+                </div>
               </div>
             </div>
 
@@ -3840,6 +4020,298 @@ function _ctblPopulateFields(raw) {
 }
 
 // ── Extração principal ────────────────────────────────────────────────────────
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCANNER INTELIGENTE DE DOCUMENTOS CONTÁBEIS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+let _ctblScannerOpen  = false;
+let _ctblLastScanData = null;
+
+const _BP_FIELD_LABELS = {
+  disponibilidade:'Disponibilidade', contas_receber:'Contas a Receber',
+  estoques:'Estoques', impostos_recuperar:'Impostos a Recuperar',
+  outros_ac:'Outros Ativos Circ.', outros_creditos:'Outros Créd./Realizável LP',
+  imobilizado:'Imobilizado', investimentos:'Investimentos', outros_anc:'Outros ANC',
+  fornecedores:'Fornecedores', adiantamento_clientes:'Adiantamento Clientes',
+  impostos_pagar:'Impostos a Pagar', emprestimos_cp:'Empréstimos CP',
+  outros_pc:'Outros Passivos Circ.', emprestimos_lp:'Empréstimos LP',
+  outros_pnc:'Outros Passivos NC', patrimonio_liquido:'Patrimônio Líquido',
+};
+const _DRE_FIELD_LABELS = {
+  receita_bruta:'Receita Bruta', deducoes:'(−) Deduções',
+  receita_liquida:'Receita Líquida', cpv:'(−) CPV / CSV',
+  lucro_bruto:'Lucro Bruto', despesas_operacionais:'(−) Despesas Operac.',
+  ebitda:'EBITDA', resultado_financeiro:'Resultado Financeiro',
+  lucro_antes_ir:'Lucro Antes IR', ir_csll:'(−) IR / CSLL',
+  lucro_liquido:'Lucro Líquido',
+};
+
+function _scanFmt(v) {
+  if (v == null) return '<span style="color:var(--text-faint)">—</span>';
+  const n = Math.round(v);
+  const abs = Math.abs(n).toLocaleString('pt-BR');
+  return (n < 0 ? '<span style="color:var(--red)">- R$ ' : 'R$ ') + abs + (n < 0 ? '</span>' : '');
+}
+
+function ctblScannerToggle() {
+  const panel = document.getElementById('ctbl-scanner-panel');
+  const btn   = document.getElementById('btn-scanner-toggle');
+  _ctblScannerOpen = !_ctblScannerOpen;
+  panel.style.display = _ctblScannerOpen ? '' : 'none';
+  if (btn) btn.style.background = _ctblScannerOpen ? 'rgba(124,58,237,.2)' : '';
+  if (_ctblScannerOpen) ctblScannerReset();
+}
+
+function ctblScannerReset() {
+  document.getElementById('ctbl-drop-zone').style.display = '';
+  document.getElementById('ctbl-scan-progress').style.display = 'none';
+  document.getElementById('ctbl-scan-result').style.display   = 'none';
+  document.getElementById('ctbl-file-input').value = '';
+  _ctblLastScanData = null;
+}
+
+function ctblScannerDragOver(ev) {
+  ev.preventDefault();
+  document.getElementById('ctbl-drop-zone').classList.add('drag-over');
+}
+function ctblScannerDragLeave(ev) {
+  document.getElementById('ctbl-drop-zone').classList.remove('drag-over');
+}
+function ctblScannerDrop(ev) {
+  ev.preventDefault();
+  document.getElementById('ctbl-drop-zone').classList.remove('drag-over');
+  const files = ev.dataTransfer?.files;
+  if (files && files.length > 0) ctblScannerRun(files[0]);
+}
+function ctblScannerFileChange(ev) {
+  const file = ev.target.files[0];
+  if (file) ctblScannerRun(file);
+}
+
+function ctblScannerTab(name, btn) {
+  ['original','mapeamento','alertas'].forEach(t => {
+    document.getElementById(`ctbl-tab-${t}`).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.ctbl-scan-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function ctblScannerRun(file) {
+  // Mostrar progress, ocultar drop zone
+  document.getElementById('ctbl-drop-zone').style.display  = 'none';
+  document.getElementById('ctbl-scan-progress').style.display = '';
+  document.getElementById('ctbl-scan-result').style.display  = 'none';
+
+  const msgs = ['Lendo documento…', 'Identificando estrutura…', 'Mapeando campos contábeis…', 'Finalizando…'];
+  let mi = 0;
+  const msgEl = document.getElementById('ctbl-scan-msg-text');
+  const msgTimer = setInterval(() => { mi = (mi + 1) % msgs.length; msgEl.textContent = msgs[mi]; }, 3500);
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+
+    const res = await fetch(`${API_URL}/api/scanner/contabil`, {
+      method: 'POST',
+      credentials: 'include',
+      body: fd,
+    });
+
+    clearInterval(msgTimer);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    _ctblLastScanData = data;
+    ctblScannerShowResult(data);
+
+  } catch (e) {
+    clearInterval(msgTimer);
+    document.getElementById('ctbl-scan-progress').style.display = 'none';
+    document.getElementById('ctbl-drop-zone').style.display = '';
+    showToast('Scanner falhou: ' + e.message, 'error');
+  }
+}
+
+function ctblScannerShowResult(data) {
+  document.getElementById('ctbl-scan-progress').style.display = 'none';
+  document.getElementById('ctbl-scan-result').style.display   = '';
+
+  // Header
+  const empresa = data.empresa || 'Documento';
+  const p1l = data.periodo1_label || '—';
+  const p2l = data.periodo2_label;
+  const conf = Math.round((data.confianca || 0) * 100);
+  const confCls = conf >= 85 ? 'alta' : conf >= 65 ? 'media' : 'baixa';
+
+  document.getElementById('ctbl-scan-empresa-lbl').textContent  = empresa;
+  document.getElementById('ctbl-scan-periodos-lbl').textContent = p2l ? `${p1l} · ${p2l}` : p1l;
+  const badge = document.getElementById('ctbl-scan-confianca-badge');
+  badge.textContent  = conf + '% confiança';
+  badge.className    = `ctbl-scan-confianca ${confCls}`;
+
+  // ── Tab: Dados Originais ──────────────────────────────────────────────────
+  const buildOriginalTab = () => {
+    const dorig = data.dados_originais || {};
+    let html = '';
+
+    const buildSection = (sectionData, title) => {
+      if (!sectionData) return '';
+      const p1 = sectionData.periodo1 || {};
+      const p2 = sectionData.periodo2 || {};
+      const allKeys = [...new Set([...Object.keys(p1), ...Object.keys(p2)])];
+      if (!allKeys.length) return '';
+
+      let s = `<div style="font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:rgba(124,58,237,.7);padding:.5rem 0 .3rem;border-top:1px solid rgba(255,255,255,.07);margin-top:.4rem;">${title}</div>`;
+      s += `<table class="ctbl-orig-table"><thead><tr>
+        <th style="width:55%">Conta Original do Documento</th>
+        <th style="text-align:right">${p1l}</th>
+        ${p2l ? `<th style="text-align:right">${p2l}</th>` : ''}
+      </tr></thead><tbody>`;
+      allKeys.forEach(k => {
+        const v1 = p1[k]; const v2 = p2[k];
+        s += `<tr>
+          <td>${k}</td>
+          <td class="num">${_scanFmt(v1)}</td>
+          ${p2l ? `<td class="num">${_scanFmt(v2)}</td>` : ''}
+        </tr>`;
+      });
+      s += '</tbody></table>';
+      return s;
+    };
+
+    html += buildSection(dorig.bp,  'Balanço Patrimonial');
+    html += buildSection(dorig.dre, 'DRE — Demonstração do Resultado');
+    if (!html) html = '<p style="color:var(--text-faint);font-size:.78rem;">Dados originais não disponíveis.</p>';
+    document.getElementById('ctbl-tab-original').innerHTML = html;
+  };
+
+  // ── Tab: Mapeamento ───────────────────────────────────────────────────────
+  const buildMapeamentoTab = () => {
+    const m = data.mapeamento || {};
+    let html = '';
+
+    const buildMapSection = (labels, f1key, f2key, title) => {
+      const f1 = m[f1key] || {}; const f2 = m[f2key] || {};
+      const hasAny = Object.values(f1).some(v => v != null) || Object.values(f2).some(v => v != null);
+      if (!hasAny) return '';
+      let s = `<div style="font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:rgba(124,58,237,.7);padding:.5rem 0 .3rem;border-top:1px solid rgba(255,255,255,.07);margin-top:.4rem;">${title}</div>`;
+      s += `<table class="ctbl-orig-table"><thead><tr>
+        <th style="width:52%">Campo Vendemmia</th>
+        <th style="text-align:right">${p1l}</th>
+        ${p2l ? `<th style="text-align:right">${p2l}</th>` : ''}
+      </tr></thead><tbody>`;
+      Object.entries(labels).forEach(([key, label]) => {
+        const v1 = f1[key]; const v2 = f2[key];
+        if (v1 == null && v2 == null) return;
+        const isTotal = ['patrimonio_liquido','lucro_liquido'].includes(key);
+        s += `<tr ${isTotal ? 'style="font-weight:700;border-top:1px solid rgba(255,255,255,.1)"' : ''}>
+          <td style="color:${isTotal ? 'var(--text-primary)' : 'rgba(168,85,247,.85)'}">${label}</td>
+          <td class="num">${_scanFmt(v1)}</td>
+          ${p2l ? `<td class="num">${_scanFmt(v2)}</td>` : ''}
+        </tr>`;
+      });
+      s += '</tbody></table>';
+      return s;
+    };
+
+    html += buildMapSection(_BP_FIELD_LABELS,  'bp1', 'bp2',   'Balanço Patrimonial');
+    html += buildMapSection(_DRE_FIELD_LABELS, 'dre1','dre2',  'DRE — Demonstração do Resultado');
+    if (!html) html = '<p style="color:var(--text-faint);font-size:.78rem;">Mapeamento não disponível.</p>';
+    document.getElementById('ctbl-tab-mapeamento').innerHTML = html;
+  };
+
+  // ── Tab: Alertas ──────────────────────────────────────────────────────────
+  const buildAlertasTab = () => {
+    const alertas = data.alertas || [];
+    const model   = data._model || '';
+    let html = '';
+    if (alertas.length) {
+      html += '<div class="ctbl-alertas"><div class="ctbl-alertas-title">Agrupamentos e Premissas</div>';
+      alertas.forEach(a => { html += `<div class="ctbl-alerta-item">${a}</div>`; });
+      html += '</div>';
+    } else {
+      html += '<p style="color:var(--text-faint);font-size:.78rem;padding:.5rem 0;">Nenhum alerta — mapeamento direto para todos os campos.</p>';
+    }
+    if (model) html += `<div style="margin-top:.7rem;font-size:.65rem;color:var(--text-faint);">Modelo: ${model} · tipo: ${data.tipo_documento || '—'}</div>`;
+    document.getElementById('ctbl-tab-alertas').innerHTML = html;
+  };
+
+  buildOriginalTab();
+  buildMapeamentoTab();
+  buildAlertasTab();
+
+  // Ativa primeira aba
+  ctblScannerTab('original', document.querySelectorAll('.ctbl-scan-tab')[0]);
+}
+
+function ctblScannerApply() {
+  if (!_ctblLastScanData?.mapeamento) {
+    showToast('Nenhum resultado de scanner. Execute o scanner primeiro.', 'error');
+    return;
+  }
+
+  const m  = _ctblLastScanData.mapeamento;
+  const p1 = _ctblLastScanData.periodo1_label || '';
+  const p2 = _ctblLastScanData.periodo2_label || '';
+
+  // Labels dos períodos
+  const p1El = document.getElementById('ctbl-p1-label');
+  const p2El = document.getElementById('ctbl-p2-label');
+  if (p1El && p1) p1El.value = p1;
+  if (p2El)       p2El.value = p2;
+
+  // Preenche BP
+  Object.keys(_BP_FIELD_LABELS).forEach(field => {
+    const v1 = m.bp1?.[field]; const v2 = m.bp2?.[field];
+    const e1 = document.getElementById(`bp1-${field}`);
+    const e2 = document.getElementById(`bp2-${field}`);
+    if (e1) e1.value = v1 != null ? Math.round(v1).toLocaleString('pt-BR') : '';
+    if (e2) e2.value = v2 != null ? Math.round(v2).toLocaleString('pt-BR') : '';
+  });
+
+  // Preenche DRE
+  Object.keys(_DRE_FIELD_LABELS).forEach(field => {
+    const v1 = m.dre1?.[field]; const v2 = m.dre2?.[field];
+    const e1 = document.getElementById(`dre1-${field}`);
+    const e2 = document.getElementById(`dre2-${field}`);
+    if (e1) e1.value = v1 != null ? Math.round(v1).toLocaleString('pt-BR') : '';
+    if (e2) e2.value = v2 != null ? Math.round(v2).toLocaleString('pt-BR') : '';
+  });
+
+  // Exibe o corpo do formulário
+  const hint = document.getElementById('contabil-hint');
+  if (hint) hint.style.display = 'none';
+  document.getElementById('contabil-body').style.display = '';
+
+  // Aviso 2 períodos
+  const hasBoth = p2 && Object.values(m.bp2 || {}).some(v => v != null);
+  const warn = document.getElementById('contabil-warn-periodo');
+  if (warn) warn.style.display = hasBoth ? 'none' : '';
+
+  // Recalcular indicadores
+  ctblCalc();
+
+  // Persistir no localStorage
+  if (sol) {
+    const data = _ctblReadData();
+    sol.contabil_data = data;
+    DB.solicitacoes.save(sol);
+  }
+
+  // Fecha scanner e mostra toast
+  ctblScannerToggle();
+  showToast('Dados aplicados! Revise os valores e salve.', 'success');
+
+  // Re-rodar análise de IA
+  if (!_fullAnalysisRunning && typeof runAnalysis === 'function') {
+    setTimeout(() => runAnalysis(), 1000);
+  }
+}
 
 async function runContabilExtracao() {
   if (!sol || !sol.id) { showToast('Solicitação não carregada.', 'error'); return; }
