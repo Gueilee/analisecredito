@@ -4060,7 +4060,61 @@ function ctblScannerToggle() {
   _ctblScannerOpen = !_ctblScannerOpen;
   panel.style.display = _ctblScannerOpen ? '' : 'none';
   if (btn) btn.style.background = _ctblScannerOpen ? 'rgba(124,58,237,.2)' : '';
-  if (_ctblScannerOpen) ctblScannerReset();
+
+  if (_ctblScannerOpen) {
+    ctblScannerReset();
+    // Se há solicitação carregada, busca docs já anexados automaticamente
+    if (sol?.id) {
+      ctblScannerRunFromSol(sol.id);
+    }
+  }
+}
+
+async function ctblScannerRunFromSol(solId) {
+  document.getElementById('ctbl-drop-zone').style.display     = 'none';
+  document.getElementById('ctbl-scan-progress').style.display = '';
+  document.getElementById('ctbl-scan-result').style.display   = 'none';
+
+  const msgs = ['Buscando documentos da solicitação…', 'Lendo arquivos anexados…', 'Mapeando campos contábeis…', 'Finalizando…'];
+  let mi = 0;
+  const msgEl   = document.getElementById('ctbl-scan-msg-text');
+  msgEl.textContent = msgs[0];
+  const msgTimer = setInterval(() => { mi = (mi + 1) % msgs.length; msgEl.textContent = msgs[mi]; }, 3500);
+
+  try {
+    const res = await fetch(`${API_URL}/api/scanner/contabil/${solId}`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    clearInterval(msgTimer);
+
+    if (res.status === 404) {
+      // Sem docs anexados → abre drop zone com texto ajustado
+      document.getElementById('ctbl-scan-progress').style.display = 'none';
+      document.getElementById('ctbl-drop-zone').style.display = '';
+      const t = document.querySelector('#ctbl-drop-zone .ctbl-drop-title');
+      const s = document.querySelector('#ctbl-drop-zone .ctbl-drop-sub');
+      if (t) t.textContent = 'Nenhum documento encontrado nesta solicitação';
+      if (s) s.innerHTML  = 'Arraste um Balanço Patrimonial ou DRE aqui,<br>ou clique para selecionar o arquivo manualmente.';
+      return;
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    _ctblLastScanData = data;
+    ctblScannerShowResult(data);
+
+  } catch (e) {
+    clearInterval(msgTimer);
+    document.getElementById('ctbl-scan-progress').style.display = 'none';
+    document.getElementById('ctbl-drop-zone').style.display = '';
+    showToast('Scanner falhou: ' + e.message, 'error');
+  }
 }
 
 function ctblScannerReset() {

@@ -2915,6 +2915,114 @@ async def scanner_contabil(
     return result
 
 
+def _anthropic_scanner_multi(file_list: list[tuple[bytes, str]], anthropic_key: str) -> dict:
+    """Scanner para múltiplos arquivos já armazenados (ex: documentos da solicitação)."""
+    import mimetypes
+    content_blocks: list[dict] = []
+    text_parts: list[str] = []
+    needs_pdf_header = False
+
+    for file_bytes, filename in file_list:
+        ext  = Path(filename).suffix.lower()
+        mime = mimetypes.guess_type(filename)[0] or ''
+        b64  = base64.standard_b64encode(file_bytes).decode('ascii')
+
+        if ext in ('.jpg', '.jpeg', '.png', '.webp') or mime.startswith('image/'):
+            media = mime if mime.startswith('image/') else f"image/{ext.lstrip('.').replace('jpg','jpeg')}"
+            content_blocks.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": b64}})
+        elif ext == '.pdf' or 'pdf' in mime:
+            content_blocks.append({"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}})
+            needs_pdf_header = True
+        elif ext in ('.xlsx', '.xls') or 'spreadsheet' in mime or 'excel' in mime:
+            text_parts.append(_scanner_excel_to_text(file_bytes, filename))
+        elif ext in ('.docx', '.doc') or 'word' in mime:
+            text_parts.append(_scanner_word_to_text(file_bytes))
+        else:
+            content_blocks.append({"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}})
+            needs_pdf_header = True
+
+    if content_blocks:
+        if text_parts:
+            combined_text = "\n\n---\n\n".join(text_parts)
+            content_blocks.append({"type": "text", "text": f"Conteúdo adicional:\n{combined_text[:10000]}"})
+        content_blocks.append({"type": "text", "text": _SCANNER_PROMPT})
+        messages = [{"role": "user", "content": content_blocks}]
+    elif text_parts:
+        combined_text = "\n\n---\n\n".join(text_parts)
+        messages = [{"role": "user", "content": f"{combined_text[:28000]}\n\n{_SCANNER_PROMPT}"}]
+    else:
+        raise RuntimeError("Nenhum arquivo processável.")
+
+    _MODELS = ["claude-sonnet-5", "claude-sonnet-4-5", "claude-haiku-4-5-20251001"]
+    last_err: Exception = RuntimeError("Nenhum modelo disponível.")
+    for model in _MODELS:
+        try:
+            hdrs = {"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+            if needs_pdf_header:
+                hdrs["anthropic-beta"] = "pdfs-2024-09-25"
+            resp = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=hdrs,
+                json={"model": model, "max_tokens": 8192, "messages": messages},
+                timeout=180.0,
+            )
+            if resp.status_code == 200:
+                raw = resp.json()["content"][0]["text"]
+                parsed = _extract_json(raw)
+                if parsed and "mapeamento" in parsed:
+                    parsed["_model"] = model
+                    return parsed
+                last_err = RuntimeError(f"Resposta incompleta do modelo {model}")
+                continue
+            elif resp.status_code in (400, 404):
+                last_err = RuntimeError(f"Modelo {model} não disponível ({resp.status_code})")
+                continue
+            else:
+                raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:300]}")
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            last_err = exc
+            continue
+    raise last_err
+
+
+@app.post("/api/scanner/contabil/{sol_id}")
+@limiter.limit("10/minute")
+async def scanner_contabil_by_sol(
+    request: Request,
+    sol_id: str,
+    current_user=Depends(_get_current_user),
+):
+    """Scanner sobre os documentos já anexados na solicitação (sem novo upload)."""
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID de solicitação inválido.")
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não disponível.")
+
+    anthropic_key = _load_anthropic_key()
+    if not anthropic_key:
+        raise HTTPException(503, "Chave Anthropic não configurada.")
+
+    rows = await _turso_query(
+        "SELECT nome, content FROM ac_documents WHERE sol_id=? AND tipo IN ('balanco','dre') ORDER BY tipo, nome",
+        [sol_id],
+    )
+    if not rows:
+        raise HTTPException(404, "Nenhum documento de Balanço ou DRE encontrado nesta solicitação.")
+
+    file_list = [(base64.standard_b64decode(r["content"]), r["nome"]) for r in rows]
+
+    try:
+        result = await asyncio.to_thread(_anthropic_scanner_multi, file_list, anthropic_key)
+    except RuntimeError as exc:
+        raise HTTPException(422, str(exc))
+    except Exception as exc:
+        raise HTTPException(500, f"Erro interno: {str(exc)[:200]}")
+
+    return result
+
+
 @app.post("/api/contabil/calcular")
 @limiter.limit("60/minute")
 async def contabil_calcular(request: Request, current_user=Depends(_get_current_user)):
