@@ -1342,7 +1342,29 @@
 
     const { pts, maxExposure, peakTime, minT, maxT } = curve;
     const span   = maxT - minT;
-    const maxExp = maxExposure || 1;
+
+    // ── Curva de Exposição de Seguro de Crédito ─────────────────
+    // Seguro em risco = valor faturado não recebido (entre dFat e dRec de cada ciclo)
+    const insEvts = [];
+    cycles.forEach(c => {
+      const fatVal = c.fob + c.desp + c.imp;
+      insEvts.push({ t: c.dFat.getTime(), delta:  fatVal });
+      insEvts.push({ t: c.dRec.getTime(), delta: -fatVal });
+    });
+    insEvts.sort((a, b) => a.t - b.t);
+    let _insRun = 0;
+    const insPts = [{ t: minT, v: 0 }];
+    insEvts.forEach(ev => {
+      insPts.push({ t: ev.t, v: _insRun });
+      _insRun = Math.max(0, _insRun + ev.delta);
+      insPts.push({ t: ev.t, v: _insRun });
+    });
+    insPts.push({ t: maxT, v: 0 });
+    const maxIns   = Math.max(...insPts.map(p => p.v), 0);
+    const insPeakV = maxIns;
+    const insPeakT = insPts.find(p => p.v === maxIns)?.t ?? minT;
+
+    const maxExp = Math.max(maxExposure || 1, maxIns || 1);
 
     function tx(t)   { return PAD_L + (t - minT) / span * CW; }
     function ty(v)   { return CHART_BOT - Math.max(0, v) / maxExp * CHART_H; }
@@ -1362,6 +1384,10 @@
       evts.push({
         t: c.dRec.getTime(), ci, kind: 'in',
         label: 'Recebimento VDM', amount: c.fob + c.desp + c.imp
+      });
+      evts.push({
+        t: c.dFat.getTime(), ci, kind: 'fat',
+        label: 'Faturamento', amount: c.fob + c.desp + c.imp
       });
     });
     evts.sort((a, b) => a.t - b.t);
@@ -1444,6 +1470,33 @@
     }).join(' ');
     s += `<polyline points="${totalLine}" fill="none" stroke="rgba(251,191,36,.45)" stroke-width="1.2" stroke-dasharray="5,3" stroke-linejoin="round"/>`;
 
+    // ── Linha de Exposição de Seguro de Crédito (laranja sólido) ──
+    if (maxIns > 0) {
+      // Área de preenchimento suave (laranja muito transparente)
+      const insAreaTop = insPts.map(p => `${tx(p.t).toFixed(1)},${ty(p.v).toFixed(1)}`);
+      const insAreaBot = [...insPts].reverse().map(p => `${tx(p.t).toFixed(1)},${CHART_BOT}`);
+      s += `<polygon points="${[...insAreaTop, ...insAreaBot].join(' ')}" fill="rgba(249,115,22,.07)" stroke="none"/>`;
+      // Linha principal laranja
+      const insLine = insPts.map(p => `${tx(p.t).toFixed(1)},${ty(p.v).toFixed(1)}`).join(' ');
+      s += `<polyline points="${insLine}" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="miter" stroke-linecap="round" opacity=".92"/>`;
+      // Pico do seguro
+      const ipX = tx(insPeakT);
+      const ipY = ty(insPeakV);
+      s += `<circle cx="${ipX.toFixed(1)}" cy="${ipY.toFixed(1)}" r="8" fill="rgba(249,115,22,.15)" stroke="rgba(249,115,22,.4)" stroke-width="1.2"/>`;
+      s += `<circle cx="${ipX.toFixed(1)}" cy="${ipY.toFixed(1)}" r="3.5" fill="#f97316" stroke="rgba(0,0,0,.5)" stroke-width="1.2"/>`;
+      // Callout do seguro (menor, posicionado abaixo do callout principal)
+      const isbW = 148, isbH = 44;
+      let isbX = ipX - isbW / 2;
+      if (isbX < PAD_L + 2)        isbX = PAD_L + 2;
+      if (isbX + isbW > PAD_L + CW) isbX = PAD_L + CW - isbW;
+      const isbY = Math.min(CHART_BOT - isbH - 4, Math.max(CHART_Y + 6, ipY + 18));
+      s += `<line x1="${ipX.toFixed(1)}" y1="${(ipY+5).toFixed(1)}" x2="${ipX.toFixed(1)}" y2="${(isbY).toFixed(1)}" stroke="rgba(249,115,22,.35)" stroke-width="1"/>`;
+      s += `<rect x="${isbX.toFixed(1)}" y="${isbY.toFixed(1)}" width="${isbW}" height="${isbH}" rx="6" fill="rgba(10,6,26,.94)" stroke="rgba(249,115,22,.45)" stroke-width="1.2"/>`;
+      s += `<text x="${(isbX+isbW/2).toFixed(1)}" y="${(isbY+13).toFixed(1)}" text-anchor="middle" fill="#f97316" font-size="6.8" font-weight="800" letter-spacing=".6">● EXP. SEGURO CRÉD.</text>`;
+      s += `<text x="${(isbX+isbW/2).toFixed(1)}" y="${(isbY+30).toFixed(1)}" text-anchor="middle" fill="#f97316" font-size="13.5" font-weight="900">${fmtBRL(insPeakV,true)}</text>`;
+      s += `<text x="${(isbX+isbW/2).toFixed(1)}" y="${(isbY+41).toFixed(1)}" text-anchor="middle" fill="rgba(249,115,22,.5)" font-size="7.5">${fmtDateFull(new Date(insPeakT))}</text>`;
+    }
+
     // ── Marcador de pico ────────────────────────────────────
     const peakX  = tx(peakTime);
     const peakY  = ty(maxExposure);
@@ -1476,18 +1529,25 @@
 
     // Dots de eventos
     evts.forEach(ev => {
-      const ex   = tx(ev.t);
-      const ey   = laneY(ev.ci);
-      const isIn = ev.kind === 'in';
-      const clr  = isIn ? '#01E18E' : CYC_CLR[ev.ci];
-      const r    = isIn ? 5.5 : 4;
+      const ex    = tx(ev.t);
+      const ey    = laneY(ev.ci);
+      const isIn  = ev.kind === 'in';
+      const isFat = ev.kind === 'fat';
+      const clr   = isIn ? '#01E18E' : isFat ? '#f97316' : CYC_CLR[ev.ci];
+      const r     = isIn ? 5.5 : isFat ? 4.5 : 4;
 
       // Linha pontilhada descendo até o gráfico
-      s += `<line x1="${ex.toFixed(1)}" y1="${(ey+r+1).toFixed(1)}" x2="${ex.toFixed(1)}" y2="${(CHART_Y-1).toFixed(1)}" stroke="${clr}" stroke-width=".6" stroke-opacity=".3" stroke-dasharray="2,2"/>`;
+      s += `<line x1="${ex.toFixed(1)}" y1="${(ey+r+1).toFixed(1)}" x2="${ex.toFixed(1)}" y2="${(CHART_Y-1).toFixed(1)}" stroke="${clr}" stroke-width=".6" stroke-opacity="${isFat?'.5':'.3'}" stroke-dasharray="2,2"/>`;
       if (isIn) {
         s += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${r+5}" fill="${clr}" fill-opacity=".1" stroke="none"/>`;
       }
-      s += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${r}" fill="${clr}" stroke="rgba(0,0,0,.45)" stroke-width="${isIn?1.5:1}" opacity="${isIn?1:.82}"/>`;
+      if (isFat) {
+        // Losango para faturamento
+        const d = r + 1;
+        s += `<polygon points="${ex.toFixed(1)},${(ey-d).toFixed(1)} ${(ex+d).toFixed(1)},${ey.toFixed(1)} ${ex.toFixed(1)},${(ey+d).toFixed(1)} ${(ex-d).toFixed(1)},${ey.toFixed(1)}" fill="${clr}" stroke="rgba(0,0,0,.45)" stroke-width="1" opacity=".9"/>`;
+      } else {
+        s += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${r}" fill="${clr}" stroke="rgba(0,0,0,.45)" stroke-width="${isIn?1.5:1}" opacity="${isIn?1:.82}"/>`;
+      }
     });
 
     // Marcador de HOJE
@@ -1521,21 +1581,34 @@
     <tbody>`;
 
     evts.forEach(ev => {
-      const isIn = ev.kind === 'in';
-      if (isIn) runExp = Math.max(0, runExp - ev.amount);
-      else      runExp += ev.amount;
+      const isIn  = ev.kind === 'in';
+      const isFat = ev.kind === 'fat';
 
-      const saida   = !isIn ? `<span class="td-red">- ${fmtBRL(ev.amount)}</span>` : '<span style="color:var(--text-faint)">—</span>';
-      const entrada = isIn  ? `<span class="td-money">+ ${fmtBRL(ev.amount)}</span>` : '<span style="color:var(--text-faint)">—</span>';
-      const isPeak  = runExp >= maxExposure * 0.98;
-      const expTxt  = runExp > 100
-        ? `<strong class="${isPeak ? 'td-yellow' : 'td-red'}" style="${isPeak?'text-decoration:underline dotted;':''}">${fmtBRL(runExp, true)}</strong>`
-        : '<span style="color:var(--text-faint)">—</span>';
+      // Eventos de faturamento são informativos — não alteram exposição financeira acumulada
+      if (!isFat) {
+        if (isIn) runExp = Math.max(0, runExp - ev.amount);
+        else      runExp += ev.amount;
+      }
 
-      tbl += `<tr>
+      let saida, entrada, expTxt;
+      if (isFat) {
+        saida   = '<span style="color:var(--text-faint)">—</span>';
+        entrada = '<span style="color:var(--text-faint)">—</span>';
+        expTxt  = `<span style="color:#f97316;font-size:.75rem;">▲ seguro créd.</span>`;
+      } else {
+        saida   = !isIn ? `<span class="td-red">- ${fmtBRL(ev.amount)}</span>` : '<span style="color:var(--text-faint)">—</span>';
+        entrada = isIn  ? `<span class="td-money">+ ${fmtBRL(ev.amount)}</span>` : '<span style="color:var(--text-faint)">—</span>';
+        const isPeak = runExp >= maxExposure * 0.98;
+        expTxt  = runExp > 100
+          ? `<strong class="${isPeak ? 'td-yellow' : 'td-red'}" style="${isPeak?'text-decoration:underline dotted;':''}">${fmtBRL(runExp, true)}</strong>`
+          : '<span style="color:var(--text-faint)">—</span>';
+      }
+
+      const rowClr = isFat ? '#f97316' : isIn ? '#01E18E' : CYC_CLR[ev.ci];
+      tbl += `<tr style="${isFat ? 'opacity:.75;' : ''}">
         <td>${fmtDateFull(new Date(ev.t))}</td>
         <td><span class="cycle-dot c${ev.ci}"></span>${CYC_NAME[ev.ci]}</td>
-        <td style="color:${isIn ? '#01E18E' : CYC_CLR[ev.ci]}">${ev.label}</td>
+        <td style="color:${rowClr}">${ev.label}</td>
         <td style="text-align:right">${saida}</td>
         <td style="text-align:right">${entrada}</td>
         <td style="text-align:right">${expTxt}</td>
@@ -1549,6 +1622,8 @@
 <div style="display:flex;flex-wrap:wrap;gap:.5rem 1.2rem;margin-top:.8rem;margin-bottom:-.3rem;">
   ${CYC_CLR.map((c,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${c};"></div>${CYC_NAME[i]}</div>`).join('')}
   <div class="leg-item"><div class="leg-dot" style="background:rgba(251,191,36,.6);border-radius:1px;"></div>Total (pontilhado âmbar)</div>
+  <div class="leg-item"><div style="width:18px;height:3px;background:#f97316;border-radius:1px;flex-shrink:0;"></div>Exp. Seguro Créd.</div>
+  <div class="leg-item"><svg width="11" height="11" viewBox="0 0 11 11" style="flex-shrink:0"><polygon points="5.5,0 11,5.5 5.5,11 0,5.5" fill="#f97316" opacity=".9"/></svg>Faturamento</div>
   <div class="leg-item"><div class="leg-dot" style="background:#01E18E;border-radius:50%;"></div>Recebimento VDM</div>
 </div>`;
 
