@@ -197,6 +197,26 @@ async def _ensure_tables() -> None:
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_anal_sol_id   ON ac_analises(sol_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_anal_created  ON ac_analises(created_at DESC)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_docs_sol_id   ON ac_documents(sol_id)")
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_clientes_ativos (
+                codigo_conexos  INTEGER     PRIMARY KEY,
+                razao_social    TEXT        NOT NULL,
+                cnpj            TEXT,
+                limite_aprovado NUMERIC(15,2),
+                validade        DATE,
+                status          TEXT        DEFAULT 'ATIVO',
+                natureza        TEXT,
+                tipo_empresa    TEXT,
+                ie              TEXT,
+                uf              TEXT,
+                im              TEXT,
+                padrao          TEXT,
+                endereco        TEXT,
+                atualizado_em   TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_cnpj ON ac_clientes_ativos(cnpj)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_uf   ON ac_clientes_ativos(uf)")
 
         # Semeia usuários do users.json se a tabela estiver vazia
         count = await conn.fetchval("SELECT COUNT(*) FROM ac_users")
@@ -4109,6 +4129,53 @@ async def health():
         "gemini":       gemini_info,
         **pg_detail,
     }
+
+
+# ── Clientes Ativos (tabela ac_clientes_ativos) ─────────────────────────────
+
+@app.get("/api/clientes-ativos")
+@limiter.limit("60/minute")
+async def listar_clientes_ativos(
+    request: Request,
+    q: str = "",
+    uf: str = "",
+    current_user=Depends(_get_current_user),
+):
+    """Lista os clientes com limite de crédito aprovado (da planilha do financeiro)."""
+    sql = """
+        SELECT codigo_conexos, razao_social, cnpj, limite_aprovado, validade,
+               status, natureza, tipo_empresa, uf, padrao, atualizado_em
+        FROM ac_clientes_ativos
+        WHERE 1=1
+    """
+    args: list = []
+    if q:
+        args.append(f"%{q.upper()}%")
+        sql += f" AND (UPPER(razao_social) LIKE ${len(args)} OR cnpj LIKE ${len(args)})"
+    if uf:
+        args.append(uf.upper())
+        sql += f" AND uf = ${len(args)}"
+    sql += " ORDER BY limite_aprovado DESC, razao_social"
+
+    rows = await _turso_query(sql, args if args else None)
+    return {"clientes": rows, "total": len(rows)}
+
+
+@app.get("/api/clientes-ativos/{codigo_conexos}")
+@limiter.limit("60/minute")
+async def detalhe_cliente_ativo(
+    request: Request,
+    codigo_conexos: int,
+    current_user=Depends(_get_current_user),
+):
+    """Retorna dados de limite/validade de um cliente pelo código Conexos."""
+    rows = await _turso_query(
+        "SELECT * FROM ac_clientes_ativos WHERE codigo_conexos = ?",
+        [codigo_conexos],
+    )
+    if not rows:
+        raise HTTPException(404, "Cliente não encontrado.")
+    return rows[0]
 
 
 # Serve os arquivos HTML/JS/CSS estáticos na raiz
