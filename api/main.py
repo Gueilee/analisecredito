@@ -3807,6 +3807,53 @@ async def sol_list(current_user=Depends(_get_current_user)):
             pass
         if _record_visible_to(d, current_user):
             items.append(d)
+
+    # Inclui clientes ativos da tabela ac_clientes_ativos como registros aprovados
+    try:
+        ca_rows = await _turso_query(
+            "SELECT codigo_conexos, razao_social, cnpj, limite_aprovado, validade, "
+            "natureza, tipo_empresa, uf, atualizado_em FROM ac_clientes_ativos ORDER BY razao_social"
+        )
+        today = datetime.utcnow().date()
+        for ca in ca_rows:
+            validade      = ca["validade"]       # date object ou None
+            atualizado_em = ca["atualizado_em"]  # datetime object ou None
+            decisao_dt    = atualizado_em if atualizado_em else datetime.utcnow()
+            decisao_date  = decisao_dt.date() if hasattr(decisao_dt, "date") else today
+
+            valid_dias = None
+            if validade:
+                valid_dias = (validade - decisao_date).days
+
+            limite_raw = ca["limite_aprovado"]
+            limite_str = ""
+            if limite_raw is not None:
+                try:
+                    n = float(limite_raw)
+                    # Formato pt-BR: "1.500.000,00"
+                    parts = f"{n:,.2f}".split(".")
+                    limite_str = parts[0].replace(",", ".") + "," + parts[1]
+                except Exception:
+                    limite_str = str(limite_raw)
+
+            items.append({
+                "id":              f"ca_{ca['codigo_conexos']}",
+                "status":          "aprovado",
+                "empresa":         ca["razao_social"] or "",
+                "cnpj":            ca["cnpj"] or "",
+                "segmento":        ca["natureza"] or ca["tipo_empresa"] or "",
+                "uf":              ca["uf"] or "",
+                "limiteAprovado":  limite_str,
+                "validadeDias":    valid_dias,
+                "decisao_at":      decisao_dt.isoformat() if hasattr(decisao_dt, "isoformat") else str(decisao_dt),
+                "decisaoAnalista": "Time Financeiro",
+                "origem":          "clientes_ativos",
+                "createdAt":       str(atualizado_em or today),
+                "updatedAt":       str(atualizado_em or today),
+            })
+    except Exception:
+        pass  # Não quebra a listagem de solicitações se a tabela ainda não existir
+
     return {"items": items}
 
 
