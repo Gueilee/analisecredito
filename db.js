@@ -146,12 +146,14 @@ const DB = (() => {
         this._cache.push(updated);
       }
       this._saveCache();
-      _fetch(`/api/solicitacoes/${id}`, {
+      // Retorna a Promise para que o chamador possa aguardar antes de navegar
+      const promise = _fetch(`/api/solicitacoes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       }).catch(() => {});
-      return updated;
+      promise._updated = updated;
+      return promise;
     },
 
     delete(id) {

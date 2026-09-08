@@ -2253,7 +2253,7 @@
   }
 
   /* ── Decisão do analista ─────────────────────────────── */
-  function decide(newStatus) {
+  async function decide(newStatus) {
     const limite   = document.getElementById('dec-limite').value.trim();
     const prazo    = document.getElementById('dec-prazo').value;
     const validade = parseInt(document.getElementById('dec-validade').value||'0',10)||null;
@@ -2261,7 +2261,7 @@
     const histId   = sol.hist_id;
     const decisao_at = new Date().toISOString();
 
-    DB.solicitacoes.update(sol.id, {
+    await DB.solicitacoes.update(sol.id, {
       status: newStatus,
       limiteAprovado: limite || '',
       prazoAprovado: prazo,
@@ -2311,13 +2311,13 @@
   }
 
   /* ── Enviar para Comitê ─────────────────────────────── */
-  function decideComite() {
+  async function decideComite() {
     const parecer  = document.getElementById('dec-parecer').value.trim();
     const limite   = document.getElementById('dec-limite').value.trim();
     const prazo    = document.getElementById('dec-prazo').value;
     const validade = parseInt(document.getElementById('dec-validade').value||'0',10)||null;
 
-    DB.solicitacoes.update(sol.id, {
+    await DB.solicitacoes.update(sol.id, {
       status:          'em_comite',
       parecerTecnico:  parecer || '',
       limiteAprovado:  limite  || '',
