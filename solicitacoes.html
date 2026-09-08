@@ -502,26 +502,55 @@
       const statusText = DB.utils.statusLabel[s.status]  || s.status;
       const perfil     = DB.utils.integradoLabel[s.clienteIntegrado || s.integrado] || s.segmento || '—';
       const operacao   = DB.utils.tipoOpLabel[s.tipoOperacao] || DB.utils.modalLabel[s.modal] || s.modal || '—';
-      const data       = DB.utils.fmtDate(s.dataSolicitacao || s.createdAt);
+
+      // Para clientes do Excel: DATA mostra a data de validade real
+      var dataCol;
+      if (s.origem === 'clientes_ativos' && s.validadeDias != null && s.decisao_at) {
+        var _vd = new Date(s.decisao_at);
+        _vd.setDate(_vd.getDate() + s.validadeDias);
+        dataCol = '<span style="font-size:.72rem;color:var(--text-muted,#94a3b8);">Validade</span><br>' +
+                  '<span style="white-space:nowrap;">' + _vd.toLocaleDateString('pt-BR') + '</span>';
+      } else {
+        dataCol = DB.utils.fmtDate(s.dataSolicitacao || s.createdAt);
+      }
+
+      // Badge de validade com layout vertical
+      var validadeBadge = (s.validadeDias != null && s.validadeDias !== '') ? DB.utils.validadeBadgeHtml(s) : '';
+      var statusCell = '<div style="display:flex;flex-direction:column;align-items:flex-start;gap:.35rem;">' +
+                         '<span class="badge ' + statusKey + '">' + statusText + '</span>' +
+                         validadeBadge +
+                       '</div>';
+
+      // Ações para clientes_ativos: botão Nova Análise com urgência por cor
+      var acoesCa = (function() {
+        var _vs = s.validadeDias != null ? DB.utils.calcValidadeStatus(s) : null;
+        var urgente = _vs && _vs.days <= 30;
+        var vencido = _vs && _vs.days < 0;
+        var cor     = vencido ? '#ef4444' : urgente ? '#f59e0b' : 'var(--purple-light,#a78bfa)';
+        var borda   = vencido ? 'rgba(239,68,68,.35)' : urgente ? 'rgba(245,158,11,.35)' : 'rgba(124,58,237,.35)';
+        var titulo  = vencido ? 'Crédito VENCIDO — Nova Análise urgente' : urgente ? 'Vencendo em breve — Nova Análise' : 'Nova Análise';
+        var novaUrl = 'nova-solicitacao.html?empresa=' + encodeURIComponent(s.empresa || '') + '&cnpj=' + encodeURIComponent(s.cnpj || '');
+        return '<a href="' + novaUrl + '" class="btn-action" title="' + titulo + '" style="color:' + cor + ';border-color:' + borda + ';">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+            '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>' +
+          '</svg>' +
+        '</a>';
+      })();
 
       return '<tr>' +
         '<td>' +
           '<span class="empresa-name">' + (s.empresa || '—') + '</span>' +
           '<span class="empresa-cnpj">'  + (s.cnpj    || '—') + '</span>' +
+          (s.limiteAprovado ? '<span style="font-size:.68rem;color:#22c55e;margin-top:.15rem;display:block;">Limite: R$ ' + s.limiteAprovado + '</span>' : '') +
         '</td>' +
         '<td>' + perfil + '</td>' +
         '<td>' + operacao + '</td>' +
-        '<td style="white-space:nowrap;">' + data + '</td>' +
-        '<td>' +
-          '<span class="badge ' + statusKey + '">' + statusText + '</span>' +
-          (s.validadeDias ? DB.utils.validadeBadgeHtml(s) : '') +
-        '</td>' +
+        '<td>' + dataCol + '</td>' +
+        '<td>' + statusCell + '</td>' +
         '<td>' +
           '<div class="actions" style="justify-content:center;">' +
             (s.origem === 'clientes_ativos'
-              ? '<span class="btn-action" title="Importado da relação de clientes ativos" style="cursor:default;opacity:.5;">' +
-                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' +
-                '</span>'
+              ? acoesCa
               : '<a href="analise-financeira.html?id=' + s.id + '" class="btn-action" title="Análise Financeira" style="color:var(--purple-light);border-color:rgba(124,58,237,.35);">' +
                   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' +
                 '</a>' +
