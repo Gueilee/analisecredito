@@ -1568,7 +1568,7 @@
     // RF consultada em paralelo com IDwall — bureau consolidado no card IDwall
 
     // Botões de PDF e Simulação sempre visíveis para todos os clientes
-    document.getElementById('btn-exposicao').style.display = '';
+    document.getElementById('btn-exposicao').style.display = sol.tipoAnalise === 'licenciamento' ? 'none' : '';
     document.getElementById('btn-pdf').style.display = '';
 
     // ── Tipo simplificado: Armazém / Transporte ────────────────────────────
@@ -1609,6 +1609,16 @@
     if (!_isSimplificado && !['aprovado', 'negado'].includes(sol.status)) {
       if (canDecide) document.getElementById('decision-card').style.display = '';
       else           document.getElementById('pending-decision-banner').style.display = '';
+    }
+
+    // Licenciamento: banner informativo (análise completa, sem Exposição)
+    if (sol.tipoAnalise === 'licenciamento') {
+      document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
+        `<div style="margin-top:.9rem;display:flex;align-items:center;gap:.65rem;background:rgba(1,225,142,.08);border:1px solid rgba(1,225,142,.22);border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.77rem;color:var(--brand-neon-green);font-weight:600;">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Licenciamento de Armazém — análise completa: IDwall · Receita Federal · IA de Crédito
+        </div>`
+      );
     }
 
     // Encomenda: adiciona banner no hero e configura botões específicos
@@ -1670,6 +1680,22 @@
         iv('Comentário',      sol.comentario),
         iv('Solicitante',     sol.solicitanteNome),
         iv('Data',            DB.utils.fmtDate(sol.dataSolicitacao || sol.createdAt)),
+      ].join('');
+      return;
+    }
+
+    // Licenciamento — mesmos campos operacionais do Armazém + análise completa de crédito
+    if (_tipo === 'licenciamento') {
+      document.getElementById('sol-details').innerHTML = [
+        iv('Segmento',          sol.segmento),
+        iv('Ramo de Atividade', sol.ramo),
+        iv('Fundação',          sol.fundacao),
+        iv('Qtd. Posições',     sol.qtdPosicoes),
+        iv('Valor Mensal',      sol.valorMensal),
+        iv('Descrição',         sol.descricao),
+        iv('Comentário',        sol.comentario),
+        iv('Solicitante',       sol.solicitanteNome),
+        iv('Data',              DB.utils.fmtDate(sol.dataSolicitacao || sol.createdAt)),
       ].join('');
       return;
     }
@@ -1878,6 +1904,7 @@
       cnpj: sol.cnpj || '',
       empresa: sol.empresa || '',
       sol_id: sol.id || '',  // permite enriquecer o prompt com indicadores contábeis
+      tipoAnalise:         sol.tipoAnalise || 'trade',
       ramo:                toStr(sol.ramo),
       produto:             toStr(sol.produto),
       modal:               toStr(sol.modal),
@@ -1885,6 +1912,8 @@
       origens:             toStr(sol.origens),
       incoterms:           toStr(sol.incoterms),
       tipoOp:              toStr(sol.tipoOp),
+      qtdPosicoes:         toStr(sol.qtdPosicoes),
+      valorMensal:         toStr(sol.valorMensal),
       limiteExportador:    toStr(sol.limiteExportador),
       limiteDesp:          toStr(sol.limiteDesp),
       limiteImp:           toStr(sol.limiteImp),

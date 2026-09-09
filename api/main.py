@@ -805,6 +805,11 @@ class AnalyzeRequest(BaseModel):
     custoAdmBase:   Optional[str] = ""
     custoAdmOutros: Optional[str] = ""
     desconto: Optional[str] = ""
+    # Tipo de análise (trade | licenciamento | armazem | transporte)
+    tipoAnalise: Optional[str] = ""
+    # Licenciamento — campos específicos
+    qtdPosicoes:  Optional[str] = ""
+    valorMensal:  Optional[str] = ""
     # Contexto
     comentario: Optional[str] = ""
     sol_id: Optional[str] = ""  # passado para enriquecer o prompt com indicadores contábeis
@@ -997,6 +1002,59 @@ CNPJ informado: {req.cnpj}
     tempo_mercado  = calc_tempo_mercado(req.fundacao) if req.fundacao else "Não informado"
     obs_analista   = f"## OBSERVAÇÕES DO ANALISTA\n{req.comentario}" if req.comentario else ""
     contabil_bloco = _build_contabil_section(contabil_result) if contabil_result and contabil_result.get("periodo2") else ""
+
+    # ── Prompt específico para Licenciamento de Armazém ───────────────────────
+    if req.tipoAnalise == "licenciamento":
+        op_data = f"""## DADOS DA OPERAÇÃO (Licenciamento de Armazém)
+- Empresa: {req.empresa}
+- CNPJ: {req.cnpj}
+- Ramo de atividade: {req.ramo or 'Não informado'}
+- Segmento: Licenciamento de Armazém (Vendemmia)
+- Qtd. Posições Licenciadas: {req.qtdPosicoes or 'Não informado'}
+- Valor Mensal do Contrato: {("R$ " + req.valorMensal) if req.valorMensal else 'Não informado'}
+- Fundação da empresa: {tempo_mercado}"""
+
+        return f"""Você é um analista de crédito sênior da Vendemmia — empresa de logística 4PL com rede de armazéns licenciados no Brasil.
+
+A Vendemmia licencia posições físicas em seus centros de distribuição para empresas parceiras (licenciadas).
+O risco avaliado é a capacidade da empresa licenciada de honrar os pagamentos mensais do contrato.
+Inadimplência = Vendemmia arca com os custos fixos do armazém sem recuperar a receita contratada.
+
+{receita_section}
+{op_data}
+{obs_analista}
+{contabil_bloco}
+Retorne APENAS um JSON válido, sem texto adicional antes ou depois:
+
+{{
+  "score": <inteiro 0-100; 100 = risco mínimo / empresa excelente>,
+  "classificacao": "<AAA|AA|A|BB|B|CC|C|D>",
+  "recomendacao": "<aprovar|negar|revisar>",
+  "limite_recomendado_exportador": "<Limite de crédito mensal recomendado, ex: R$ 50.000,00, ou 'Não recomendado'>",
+  "limite_recomendado_desp": "Não aplicável",
+  "limite_recomendado_imp": "Não aplicável",
+  "exposicao_total_recomendada": "<Exposição contratual total recomendada (mensal × prazo), ex: R$ 600.000,00>",
+  "prazo_recomendado": <12|24|36>,
+  "resumo_executivo": "<2-3 frases objetivas sobre capacidade de pagamento e viabilidade do licenciamento>",
+  "pontos_positivos": ["<ponto 1>", "<ponto 2>"],
+  "pontos_atencao": ["<ponto 1>", "<ponto 2>"],
+  "alertas_criticos": [],
+  "analise_cadastral": "<análise da situação na Receita Federal em 2-3 frases>",
+  "analise_societaria": "<análise do quadro societário, perfil dos sócios, concentração de capital>",
+  "analise_proporcionalidade": "<proporcionalidade entre o valor mensal do contrato e o porte/capital social da empresa>",
+  "analise_operacional": "<viabilidade operacional do licenciamento: ramo de atividade, tempo de mercado, capacidade de absorver custo fixo>",
+  "fundamentacao": "<análise completa em 3-5 parágrafos: (1) situação cadastral e societária, (2) capacidade de pagamento e proporcionalidade, (3) riscos do licenciamento, (4) recomendação final com condições>"
+}}
+
+Diretrizes de pontuação (orientativas):
+- Situação ATIVA na Receita Federal: +25 pts
+- Empresa > 5 anos: +20 pts | 2-5 anos: +10 pts | < 2 anos: -10 pts
+- Capital social ≥ 6× valor mensal: +15 pts | ≥ 3×: +8 pts | < 1×: -15 pts
+- CNAE compatível com atividade logística/armazenagem/distribuição: +10 pts
+- Simples Nacional: -3 pts | MEI: -25 pts (limitar a R$ 5.000/mês)
+- Situação INAPTA ou BAIXADA: score ≤ 15, recomendação obrigatoriamente "negar"
+- Sócio único + empresa < 1 ano: alerta crítico
+"""
 
     return f"""Você é um analista de crédito sênior especializado em empresas importadoras no Brasil,
 trabalhando na Vendemmia — empresa de logística de importação (Trading/Account).
