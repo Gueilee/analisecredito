@@ -3994,6 +3994,31 @@ async def sol_delete(sol_id: str, current_user=Depends(_get_current_user)):
     return _R(status_code=204)
 
 
+# ── Clientes Ativos (ac_clientes_ativos) ─────────────────────────────────────
+
+@app.put("/api/clientes-ativos/{codigo_conexos}")
+async def update_cliente_ativo(
+    codigo_conexos: int,
+    request: Request,
+    current_user=Depends(_get_current_user),
+):
+    body        = await request.json()
+    limite      = body.get("limite_aprovado")
+    validade    = body.get("validade")          # "YYYY-MM-DD" ou None
+    atualizado  = datetime.utcnow().isoformat()
+    rows = await _turso_query(
+        "SELECT codigo_conexos FROM ac_clientes_ativos WHERE codigo_conexos=?",
+        [codigo_conexos],
+    )
+    if not rows:
+        raise HTTPException(404, "Cliente não encontrado")
+    await _turso_exec(
+        "UPDATE ac_clientes_ativos SET limite_aprovado=?, validade=?, atualizado_em=? WHERE codigo_conexos=?",
+        [limite, validade, atualizado, codigo_conexos],
+    )
+    return {"ok": True}
+
+
 # ── Admin: Backup e Exportação ────────────────────────────────────────────────
 
 def _build_backup_zip() -> io.BytesIO:

@@ -521,40 +521,53 @@
                          validadeBadge +
                        '</div>';
 
-      // Ações para clientes_ativos: mesmos ícones das solicitações normais + urgência por cor
+      // Ações para clientes_ativos: Análise Financeira + Consultar + Editar + Renovar opcional
       var acoesCa = (function() {
-        var _vs     = s.validadeDias != null ? DB.utils.calcValidadeStatus(s) : null;
-        var urgente = _vs && _vs.days <= 30;
-        var vencido = _vs && _vs.days < 0;
-        var corAf   = vencido ? '#ef4444' : urgente ? '#f59e0b' : 'var(--purple-light,#a78bfa)';
-        var brdAf   = vencido ? 'rgba(239,68,68,.35)' : urgente ? 'rgba(245,158,11,.35)' : 'rgba(124,58,237,.35)';
+        var _vs      = s.validadeDias != null ? DB.utils.calcValidadeStatus(s) : null;
+        var urgente  = _vs && _vs.days <= 30;
+        var vencido  = _vs && _vs.days < 0;
+        var corAf    = vencido ? '#ef4444' : urgente ? '#f59e0b' : 'var(--purple-light,#a78bfa)';
+        var brdAf    = vencido ? 'rgba(239,68,68,.35)' : urgente ? 'rgba(245,158,11,.35)' : 'rgba(124,58,237,.35)';
         var tituloAf = vencido ? 'Crédito VENCIDO — Análise urgente' : urgente ? 'Vencendo em breve — Realizar Análise' : 'Análise Financeira';
-        var novaUrl  = 'nova-solicitacao.html?empresa=' + encodeURIComponent(s.empresa || '') + '&cnpj=' + encodeURIComponent(s.cnpj || '');
-        var consultaUrl = 'consultar.html?q=' + encodeURIComponent(s.cnpj || s.empresa || '');
 
-        // Raio — Análise Financeira (urgência por cor)
-        var btnAnalise = '<a href="' + novaUrl + '" class="btn-action" title="' + tituloAf + '" style="color:' + corAf + ';border-color:' + brdAf + ';">' +
+        var afUrl   = 'analise-financeira.html?id=' + encodeURIComponent(s.id);
+        var consUrl = 'consultar.html?id=' + encodeURIComponent(s.id);
+        var novaUrl = 'nova-solicitacao.html?empresa=' + encodeURIComponent(s.empresa || '') + '&cnpj=' + encodeURIComponent(s.cnpj || '');
+
+        // Dados para o modal de edição
+        var caCode = s.id.replace(/^ca_/, '');
+        var _validadeIso = '';
+        if (s.decisao_at && s.validadeDias != null) {
+          var _vd2 = new Date(s.decisao_at);
+          _vd2.setDate(_vd2.getDate() + s.validadeDias);
+          _validadeIso = _vd2.toISOString().slice(0, 10);
+        }
+        var _limiteRaw   = parseFloat((s.limiteAprovado || '0').replace(/\./g, '').replace(',', '.')) || 0;
+        var _empresaHtml = (s.empresa || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+        // Raio — Análise Financeira
+        var btnAnalise = '<a href="' + afUrl + '" class="btn-action" title="' + tituloAf + '" style="color:' + corAf + ';border-color:' + brdAf + ';">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' +
         '</a>';
 
-        // Olho — Visualizar histórico do cliente
-        var btnVer = '<a href="' + consultaUrl + '" class="btn-action" title="Consultar cliente">' +
+        // Olho — Consultar detalhes do cliente
+        var btnVer = '<a href="' + consUrl + '" class="btn-action" title="Consultar cliente">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
         '</a>';
 
-        // Lápis — Nova Solicitação de Análise pré-preenchida
-        var btnNova = '<a href="' + novaUrl + '" class="btn-action" title="Nova Solicitação de Análise">' +
+        // Lápis — Editar cadastro (limite/validade) do cliente ativo
+        var btnEditar = '<button onclick="openEditCa(this)" data-ca-code="' + caCode + '" data-ca-empresa="' + _empresaHtml + '" data-ca-limite="' + _limiteRaw + '" data-ca-validade="' + _validadeIso + '" class="btn-action" title="Editar cadastro">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-        '</a>';
+        '</button>';
 
-        // Renovar — só aparece quando vencendo/vencido (igual ao reabrir das solicitações)
+        // Renovar — só quando urgente/vencido
         var btnRenovar = (urgente || vencido)
           ? '<a href="' + novaUrl + '" class="btn-action" title="Renovar análise de crédito" style="color:' + corAf + ';border-color:' + brdAf + ';">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/></svg>' +
             '</a>'
           : '';
 
-        return btnAnalise + btnVer + btnNova + btnRenovar;
+        return btnAnalise + btnVer + btnEditar + btnRenovar;
       })();
 
       return '<tr>' +
@@ -641,6 +654,76 @@
   }
 
   DB.ready.then(function() { setFilter(currentFilter); });
+</script>
+
+<!-- Modal: Editar cadastro de cliente ativo -->
+<div id="edit-ca-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--purple-card);border:1px solid var(--glass-border);border-radius:14px;padding:2rem;max-width:420px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,.6);">
+    <h3 style="margin:0 0 .3rem;font-size:1rem;font-weight:700;color:var(--text-primary);">Editar Cliente Ativo</h3>
+    <p id="edit-ca-empresa" style="font-size:.82rem;color:var(--text-muted);margin:0 0 1.4rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">Limite Aprovado (R$)</label>
+      <input id="edit-ca-limite" type="number" min="0" step="1000"
+        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);border-radius:8px;padding:.55rem .8rem;color:var(--text-primary);font-size:.9rem;outline:none;">
+    </div>
+    <div style="margin-bottom:1.5rem;">
+      <label style="display:block;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;">Validade</label>
+      <input id="edit-ca-validade" type="date"
+        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);border-radius:8px;padding:.55rem .8rem;color:var(--text-primary);font-size:.9rem;outline:none;">
+    </div>
+    <div id="edit-ca-msg" style="display:none;font-size:.8rem;padding:.5rem .8rem;border-radius:6px;background:rgba(239,68,68,.15);color:#ef4444;margin-bottom:1rem;"></div>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+      <button onclick="closeEditCa()" style="background:transparent;border:1px solid var(--glass-border);color:var(--text-muted);border-radius:8px;padding:.5rem 1.1rem;cursor:pointer;font-size:.84rem;">Cancelar</button>
+      <button id="edit-ca-save-btn" onclick="saveEditCa()" style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border:none;border-radius:8px;padding:.5rem 1.3rem;cursor:pointer;font-size:.84rem;font-weight:600;">Salvar</button>
+    </div>
+  </div>
+</div>
+<script>
+var _editCaCode = null;
+function openEditCa(btn) {
+  _editCaCode = btn.dataset.caCode;
+  document.getElementById('edit-ca-empresa').textContent = btn.dataset.caEmpresa || '';
+  document.getElementById('edit-ca-limite').value  = btn.dataset.caLimite  || '';
+  document.getElementById('edit-ca-validade').value = btn.dataset.caValidade || '';
+  document.getElementById('edit-ca-msg').style.display = 'none';
+  document.getElementById('edit-ca-modal').style.display = 'flex';
+}
+function closeEditCa() {
+  document.getElementById('edit-ca-modal').style.display = 'none';
+  _editCaCode = null;
+}
+async function saveEditCa() {
+  if (!_editCaCode) return;
+  var limite   = parseFloat(document.getElementById('edit-ca-limite').value) || 0;
+  var validade = document.getElementById('edit-ca-validade').value;
+  var btn = document.getElementById('edit-ca-save-btn');
+  var msg = document.getElementById('edit-ca-msg');
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+  msg.style.display = 'none';
+  try {
+    var r = await fetch('/api/clientes-ativos/' + _editCaCode, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limite_aprovado: limite, validade: validade }),
+    });
+    if (r.ok) {
+      closeEditCa();
+      await DB.solicitacoes.sync();
+      setFilter(currentFilter);
+    } else {
+      var errJson = await r.json().catch(function(){ return { detail: 'Erro desconhecido' }; });
+      msg.textContent = errJson.detail || 'Erro ao salvar alterações.';
+      msg.style.display = 'block';
+    }
+  } catch (e) {
+    msg.textContent = 'Erro de conexão. Tente novamente.';
+    msg.style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Salvar';
+}
 </script>
 </body>
 </html>
