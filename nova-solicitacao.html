@@ -2212,7 +2212,7 @@
             <div class="card mb-md">
               <div class="card-header">
                 <div>
-                  <div class="card-title">4. Comentário do Trader / Operações</div>
+                  <div class="card-title" id="step5-comment-title">4. Comentário do Trader / Operações</div>
                   <div class="card-sub">Observações relevantes para o time financeiro</div>
                 </div>
               </div>
@@ -2230,7 +2230,7 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <div class="card-title">5. Documentos Obrigatórios</div>
+                  <div class="card-title" id="step5-docs-title">5. Documentos Obrigatórios</div>
                   <div class="card-sub">Todos os 4 documentos são necessários para envio ao time financeiro</div>
                 </div>
                 <div id="docs-progress-label" style="font-size:.78rem;color:var(--text-muted);">0 / 4 anexados</div>
@@ -2692,6 +2692,13 @@
     if (ds && !ds.value) ds.valueAsDate = new Date();
 
     showAllPanels();
+
+    // Ajusta títulos do step-5 conforme o tipo (Licenciamento usa numeração e label de Armazém)
+    const s5comment = document.getElementById('step5-comment-title');
+    const s5docs    = document.getElementById('step5-docs-title');
+    if (s5comment) s5comment.textContent = tipo === 'licenciamento' ? '2. Comentário do Comercial' : '4. Comentário do Trader / Operações';
+    if (s5docs)    s5docs.textContent    = tipo === 'licenciamento' ? '3. Documentos Obrigatórios'  : '5. Documentos Obrigatórios';
+
     if (tipo === 'trade') { initPagtoExportador(); updatePrazosExposure(); }
     updateDocChecklist();
     updateSummary();
@@ -4050,7 +4057,7 @@
       dataSolicitacao: v('a-data-sol'), empresa: v('a-empresa'), cnpj: v('a-cnpj'),
       fundacao: v('a-fundacao'), ramo: v('a-ramo'), qtdPosicoes: v('a-qtd-posicoes'),
       descricao: v('a-descricao'), valorMensal: v('a-valor-mensal'),
-      comentario: v('a-comentario'), documentos: storedDocNames,
+      comentario: v('comentario'), documentos: storedDocNames,
     };
 
     if (tipoAnalise === 'armazem') return {
