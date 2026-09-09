@@ -2708,6 +2708,19 @@
     document.querySelectorAll('.step-panel').forEach(el => el.classList.remove('active'));
     const panelIds = cfg.panels || cfg.steps.map((_, i) => cfg.prefix + (i + 1));
     panelIds.forEach(id => { const p = document.getElementById(id); if (p) p.classList.add('active'); });
+
+    // Quando a config define `panels` explicitamente, reordena os elementos no DOM
+    // para garantir que apareçam na sequência correta independente da posição original.
+    if (cfg.panels) {
+      const stepWizard = document.getElementById('step-wizard');
+      let anchor = stepWizard;
+      panelIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        anchor.after(el);
+        anchor = el;
+      });
+    }
   }
 
   function showTradeSubSelector() {
