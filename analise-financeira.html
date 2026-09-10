@@ -3496,7 +3496,7 @@ async function checkIdwallPending() {
       showToast('Consulta IDwall BGC concluída!', 'success');
     } else {
       _idwallShowPendingState();
-      showToast(`IDwall: ainda processando (${d.status || 'EM ANALISE'}). Tente novamente em breve.`, 'error');
+      showToast('IDwall processando em segundo plano — o resultado chegará automaticamente quando concluído.', 'warning');
     }
   } catch (e) {
     _idwallShowPendingState();
@@ -3597,7 +3597,7 @@ async function runIdwallConsulta() {
     if (!data) {
       // Timeout: IDwall ainda processando — estado pendente preservado para verificar depois
       _idwallShowPendingState();
-      showToast('IDwall ainda processando. Clique "Verificar Status" para checar depois.', 'error');
+      showToast('IDwall ainda processando em segundo plano. Clique "Verificar Status" para checar o resultado.', 'warning');
       return;
     }
 
