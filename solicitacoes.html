@@ -500,8 +500,12 @@
     tbody.innerHTML = pageRows.map(s => {
       const statusKey  = DB.utils.statusBadge[s.status] || 'pendente';
       const statusText = DB.utils.statusLabel[s.status]  || s.status;
-      const perfil     = DB.utils.integradoLabel[s.clienteIntegrado || s.integrado] || s.segmento || '—';
-      const operacao   = DB.utils.tipoOpLabel[s.tipoOperacao] || DB.utils.modalLabel[s.modal] || s.modal || '—';
+      const perfil     = s.origem === 'clientes_ativos'
+        ? (s.modalidade1 || s.segmento || '—')
+        : (DB.utils.integradoLabel[s.clienteIntegrado || s.integrado] || s.segmento || '—');
+      const operacao   = s.origem === 'clientes_ativos'
+        ? (s.modalidade2 || s.modalidade1 || '—')
+        : (DB.utils.tipoOpLabel[s.tipoOperacao] || DB.utils.modalLabel[s.modal] || s.modal || '—');
 
       // Para clientes do Excel: DATA mostra a data de validade real
       var dataCol;

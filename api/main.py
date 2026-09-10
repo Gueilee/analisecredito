@@ -199,24 +199,31 @@ async def _ensure_tables() -> None:
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_ac_docs_sol_id   ON ac_documents(sol_id)")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS ac_clientes_ativos (
-                codigo_conexos  INTEGER     PRIMARY KEY,
-                razao_social    TEXT        NOT NULL,
-                cnpj            TEXT,
-                limite_aprovado NUMERIC(15,2),
-                validade        DATE,
-                status          TEXT        DEFAULT 'ATIVO',
-                natureza        TEXT,
-                tipo_empresa    TEXT,
-                ie              TEXT,
-                uf              TEXT,
-                im              TEXT,
-                padrao          TEXT,
-                endereco        TEXT,
-                atualizado_em   TIMESTAMPTZ DEFAULT NOW()
+                id                  SERIAL          PRIMARY KEY,
+                codigo_conexos      INTEGER         NOT NULL,
+                razao_social        TEXT            NOT NULL,
+                cnpj                TEXT,
+                modalidade1         TEXT,
+                modalidade2         TEXT,
+                filial_matriz       TEXT,
+                uf                  TEXT,
+                endereco            TEXT,
+                status_cliente      TEXT            DEFAULT 'ATIVO',
+                validade            DATE,
+                plano_2026          NUMERIC(15,2),
+                faturado_ytd        NUMERIC(15,2),
+                fat_plano           NUMERIC(15,2),
+                volume_estimado_ano NUMERIC(15,2),
+                limite_aprovado     NUMERIC(15,2),
+                atualizado_em       TIMESTAMPTZ     DEFAULT NOW(),
+                UNIQUE (codigo_conexos, modalidade1)
             )
         """)
-        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_cnpj ON ac_clientes_ativos(cnpj)")
-        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_uf   ON ac_clientes_ativos(uf)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_cnpj    ON ac_clientes_ativos(cnpj)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_uf      ON ac_clientes_ativos(uf)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_mod     ON ac_clientes_ativos(modalidade1)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_status  ON ac_clientes_ativos(status_cliente)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_conexos ON ac_clientes_ativos(codigo_conexos)")
 
         # Semeia usuários do users.json se a tabela estiver vazia
         count = await conn.fetchval("SELECT COUNT(*) FROM ac_users")
@@ -3869,10 +3876,13 @@ async def sol_list(current_user=Depends(_get_current_user)):
     # Inclui clientes ativos da tabela ac_clientes_ativos como registros aprovados
     try:
         ca_rows = await _turso_query(
-            "SELECT codigo_conexos, razao_social, cnpj, limite_aprovado, validade, "
-            "natureza, tipo_empresa, uf, atualizado_em FROM ac_clientes_ativos ORDER BY razao_social"
+            "SELECT id, codigo_conexos, razao_social, cnpj, modalidade1, modalidade2, "
+            "filial_matriz, uf, endereco, status_cliente, validade, "
+            "plano_2026, faturado_ytd, fat_plano, volume_estimado_ano, "
+            "limite_aprovado, atualizado_em FROM ac_clientes_ativos ORDER BY razao_social"
         )
         today = datetime.utcnow().date()
+        _status_map = {"ATIVO": "aprovado", "BLOQUEADO": "negado", "REAVALIAR": "em_analise"}
         for ca in ca_rows:
             validade      = ca["validade"]       # date object ou None
             atualizado_em = ca["atualizado_em"]  # datetime object ou None
@@ -3888,26 +3898,42 @@ async def sol_list(current_user=Depends(_get_current_user)):
             if limite_raw is not None:
                 try:
                     n = float(limite_raw)
-                    # Formato pt-BR: "1.500.000,00"
                     parts = f"{n:,.2f}".split(".")
                     limite_str = parts[0].replace(",", ".") + "," + parts[1]
                 except Exception:
                     limite_str = str(limite_raw)
 
+            def _num(v):
+                try: return float(v) if v is not None else None
+                except: return None
+
+            sc = (ca["status_cliente"] or "ATIVO").strip().upper()
+            reg_status = _status_map.get(sc, "aprovado")
+
             items.append({
-                "id":              f"ca_{ca['codigo_conexos']}",
-                "status":          "aprovado",
-                "empresa":         ca["razao_social"] or "",
-                "cnpj":            ca["cnpj"] or "",
-                "segmento":        ca["natureza"] or ca["tipo_empresa"] or "",
-                "uf":              ca["uf"] or "",
-                "limiteAprovado":  limite_str,
-                "validadeDias":    valid_dias,
-                "decisao_at":      decisao_dt.isoformat() if hasattr(decisao_dt, "isoformat") else str(decisao_dt),
-                "decisaoAnalista": "Time Financeiro",
-                "origem":          "clientes_ativos",
-                "createdAt":       str(atualizado_em or today),
-                "updatedAt":       str(atualizado_em or today),
+                "id":               f"ca_{ca['id']}",
+                "status":           reg_status,
+                "empresa":          ca["razao_social"] or "",
+                "cnpj":             ca["cnpj"] or "",
+                "segmento":         ca["modalidade1"] or "",
+                "modalidade1":      ca["modalidade1"] or "",
+                "modalidade2":      ca["modalidade2"] or "",
+                "filialMatriz":     ca["filial_matriz"] or "",
+                "uf":               ca["uf"] or "",
+                "endereco":         ca["endereco"] or "",
+                "statusCliente":    ca["status_cliente"] or "",
+                "plano2026":        _num(ca["plano_2026"]),
+                "faturadoYtd":      _num(ca["faturado_ytd"]),
+                "fatPlano":         _num(ca["fat_plano"]),
+                "volumeEstimadoAno": _num(ca["volume_estimado_ano"]),
+                "limiteAprovado":   limite_str,
+                "validadeDias":     valid_dias,
+                "decisao_at":       decisao_dt.isoformat() if hasattr(decisao_dt, "isoformat") else str(decisao_dt),
+                "decisaoAnalista":  "Time Financeiro",
+                "origem":           "clientes_ativos",
+                "codigoConexos":    ca["codigo_conexos"],
+                "createdAt":        str(atualizado_em or today),
+                "updatedAt":        str(atualizado_em or today),
             })
     except Exception:
         pass  # Não quebra a listagem de solicitações se a tabela ainda não existir
@@ -4054,25 +4080,25 @@ async def sol_delete(sol_id: str, current_user=Depends(_get_current_user)):
 
 # ── Clientes Ativos (ac_clientes_ativos) ─────────────────────────────────────
 
-@app.put("/api/clientes-ativos/{codigo_conexos}")
+@app.put("/api/clientes-ativos/{ca_id}")
 async def update_cliente_ativo(
-    codigo_conexos: int,
+    ca_id: int,
     request: Request,
     current_user=Depends(_get_current_user),
 ):
-    body        = await request.json()
-    limite      = body.get("limite_aprovado")
-    validade    = body.get("validade")          # "YYYY-MM-DD" ou None
-    atualizado  = datetime.utcnow().isoformat()
+    body       = await request.json()
+    limite     = body.get("limite_aprovado")
+    validade   = body.get("validade")  # "YYYY-MM-DD" ou None
+    atualizado = datetime.utcnow().isoformat()
     rows = await _turso_query(
-        "SELECT codigo_conexos FROM ac_clientes_ativos WHERE codigo_conexos=?",
-        [codigo_conexos],
+        "SELECT id FROM ac_clientes_ativos WHERE id=?",
+        [ca_id],
     )
     if not rows:
         raise HTTPException(404, "Cliente não encontrado")
     await _turso_exec(
-        "UPDATE ac_clientes_ativos SET limite_aprovado=?, validade=?, atualizado_em=? WHERE codigo_conexos=?",
-        [limite, validade, atualizado, codigo_conexos],
+        "UPDATE ac_clientes_ativos SET limite_aprovado=?, validade=?, atualizado_em=? WHERE id=?",
+        [limite, validade, atualizado, ca_id],
     )
     return {"ok": True}
 
@@ -4273,8 +4299,10 @@ async def listar_clientes_ativos(
 ):
     """Lista os clientes com limite de crédito aprovado (da planilha do financeiro)."""
     sql = """
-        SELECT codigo_conexos, razao_social, cnpj, limite_aprovado, validade,
-               status, natureza, tipo_empresa, uf, padrao, atualizado_em
+        SELECT id, codigo_conexos, razao_social, cnpj, modalidade1, modalidade2,
+               filial_matriz, uf, endereco, status_cliente, validade,
+               plano_2026, faturado_ytd, fat_plano, volume_estimado_ano,
+               limite_aprovado, atualizado_em
         FROM ac_clientes_ativos
         WHERE 1=1
     """
@@ -4285,7 +4313,7 @@ async def listar_clientes_ativos(
     if uf:
         args.append(uf.upper())
         sql += f" AND uf = ${len(args)}"
-    sql += " ORDER BY limite_aprovado DESC, razao_social"
+    sql += " ORDER BY limite_aprovado DESC NULLS LAST, razao_social"
 
     rows = await _turso_query(sql, args if args else None)
     return {"clientes": rows, "total": len(rows)}
@@ -4298,14 +4326,18 @@ async def detalhe_cliente_ativo(
     codigo_conexos: int,
     current_user=Depends(_get_current_user),
 ):
-    """Retorna dados de limite/validade de um cliente pelo código Conexos."""
+    """Retorna todas as modalidades de um cliente pelo código Conexos."""
     rows = await _turso_query(
-        "SELECT * FROM ac_clientes_ativos WHERE codigo_conexos = ?",
+        "SELECT id, codigo_conexos, razao_social, cnpj, modalidade1, modalidade2, "
+        "filial_matriz, uf, endereco, status_cliente, validade, "
+        "plano_2026, faturado_ytd, fat_plano, volume_estimado_ano, "
+        "limite_aprovado, atualizado_em "
+        "FROM ac_clientes_ativos WHERE codigo_conexos = ? ORDER BY modalidade1",
         [codigo_conexos],
     )
     if not rows:
         raise HTTPException(404, "Cliente não encontrado.")
-    return rows[0]
+    return {"modalidades": rows, "razao_social": rows[0]["razao_social"], "cnpj": rows[0]["cnpj"]}
 
 
 # Serve os arquivos HTML/JS/CSS estáticos na raiz

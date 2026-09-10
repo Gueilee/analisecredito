@@ -1667,6 +1667,31 @@
     };
     const fm = v => v ? DB.utils.fmtMoney(v) : '—';
     const _tipo = sol.tipoAnalise || 'trade';
+    const fmtR = vv => { if (!vv && vv !== 0) return '—'; var n = parseFloat(vv); return isNaN(n) ? '—' : 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2}); };
+
+    // Clientes Ativos (planilha financeiro) — exibe dados importados
+    if (sol.origem === 'clientes_ativos') {
+      var validadeStr = '';
+      if (sol.decisao_at && sol.validadeDias != null) {
+        var _ve = new Date(sol.decisao_at); _ve.setDate(_ve.getDate() + sol.validadeDias);
+        validadeStr = _ve.toLocaleDateString('pt-BR');
+      }
+      document.getElementById('sol-details').innerHTML = [
+        iv('Modalidade',        sol.modalidade1),
+        iv('Subtipo',           sol.modalidade2 !== sol.modalidade1 ? sol.modalidade2 : ''),
+        iv('Filial / Matriz',   sol.filialMatriz),
+        iv('UF',                sol.uf),
+        iv('Status Cliente',    sol.statusCliente),
+        iv('Validade',          validadeStr || '—'),
+        iv('Limite Aprovado',   DB.utils.fmtMoney ? DB.utils.fmtMoney(sol.limiteAprovado) : sol.limiteAprovado),
+        iv('Plano 2026',        fmtR(sol.plano2026)),
+        iv('Fat. YTD Fev',      fmtR(sol.faturadoYtd)),
+        iv('Volume Est. Ano',   fmtR(sol.volumeEstimadoAno)),
+        iv('Analista',          sol.decisaoAnalista || 'Time Financeiro'),
+        iv('Origem',            'Planilha Financeiro'),
+      ].join('');
+      return;
+    }
 
     // Armazém — campos simplificados
     if (_tipo === 'armazem') {
