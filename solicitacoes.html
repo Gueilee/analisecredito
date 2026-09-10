@@ -95,7 +95,7 @@
     .filter-tabs {
       display: flex;
       gap: .4rem;
-      margin-bottom: 1.2rem;
+      margin-bottom: .65rem;
       flex-wrap: wrap;
     }
 
@@ -133,6 +133,66 @@
     }
     .filter-tab.active .tab-count {
       background: rgba(124,58,237,.4);
+    }
+
+    /* ── Modal filters (Trade / Armazém / Transporte) ──────── */
+    .modal-filter-row {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      margin-bottom: .5rem;
+      flex-wrap: wrap;
+    }
+    .modal-filter-sep {
+      font-size: .7rem;
+      color: var(--text-faint);
+      font-weight: 600;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-right: .2rem;
+      white-space: nowrap;
+    }
+    .modal-tab {
+      font-size: .74rem;
+      padding: .32rem .85rem;
+    }
+    .modal-tab[data-modal="trade"].active {
+      background: rgba(99,102,241,.2);
+      border-color: #6366f1;
+      color: #a5b4fc;
+    }
+    .modal-tab[data-modal="armazem"].active {
+      background: rgba(16,185,129,.15);
+      border-color: #10b981;
+      color: #6ee7b7;
+    }
+    .modal-tab[data-modal="transporte"].active {
+      background: rgba(245,158,11,.15);
+      border-color: #f59e0b;
+      color: #fcd34d;
+    }
+    /* ── Sub-filter row ──────────────────────────────────── */
+    .sub-filter-row {
+      display: none;
+      align-items: center;
+      gap: .35rem;
+      margin-bottom: .9rem;
+      flex-wrap: wrap;
+      padding-left: 1.1rem;
+      border-left: 2px solid var(--glass-border);
+    }
+    .sub-tab {
+      font-size: .72rem;
+      padding: .26rem .75rem;
+      opacity: .8;
+    }
+    .sub-tab.active, .sub-tab:hover {
+      opacity: 1;
+      border-color: var(--purple-accent, #7c3aed);
+      color: var(--text-primary);
+    }
+    .sub-tab.active {
+      background: rgba(124,58,237,.18);
     }
 
     /* ── Table card ──────────────────────────────────────── */
@@ -393,6 +453,23 @@
         </button>
       </div>
 
+      <!-- Filtros de Modalidade -->
+      <div class="modal-filter-row" id="modal-filter-row">
+        <span class="modal-filter-sep">Modalidade:</span>
+        <button class="filter-tab modal-tab" data-modal="trade" onclick="setModalFilter('trade')">
+          Trade <span class="tab-count" id="mcount-trade">0</span>
+        </button>
+        <button class="filter-tab modal-tab" data-modal="armazem" onclick="setModalFilter('armazem')">
+          Armazém <span class="tab-count" id="mcount-armazem">0</span>
+        </button>
+        <button class="filter-tab modal-tab" data-modal="transporte" onclick="setModalFilter('transporte')">
+          Transporte <span class="tab-count" id="mcount-transporte">0</span>
+        </button>
+      </div>
+
+      <!-- Sub-filtros (exibidos dinamicamente) -->
+      <div class="sub-filter-row" id="sub-filter-row"></div>
+
       <!-- Tabela -->
       <div class="table-card">
         <table class="data-table">
@@ -431,17 +508,97 @@
 
   /* ── Estado ─────────────────────────────────────────── */
   const urlStatus   = new URLSearchParams(location.search).get('status');
-  let currentFilter = urlStatus || 'todos';
+  let currentFilter    = urlStatus || 'todos';
+  let currentModalFilter = null;  // 'trade' | 'armazem' | 'transporte' | null
+  let currentSubFilter   = null;  // 'encomenda' | 'conta_ordem' | 'gestao' | 'armazem_vdm' | 'licenciados' | null
   let currentPage   = 1;
   const PAGE_SIZE   = 10;
+
+  /* ── Classificadores de modalidade ──────────────────── */
+  function _isTrade(s) {
+    if (s.origem === 'clientes_ativos') return (s.modalidade1 || '').toLowerCase() === 'trade';
+    var t = (s.tipoAnalise || '').toLowerCase();
+    return !t || t === 'trade';
+  }
+  function _isArmazem(s) {
+    if (s.origem === 'clientes_ativos') return (s.modalidade1 || '').toLowerCase() === 'armazenagem';
+    var t = (s.tipoAnalise || '').toLowerCase();
+    return t === 'armazem' || t === 'licenciamento';
+  }
+  function _isTransporte(s) {
+    if (s.origem === 'clientes_ativos') return (s.modalidade1 || '').toLowerCase() === 'transporte';
+    return (s.tipoAnalise || '').toLowerCase() === 'transporte';
+  }
+  function _matchSub(s, sub) {
+    var m2 = (s.modalidade2 || s.tipoOperacao || '').toLowerCase();
+    if (sub === 'encomenda')   return m2.includes('encomenda');
+    if (sub === 'conta_ordem') return m2.includes('conta');
+    if (sub === 'gestao')      return m2.includes('gest');
+    if (sub === 'armazem_vdm') {
+      if (s.origem === 'clientes_ativos') return false;
+      return (s.tipoAnalise || '').toLowerCase() === 'armazem';
+    }
+    if (sub === 'licenciados') {
+      if (s.origem === 'clientes_ativos') return false;
+      return (s.tipoAnalise || '').toLowerCase() === 'licenciamento';
+    }
+    return true;
+  }
 
   function setFilter(status) {
     currentFilter = status;
     currentPage   = 1;
-    document.querySelectorAll('.filter-tab').forEach(btn => {
+    document.querySelectorAll('.filter-tab[data-status]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.status === status);
     });
     renderTable();
+  }
+
+  function setModalFilter(modal) {
+    currentModalFilter = currentModalFilter === modal ? null : modal;
+    currentSubFilter   = null;
+    currentPage        = 1;
+    document.querySelectorAll('.modal-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.modal === currentModalFilter);
+    });
+    _renderSubFilters();
+    renderTable();
+  }
+
+  function setSubFilter(sub) {
+    currentSubFilter = currentSubFilter === sub ? null : sub;
+    currentPage      = 1;
+    document.querySelectorAll('.sub-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.sub === sub && currentSubFilter === sub);
+    });
+    renderTable();
+  }
+
+  function _renderSubFilters() {
+    var row = document.getElementById('sub-filter-row');
+    var opts = [];
+    if (currentModalFilter === 'trade') {
+      opts = [
+        { key: 'encomenda',   label: 'Encomenda',     color: '#818cf8' },
+        { key: 'conta_ordem', label: 'Conta e Ordem',  color: '#818cf8' },
+        { key: 'gestao',      label: 'Gestão',          color: '#818cf8' },
+      ];
+    } else if (currentModalFilter === 'armazem') {
+      opts = [
+        { key: 'armazem_vdm', label: 'Armazém VDM', color: '#34d399' },
+        { key: 'licenciados', label: 'Licenciados',  color: '#34d399' },
+      ];
+    }
+    if (!opts.length) {
+      row.style.display = 'none';
+      row.innerHTML     = '';
+      return;
+    }
+    row.style.display = 'flex';
+    row.innerHTML = '<span class="modal-filter-sep" style="font-size:.65rem;">↳ Subtipo:</span>' +
+      opts.map(function(o) {
+        return '<button class="filter-tab sub-tab" data-sub="' + o.key + '" onclick="setSubFilter(\'' + o.key + '\')" style="--sub-color:' + o.color + ';">' + o.label + '</button>';
+      }).join('');
   }
 
   function goToPage(p) {
@@ -456,7 +613,7 @@
     const query = (document.getElementById('search-input').value || '').toLowerCase().trim();
     const all   = DB.solicitacoes.getAll();
 
-    /* contagens para as abas */
+    /* contagens para as abas de status */
     const cnts = { todos: all.length, pendente: 0, em_analise: 0, em_comite: 0, aprovado: 0, negado: 0 };
     all.forEach(s => { if (cnts[s.status] !== undefined) cnts[s.status]++; });
     Object.entries(cnts).forEach(([k, v]) => {
@@ -464,9 +621,31 @@
       if (el) el.textContent = v;
     });
 
-    /* filtro + busca */
+    /* contagens para abas de modalidade (baseadas no status filter atual) */
+    const statusBase = currentFilter === 'todos' ? all : all.filter(s => s.status === currentFilter);
+    var mcTrade = 0, mcArmazem = 0, mcTransporte = 0;
+    statusBase.forEach(s => {
+      if (_isTrade(s))      mcTrade++;
+      else if (_isArmazem(s))    mcArmazem++;
+      else if (_isTransporte(s)) mcTransporte++;
+    });
+    var elMT = document.getElementById('mcount-trade');     if (elMT) elMT.textContent = mcTrade;
+    var elMA = document.getElementById('mcount-armazem');   if (elMA) elMA.textContent = mcArmazem;
+    var elMR = document.getElementById('mcount-transporte'); if (elMR) elMR.textContent = mcTransporte;
+
+    /* filtro por status */
     let rows = all;
     if (currentFilter !== 'todos') rows = rows.filter(s => s.status === currentFilter);
+
+    /* filtro por modalidade */
+    if (currentModalFilter === 'trade')      rows = rows.filter(_isTrade);
+    else if (currentModalFilter === 'armazem')    rows = rows.filter(_isArmazem);
+    else if (currentModalFilter === 'transporte') rows = rows.filter(_isTransporte);
+
+    /* filtro por sub-modalidade */
+    if (currentSubFilter) rows = rows.filter(s => _matchSub(s, currentSubFilter));
+
+    /* busca textual */
     if (query) rows = rows.filter(s =>
       (s.empresa || '').toLowerCase().includes(query) ||
       (s.cnpj    || '').toLowerCase().includes(query) ||
