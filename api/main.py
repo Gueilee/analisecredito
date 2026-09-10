@@ -221,9 +221,13 @@ async def _ensure_tables() -> None:
         """)
         await conn.execute("""
             ALTER TABLE ac_clientes_ativos
-                ADD COLUMN IF NOT EXISTS rf_data        JSONB,
-                ADD COLUMN IF NOT EXISTS idwall_data    JSONB,
-                ADD COLUMN IF NOT EXISTS idwall_pending JSONB
+                ADD COLUMN IF NOT EXISTS rf_data          JSONB,
+                ADD COLUMN IF NOT EXISTS idwall_data      JSONB,
+                ADD COLUMN IF NOT EXISTS idwall_pending   JSONB,
+                ADD COLUMN IF NOT EXISTS prazo_aprovado   TEXT,
+                ADD COLUMN IF NOT EXISTS parecer_tecnico  TEXT,
+                ADD COLUMN IF NOT EXISTS decisao_analista TEXT,
+                ADD COLUMN IF NOT EXISTS decisao_at       TIMESTAMPTZ
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_cnpj    ON ac_clientes_ativos(cnpj)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_uf      ON ac_clientes_ativos(uf)")
@@ -3885,7 +3889,8 @@ async def sol_list(current_user=Depends(_get_current_user)):
             "SELECT id, codigo_conexos, razao_social, cnpj, modalidade1, modalidade2, "
             "filial_matriz, uf, endereco, status_cliente, validade, "
             "plano_2026, faturado_ytd, fat_plano, volume_estimado_ano, "
-            "limite_aprovado, atualizado_em, rf_data, idwall_data, idwall_pending "
+            "limite_aprovado, atualizado_em, rf_data, idwall_data, idwall_pending, "
+            "prazo_aprovado, parecer_tecnico, decisao_analista, decisao_at "
             "FROM ac_clientes_ativos ORDER BY razao_social"
         )
         today = datetime.utcnow().date()
@@ -3934,9 +3939,11 @@ async def sol_list(current_user=Depends(_get_current_user)):
                 "fatPlano":         _num(ca["fat_plano"]),
                 "volumeEstimadoAno": _num(ca["volume_estimado_ano"]),
                 "limiteAprovado":   limite_str,
+                "prazoAprovado":    ca.get("prazo_aprovado") or "",
+                "parecerTecnico":   ca.get("parecer_tecnico") or "",
                 "validadeDias":     valid_dias,
-                "decisao_at":       decisao_dt.isoformat() if hasattr(decisao_dt, "isoformat") else str(decisao_dt),
-                "decisaoAnalista":  "Time Financeiro",
+                "decisao_at":       (ca["decisao_at"].isoformat() if ca.get("decisao_at") and hasattr(ca["decisao_at"], "isoformat") else None) or (decisao_dt.isoformat() if hasattr(decisao_dt, "isoformat") else str(decisao_dt)),
+                "decisaoAnalista":  ca.get("decisao_analista") or "Time Financeiro",
                 "origem":           "clientes_ativos",
                 "codigoConexos":    ca["codigo_conexos"],
                 "createdAt":        str(atualizado_em or today),
@@ -3953,22 +3960,59 @@ async def sol_list(current_user=Depends(_get_current_user)):
 
 @app.put("/api/clientes-ativos/{ca_id}/analise")
 async def ca_analise_update(ca_id: int, request: Request, current_user=Depends(_get_current_user)):
-    """Persiste rf_data / idwall_data / idwall_pending em ac_clientes_ativos sem criar linha em ac_solicitacoes."""
+    """Persiste dados de análise e decisão do analista em ac_clientes_ativos."""
     body = await request.json()
-    set_clauses = []
+    set_clauses: list[str] = []
     params: list = []
+
+    _STATUS_TO_CLIENTE = {
+        "aprovado":  "ATIVO",
+        "negado":    "BLOQUEADO",
+        "em_comite": "REAVALIAR",
+        "em_analise":"REAVALIAR",
+        "pendente":  "REAVALIAR",
+    }
+
+    def _add(col: str, val):
+        set_clauses.append(f"{col} = ?")
+        params.append(val)
+
     if "rf_data" in body:
         v = body["rf_data"]
-        set_clauses.append("rf_data = ?")
-        params.append(json.dumps(v, ensure_ascii=False) if v is not None else None)
+        _add("rf_data", json.dumps(v, ensure_ascii=False) if v is not None else None)
     if "idwall_data" in body:
         v = body["idwall_data"]
-        set_clauses.append("idwall_data = ?")
-        params.append(json.dumps(v, ensure_ascii=False) if v is not None else None)
+        _add("idwall_data", json.dumps(v, ensure_ascii=False) if v is not None else None)
     if "idwall_pending" in body:
         v = body["idwall_pending"]
-        set_clauses.append("idwall_pending = ?")
-        params.append(json.dumps(v, ensure_ascii=False) if v is not None else None)
+        _add("idwall_pending", json.dumps(v, ensure_ascii=False) if v is not None else None)
+    if "status" in body:
+        sc = _STATUS_TO_CLIENTE.get(body["status"], "REAVALIAR")
+        _add("status_cliente", sc)
+    if "limiteAprovado" in body:
+        v = body["limiteAprovado"]
+        try:
+            num = float(str(v).replace(".", "").replace(",", ".")) if v else None
+        except (ValueError, TypeError):
+            num = None
+        _add("limite_aprovado", num)
+    if "prazoAprovado" in body:
+        _add("prazo_aprovado", str(body["prazoAprovado"]) if body["prazoAprovado"] is not None else None)
+    if "validadeDias" in body:
+        vd = body["validadeDias"]
+        if vd is not None:
+            try:
+                nova_val = date.today() + timedelta(days=int(vd))
+                _add("validade", nova_val.isoformat())
+            except (ValueError, TypeError):
+                pass
+    if "parecerTecnico" in body:
+        _add("parecer_tecnico", body["parecerTecnico"] or None)
+    if "decisaoAnalista" in body:
+        _add("decisao_analista", body["decisaoAnalista"] or None)
+    if "decisao_at" in body:
+        _add("decisao_at", body["decisao_at"] or None)
+
     if not set_clauses:
         return {"ok": True}
     params.append(ca_id)

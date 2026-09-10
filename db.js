@@ -148,13 +148,20 @@ const DB = (() => {
       this._saveCache();
 
       // Registros ca_ (clientes_ativos) não existem em ac_solicitacoes — roteamos
-      // apenas os campos de análise para o endpoint dedicado a fim de evitar duplicação.
+      // campos de análise e decisão para o endpoint dedicado, evitando duplicação.
       if (id && String(id).startsWith('ca_')) {
         const numId = String(id).replace('ca_', '');
         const analise = {};
         if ('rf_data'        in data) analise.rf_data        = data.rf_data;
         if ('idwall'         in data) analise.idwall_data    = data.idwall;
         if ('idwall_pending' in data) analise.idwall_pending = data.idwall_pending;
+        if ('status'         in data) analise.status         = data.status;
+        if ('limiteAprovado' in data) analise.limiteAprovado = data.limiteAprovado;
+        if ('prazoAprovado'  in data) analise.prazoAprovado  = data.prazoAprovado;
+        if ('validadeDias'   in data) analise.validadeDias   = data.validadeDias;
+        if ('parecerTecnico' in data) analise.parecerTecnico = data.parecerTecnico;
+        if ('decisaoAnalista'in data) analise.decisaoAnalista= data.decisaoAnalista;
+        if ('decisao_at'     in data) analise.decisao_at     = data.decisao_at;
         if (Object.keys(analise).length > 0) {
           _fetch(`/api/clientes-ativos/${numId}/analise`, {
             method: 'PUT',
