@@ -3835,6 +3835,18 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
   _idwallShowPendingState();
 }
 
+// Bootstrap RF: se já houver resultado salvo, renderiza sem precisar reconsultar.
+if (typeof sol !== 'undefined' && sol?.rf_data?.status === 'ok' && sol?.rf_data?.data?.razao_social) {
+  if (typeof renderRF === 'function') {
+    const _rfd = sol.rf_data.data;
+    document.getElementById('rf-icon').className    = 'bureau-icon ok';
+    document.getElementById('rf-status').textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
+    renderRF(_rfd);
+    const _bRf = document.getElementById('btn-rf-consult');
+    if (_bRf) _bRf.style.display = 'none';
+  }
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    ANÁLISE CONTÁBIL
    ────────────────────────────────────────────────────────────────────────── */

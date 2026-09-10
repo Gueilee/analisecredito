@@ -146,6 +146,27 @@ const DB = (() => {
         this._cache.push(updated);
       }
       this._saveCache();
+
+      // Registros ca_ (clientes_ativos) não existem em ac_solicitacoes — roteamos
+      // apenas os campos de análise para o endpoint dedicado a fim de evitar duplicação.
+      if (id && String(id).startsWith('ca_')) {
+        const numId = String(id).replace('ca_', '');
+        const analise = {};
+        if ('rf_data'        in data) analise.rf_data        = data.rf_data;
+        if ('idwall'         in data) analise.idwall_data    = data.idwall;
+        if ('idwall_pending' in data) analise.idwall_pending = data.idwall_pending;
+        if (Object.keys(analise).length > 0) {
+          _fetch(`/api/clientes-ativos/${numId}/analise`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(analise),
+          }).catch(() => {});
+        }
+        const caPromise = Promise.resolve(updated);
+        caPromise._updated = updated;
+        return caPromise;
+      }
+
       // Retorna a Promise para que o chamador possa aguardar antes de navegar
       const promise = _fetch(`/api/solicitacoes/${id}`, {
         method: 'PUT',

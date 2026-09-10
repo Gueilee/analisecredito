@@ -219,6 +219,12 @@ async def _ensure_tables() -> None:
                 UNIQUE (codigo_conexos, modalidade1)
             )
         """)
+        await conn.execute("""
+            ALTER TABLE ac_clientes_ativos
+                ADD COLUMN IF NOT EXISTS rf_data        JSONB,
+                ADD COLUMN IF NOT EXISTS idwall_data    JSONB,
+                ADD COLUMN IF NOT EXISTS idwall_pending JSONB
+        """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_cnpj    ON ac_clientes_ativos(cnpj)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_uf      ON ac_clientes_ativos(uf)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_mod     ON ac_clientes_ativos(modalidade1)")
@@ -3879,7 +3885,8 @@ async def sol_list(current_user=Depends(_get_current_user)):
             "SELECT id, codigo_conexos, razao_social, cnpj, modalidade1, modalidade2, "
             "filial_matriz, uf, endereco, status_cliente, validade, "
             "plano_2026, faturado_ytd, fat_plano, volume_estimado_ano, "
-            "limite_aprovado, atualizado_em FROM ac_clientes_ativos ORDER BY razao_social"
+            "limite_aprovado, atualizado_em, rf_data, idwall_data, idwall_pending "
+            "FROM ac_clientes_ativos ORDER BY razao_social"
         )
         today = datetime.utcnow().date()
         _status_map = {"ATIVO": "aprovado", "BLOQUEADO": "negado", "REAVALIAR": "em_analise"}
@@ -3934,11 +3941,42 @@ async def sol_list(current_user=Depends(_get_current_user)):
                 "codigoConexos":    ca["codigo_conexos"],
                 "createdAt":        str(atualizado_em or today),
                 "updatedAt":        str(atualizado_em or today),
+                "rf_data":          ca.get("rf_data"),
+                "idwall":           ca.get("idwall_data"),
+                "idwall_pending":   ca.get("idwall_pending"),
             })
     except Exception:
         pass  # Não quebra a listagem de solicitações se a tabela ainda não existir
 
     return {"items": items}
+
+
+@app.put("/api/clientes-ativos/{ca_id}/analise")
+async def ca_analise_update(ca_id: int, request: Request, current_user=Depends(_get_current_user)):
+    """Persiste rf_data / idwall_data / idwall_pending em ac_clientes_ativos sem criar linha em ac_solicitacoes."""
+    body = await request.json()
+    set_clauses = []
+    params: list = []
+    if "rf_data" in body:
+        v = body["rf_data"]
+        set_clauses.append("rf_data = ?")
+        params.append(json.dumps(v, ensure_ascii=False) if v is not None else None)
+    if "idwall_data" in body:
+        v = body["idwall_data"]
+        set_clauses.append("idwall_data = ?")
+        params.append(json.dumps(v, ensure_ascii=False) if v is not None else None)
+    if "idwall_pending" in body:
+        v = body["idwall_pending"]
+        set_clauses.append("idwall_pending = ?")
+        params.append(json.dumps(v, ensure_ascii=False) if v is not None else None)
+    if not set_clauses:
+        return {"ok": True}
+    params.append(ca_id)
+    await _turso_exec(
+        f"UPDATE ac_clientes_ativos SET {', '.join(set_clauses)} WHERE id = ?",
+        params,
+    )
+    return {"ok": True}
 
 
 @app.post("/api/solicitacoes", status_code=201)
