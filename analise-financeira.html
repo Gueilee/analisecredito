@@ -1567,71 +1567,110 @@
 
     // RF consultada em paralelo com IDwall — bureau consolidado no card IDwall
 
-    // Botões de PDF e Simulação sempre visíveis para todos os clientes
-    document.getElementById('btn-exposicao').style.display = sol.tipoAnalise === 'licenciamento' ? 'none' : '';
+    // ── Determina o modo de análise ───────────────────────────────────────
+    const _ta   = (sol.tipoAnalise  || '').toLowerCase();
+    const _top  = (sol.tipoOp       || '').toLowerCase();
+    const _mod1 = (sol.modalidade1  || '').toLowerCase();
+    const _mod2 = (sol.modalidade2  || '').toLowerCase();
+
+    const _isTransporte     = _ta === 'transporte' || _mod1 === 'transporte';
+    const _isArmazemVDM     = _ta === 'armazem';
+    const _isLicenciamento  = _ta === 'licenciamento';
+    const _isContaOrdem     = !_isTransporte && !_isArmazemVDM && !_isLicenciamento
+                              && (_top === 'conta-ordem' || _mod2.includes('conta'));
+    const _isGestao         = !_isTransporte && !_isArmazemVDM && !_isLicenciamento
+                              && !_isContaOrdem && (_top === 'gestao' || _mod2.includes('gest'));
+    const _isEncomenda      = !_isTransporte && !_isArmazemVDM && !_isLicenciamento
+                              && (_top === 'encomenda' || _mod2.includes('encomenda'));
+
+    // Simplificado: só IDwall + RF (sem IA, docs, contábil)
+    const _isSimplificado = _isTransporte || _isArmazemVDM || _isContaOrdem || _isGestao;
+
+    // Botão Exposição: apenas para Trade Encomenda (operação de risco total)
+    const _showExposicao = !_isSimplificado && !_isLicenciamento && _isEncomenda;
+    document.getElementById('btn-exposicao').style.display = _showExposicao ? '' : 'none';
     document.getElementById('btn-pdf').style.display = '';
 
-    // ── Tipo simplificado: Armazém / Transporte ────────────────────────────
-    // Esses segmentos só precisam de RF + IDwall BGC — sem IA, sem financeiros
-    const _isSimplificado = sol.tipoAnalise === 'armazem' || sol.tipoAnalise === 'transporte'
-      || sol.segmento === 'ARMAZÉM' || sol.segmento === 'TRANSPORTE';
-
+    // ── Banner hero por tipo ───────────────────────────────────────────────
     if (_isSimplificado) {
-      const _tipoLabel  = sol.tipoAnalise === 'armazem' ? 'Armazém' : 'Transporte';
-      const _color      = sol.tipoAnalise === 'armazem' ? 'var(--brand-neon-green)' : '#60a5fa';
-      const _bg         = sol.tipoAnalise === 'armazem' ? 'rgba(1,225,142,.08)' : 'rgba(59,130,246,.08)';
-      const _border     = sol.tipoAnalise === 'armazem' ? 'rgba(1,225,142,.2)'  : 'rgba(59,130,246,.2)';
+      const _cfg = _isTransporte
+        ? { label: 'Transporte',         cor: '#60a5fa',              bg: 'rgba(59,130,246,.08)',   bdr: 'rgba(59,130,246,.25)'  }
+        : _isArmazemVDM
+        ? { label: 'Armazém VDM',        cor: 'var(--brand-neon-green)', bg: 'rgba(1,225,142,.08)', bdr: 'rgba(1,225,142,.22)'   }
+        : _isContaOrdem
+        ? { label: 'Trade – Conta e Ordem', cor: '#a78bfa',           bg: 'rgba(167,139,250,.08)', bdr: 'rgba(167,139,250,.25)' }
+        : { label: 'Trade – Gestão',     cor: '#c084fc',              bg: 'rgba(192,132,252,.08)', bdr: 'rgba(192,132,252,.25)' };
 
-      // Banner informativo no hero
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
-        `<div style="margin-top:.9rem;display:flex;align-items:center;gap:.65rem;background:${_bg};border:1px solid ${_border};border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.77rem;color:${_color};font-weight:600;">
+        `<div style="margin-top:.9rem;display:flex;align-items:center;gap:.65rem;background:${_cfg.bg};border:1px solid ${_cfg.bdr};border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.77rem;color:${_cfg.cor};font-weight:600;">
           <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Análise Simplificada (${_tipoLabel}) — validação via Receita Federal e IDwall BGC
+          Análise Simplificada — ${_cfg.label} · validação via IDwall BGC e Receita Federal
         </div>`
       );
 
-      // Oculta seções exclusivas de Trade
-      ['fin-card', 'ai-card', 'detail-card', 'limits-card', 'trigger-card'].forEach(id => {
+      // Transforma o card de análise em consulta simplificada
+      const _facEl = document.getElementById('full-analysis-card');
+      if (_facEl) {
+        _facEl.innerHTML = `
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.9rem;">
+            <div>
+              <div class="card-title" style="margin-bottom:.25rem;">Consulta Simplificada</div>
+              <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall BGC · Receita Federal · Quadro Societário</div>
+            </div>
+            <button id="btn-run" class="btn-full-analysis" onclick="runSimplifiedAnalysis()">
+              <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              Consultar CNPJ
+            </button>
+          </div>
+          <div class="fa-steps" id="full-analysis-steps" style="display:none;">
+            <div class="fa-step" id="fa-step-idwall"><span class="fa-step-dot"></span><span class="fa-step-label">IDwall BGC</span><span class="fa-step-status" id="fa-status-idwall">Aguardando</span></div>
+            <div class="fa-step" id="fa-step-rf"><span class="fa-step-dot"></span><span class="fa-step-label">Receita Federal</span><span class="fa-step-status" id="fa-status-rf">Aguardando</span></div>
+          </div>
+          <div style="display:none;">
+            <div class="bureau-icon wait" id="idwall-icon"></div>
+            <div id="idwall-bureau-sub"></div>
+            <button id="btn-idwall-consult" onclick="runIdwallConsulta()"></button>
+          </div>`;
+      }
+
+      // Oculta seções exclusivas de análise completa
+      ['fin-card', 'contabil-card', 'ai-card', 'detail-card', 'limits-card', 'trigger-card'].forEach(function(id) {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
-      // PDF e Simulação mantidos visíveis mesmo para análise simplificada
 
-      // Painel de decisão visível imediatamente (sem exigir análise de IA)
+      // Decisão disponível imediatamente
       if (!['aprovado', 'negado'].includes(sol.status)) {
         if (canDecide) document.getElementById('decision-card').style.display = '';
         else           document.getElementById('pending-decision-banner').style.display = '';
       }
     }
 
-    // Painel de decisão visível imediatamente para qualquer tipo de cliente (Trade incluso)
-    // Permite que o time financeiro lance limites e decisões sem precisar rodar análise de IA
-    if (!_isSimplificado && !['aprovado', 'negado'].includes(sol.status)) {
-      if (canDecide) document.getElementById('decision-card').style.display = '';
-      else           document.getElementById('pending-decision-banner').style.display = '';
-    }
-
-    // Licenciamento: banner informativo (análise completa, sem Exposição)
-    if (sol.tipoAnalise === 'licenciamento') {
+    if (_isLicenciamento) {
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
         `<div style="margin-top:.9rem;display:flex;align-items:center;gap:.65rem;background:rgba(1,225,142,.08);border:1px solid rgba(1,225,142,.22);border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.77rem;color:var(--brand-neon-green);font-weight:600;">
           <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Licenciamento de Armazém — análise completa: IDwall · Receita Federal · IA de Crédito
+          Licenciamento de Armazém — análise completa: IDwall · Receita Federal · Contábil · IA de Crédito
         </div>`
       );
     }
 
-    // Encomenda: adiciona banner no hero e configura botões específicos
-    if (sol.tipoOp === 'encomenda') {
+    if (_isEncomenda && !_isSimplificado) {
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
         `<div class="hero-encomenda">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Operação por Encomenda — exige deliberação do Comitê de Crédito antes da aprovação final
+          Trade Encomenda — análise completa com Comitê de Crédito obrigatório
         </div>`
       );
       document.getElementById('encomenda-notice').style.display = '';
       document.getElementById('dec-btn-comite').style.display   = '';
       document.getElementById('dec-btn-aprovar').style.display  = 'none';
+    }
+
+    // Painel de decisão para análise completa (Trade Encomenda / Licenciamento / genérico)
+    if (!_isSimplificado && !['aprovado', 'negado'].includes(sol.status)) {
+      if (canDecide) document.getElementById('decision-card').style.display = '';
+      else           document.getElementById('pending-decision-banner').style.display = '';
     }
 
     // Auto-transição: pendente → em_analise ao abrir a tela de análise
@@ -1914,9 +1953,15 @@
 
   /* ── Executa análise ─────────────────────────────────── */
   async function runAnalysis() {
-    // Clientes Armazém/Transporte não usam análise de IA
-    if (sol.tipoAnalise === 'armazem' || sol.tipoAnalise === 'transporte'
-        || sol.segmento === 'ARMAZÉM' || sol.segmento === 'TRANSPORTE') return;
+    // Análise simplificada: não roda IA (apenas IDwall + RF)
+    const _taRa  = (sol.tipoAnalise || '').toLowerCase();
+    const _topRa = (sol.tipoOp      || '').toLowerCase();
+    const _m2Ra  = (sol.modalidade2 || '').toLowerCase();
+    const _skipIA = _taRa === 'armazem' || _taRa === 'transporte'
+      || (sol.modalidade1 || '').toLowerCase() === 'transporte'
+      || _topRa === 'conta-ordem' || _m2Ra.includes('conta')
+      || _topRa === 'gestao'      || _m2Ra.includes('gest');
+    if (_skipIA) return;
 
     const btn = document.getElementById('btn-run');
     btn.disabled = true;
@@ -3166,6 +3211,69 @@
 /* ── Análise Completa (botão único) ─────────────────── */
 
 let _fullAnalysisRunning = false;
+
+/* ── Análise Simplificada: apenas IDwall + Receita Federal ───────────── */
+async function runSimplifiedAnalysis() {
+  const btn = document.getElementById('btn-run');
+  if (btn && btn.disabled) return;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Consultando…`;
+  }
+  const stepsEl = document.getElementById('full-analysis-steps');
+  if (stepsEl) stepsEl.style.display = '';
+  _faSetStep('idwall', '', 'Aguardando');
+  _faSetStep('rf',     '', 'Aguardando');
+
+  /* 1. IDwall BGC */
+  if (sol?.idwall) {
+    _faSetStep('idwall', 'done', 'Relatório já disponível');
+  } else {
+    _faSetStep('idwall', 'loading', 'Consultando IDwall BGC…');
+    _startIdwallBackground();
+  }
+
+  /* 2. Receita Federal — chama API diretamente */
+  _faSetStep('rf', 'loading', 'Consultando Receita Federal…');
+  try {
+    const _cnpjRf = (sol.cnpj || '').replace(/\D/g, '');
+    if (_cnpjRf) {
+      const _rfRes = await fetch(`${API_URL}/api/receita/${_cnpjRf}`, { credentials: 'include' });
+      if (_rfRes.ok) {
+        const _rfJson = await _rfRes.json();
+        const _rfd    = _rfJson.data || {};
+        if (_rfJson.status === 'ok' && _rfd.razao_social) {
+          if (typeof renderRF === 'function') renderRF(_rfd);
+          DB.solicitacoes.update(sol.id, { rf_data: _rfJson, rf_consultada_at: new Date().toISOString() });
+          sol = DB.solicitacoes.getById(sol.id);
+          _faSetStep('rf', 'done', 'Dados cadastrais carregados');
+        } else {
+          _faSetStep('rf', 'skip', 'CNPJ não encontrado na Receita Federal');
+        }
+      } else {
+        _faSetStep('rf', 'skip', 'Erro na consulta RF');
+      }
+    } else {
+      _faSetStep('rf', 'skip', 'CNPJ não informado');
+    }
+  } catch (_) {
+    _faSetStep('rf', 'skip', 'Erro de comunicação');
+  }
+
+  /* Finaliza */
+  if (btn) {
+    btn.disabled = false;
+    btn.className = 'btn-full-analysis done';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída`;
+  }
+
+  // Mostra o card de decisão
+  if (!['aprovado', 'negado'].includes(sol.status)) {
+    const canDecideNow = typeof canDecide !== 'undefined' ? canDecide : true;
+    if (canDecideNow) document.getElementById('decision-card').style.display = '';
+    else              document.getElementById('pending-decision-banner').style.display = '';
+  }
+}
 
 function _faSetStep(id, state, msg) {
   const step   = document.getElementById('fa-step-' + id);
