@@ -1459,7 +1459,7 @@
             <!-- Aviso de Encomenda (mostrado apenas para tipoOp === 'encomenda') -->
             <div class="encomenda-notice" id="encomenda-notice" style="display:none;">
               <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Operação por <strong>Encomenda</strong> — a aprovação final deve ser deliberada pelo Comitê de Crédito (diretoria e sócios). Envie o processo ao Comitê após preencher seu parecer.</span>
+              <span>Esta operação exige deliberação do <strong>Comitê de Crédito</strong> (diretoria e sócios). Preencha seu parecer e envie ao Comitê para aprovação final.</span>
             </div>
 
             <!-- Botão Comitê (apenas encomenda) -->
@@ -1655,11 +1655,14 @@
       );
     }
 
-    if (_isEncomenda && !_isSimplificado) {
+    if ((_isEncomenda || _isLicenciamento) && !_isSimplificado) {
+      const _comiteLabel = _isLicenciamento
+        ? 'Licenciamento de Armazém — análise completa com aprovação obrigatória pelo Comitê de Crédito'
+        : 'Trade Encomenda — análise completa com Comitê de Crédito obrigatório';
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
         `<div class="hero-encomenda">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Trade Encomenda — análise completa com Comitê de Crédito obrigatório
+          ${_comiteLabel}
         </div>`
       );
       document.getElementById('encomenda-notice').style.display = '';
