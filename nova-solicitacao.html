@@ -3233,8 +3233,10 @@
       recvdm:  -fobSt['recvdm']  - diSt['recvdm']  + recSt['recvdm'],
     };
 
-    // Cumulative (running sum) — fórmula do modelo Excel
-    const SEQ_STAGES = ['pedido','pront','bl','transit','desemb','fat','recvdm'];
+    // Cumulative (running sum) — fórmula do modelo Excel (8 colunas em ordem, incluindo pagexp)
+    // PAGEXP inclui o pagamento do FOB restante ao exportador (saída de caixa); deve entrar na
+    // sequência para que FATURAMENTO e RECEBIMENTO VDM reflitam o saldo correto.
+    const SEQ_STAGES = ['pedido','pront','bl','transit','desemb','pagexp','fat','recvdm'];
     let running = 0;
     const fluxo = {}, expo = {};
     let expoAcc = -volVal; // começa com -faturamento total (exposição máxima inicial)
@@ -3244,12 +3246,6 @@
       expoAcc  += recSt[s];
       expo[s]   = expoAcc < 0 ? expoAcc : 0;
     });
-    // pagexp standalone (Excel H9=J9+G5+H6+H8): fluxo_recvdm + fob_desemb_neg + di_pagexp + rec_pagexp
-    const cfPagexp = fobStTotal > 0
-      ? fluxo['recvdm'] - fobSt['desemb'] - diSt['pagexp'] + recSt['pagexp']
-      : fluxo['recvdm'] - fobBRL;
-    fluxo['pagexp'] = cfPagexp;
-    expo['pagexp']  = 0;
     const peakExpo = Math.min(0, ...Object.values(expo));
 
     const fmtFluxo = v => {

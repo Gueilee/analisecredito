@@ -526,10 +526,14 @@
 
   /* ── Mapeia condição de parcela → data do ciclo ───── */
   function parcCondToDate(tipo, dates) {
-    if (tipo === 'embarque')  return new Date(dates.dBL);
-    if (tipo === 'registro')  return new Date(dates.dReg);
-    if (tipo === 'entrega')   return new Date(dates.dRec);
-    // avista, remessa, producao, lc, cobranca → data da invoice (início)
+    if (tipo === 'embarque' || tipo === 'bl')         return new Date(dates.dBL);
+    if (tipo === 'registro' || tipo === 'transit')    return new Date(dates.dReg);
+    if (tipo === 'entrega'  || tipo === 'recvdm')     return new Date(dates.dRec);
+    if (tipo === 'desemb')   return new Date(dates.dDesemb);
+    if (tipo === 'pagexp')   return dates.dPagExp ? new Date(dates.dPagExp) : new Date(dates.d0);
+    if (tipo === 'fat')      return new Date(dates.dFat);
+    if (tipo === 'pront')    return new Date(dates.dPrepDone);
+    // pedido, avista, remessa, producao, lc, cobranca → data da invoice (início)
     return new Date(dates.d0);
   }
 
@@ -721,7 +725,7 @@
     const dRec      = dVDM;
 
     const rateDaily = (P.cdiAnnual / 365) + (P.spreadMonthly / 30);
-    const datesMap  = { d0, dPrepDone, dBL, dReg, dDesemb, dFat, dRec };
+    const datesMap  = { d0, dPrepDone, dBL, dReg, dDesemb, dFat, dRec, dPagExp };
 
     // Pagamentos FOB (parcelado ou único)
     let fobPayments = [];
@@ -765,7 +769,7 @@
   function buildCurve(cycles) {
     const evts = [];
     cycles.forEach((c, i) => {
-      evts.push({ t: c.dReg.getTime(), i, delta: c.desp + c.imp });
+      evts.push({ t: c.dDesemb.getTime(), i, delta: c.desp + c.imp });
       c.fobPayments.forEach(fp => evts.push({ t: fp.date.getTime(), i, delta: fp.amount }));
       evts.push({ t: c.dRec.getTime(), i, delta: -(c.fob + c.desp + c.imp) });
     });
@@ -1133,17 +1137,15 @@
                            (P.volMes > 0 ? P.volMes : P.fobBRL + P.despBRL + P.impBRL);
 
     // Fluxo de caixa acumulado — replica exatamente o xlsUpdate() da 3.1.6:
-    // PG.EXP. (índice 5) NÃO entra na soma sequencial; usa fórmula própria:
-    //   cfPagexp = cfFinal_recvdm + fob_desemb (negativo) + di/rec_pagexp
-    // Isso representa o saldo no momento em que a Vendemmia paga o exportador.
+    // PG.EXP. (índice 5) entra normalmente na soma sequencial, como no modelo Excel.
+    // O pagamento do FOB restante ao exportador reduz o caixa acumulado nesse ponto.
     const _PAG = 5, _DES = 4, _RCV = 7;
     let _run = 0;
     const _cfSeq = XLS_KEYS.map((_, i) => {
-      if (i !== _PAG) _run += fobByCol[i] + diByCol[i] + recByCol[i];
+      _run += fobByCol[i] + diByCol[i] + recByCol[i];
       return _run;
     });
     const cfCum = _cfSeq.slice();
-    cfCum[_PAG] = _cfSeq[_RCV] + fobByCol[_DES] + diByCol[_PAG] + recByCol[_PAG];
 
     // EXP. SEGURO CRÉD. = saldo negativo (crédito em risco): cumRec - fatTotal, limitado a 0
     const expCred = XLS_KEYS.map((_, i) => {
