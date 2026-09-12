@@ -1617,7 +1617,7 @@
               <p style="font-size:.72rem;color:var(--text-faint);margin:.65rem 0 .75rem;line-height:1.5;">
                 IA analisa documentos, dados da RF e IDwall para gerar um parecer documental de crédito.
               </p>
-              <a href="#pereira-main-card" style="font-size:.73rem;color:rgba(167,139,250,.8);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;" onclick="document.getElementById('pereira-main-card').scrollIntoView({behavior:'smooth',block:'start'});return false;">
+              <a id="pereira-sidebar-link" href="#pereira-main-card" style="display:none;font-size:.73rem;color:rgba(167,139,250,.8);text-decoration:none;align-items:center;gap:.3rem;" onclick="const c=document.getElementById('pereira-main-card');if(c){c.style.display='block';setTimeout(()=>c.scrollIntoView({behavior:'smooth',block:'start'}),50);}return false;">
                 <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 Ver parecer completo
               </a>
@@ -5042,6 +5042,8 @@ function _renderPereiraAnalise(data) {
 
   result.style.display  = 'block';
   if (btnRefresh) { btnRefresh.style.display = ''; btnRefresh.disabled = false; }
+  const sideLink = document.getElementById('pereira-sidebar-link');
+  if (sideLink) sideLink.style.display = 'inline-flex';
 
   // Persiste no cache local para que o bootstrap funcione no próximo carregamento
   if (sol && sol.id) {
@@ -5050,13 +5052,24 @@ function _renderPereiraAnalise(data) {
   }
 }
 
-// Bootstrap: carrega análise salva se existir
+// Bootstrap: carrega análise salva se existir (cache local ou API após sync)
 (function _bootstrapPereira() {
-  if (!sol || !sol.pereira_analise || !sol.pereira_analise.parecer) return;
-  const mainCard = document.getElementById('pereira-main-card');
-  if (mainCard) mainCard.style.display = 'block';
-  _renderPereiraAnalise(sol.pereira_analise);
-  _pereiraSetStatus('Parecer disponível', 'rgba(1,225,142,.9)');
+  function _tryShow() {
+    const fresh = DB.solicitacoes.getById(solId);
+    if (fresh) sol = fresh;
+    if (!sol || !sol.pereira_analise || !sol.pereira_analise.parecer) return false;
+    const mainCard = document.getElementById('pereira-main-card');
+    if (mainCard) mainCard.style.display = 'block';
+    const sideLink = document.getElementById('pereira-sidebar-link');
+    if (sideLink) sideLink.style.display = '';
+    _renderPereiraAnalise(sol.pereira_analise);
+    _pereiraSetStatus('Parecer disponível', 'rgba(1,225,142,.9)');
+    return true;
+  }
+  // Tenta primeiro com cache local; se falhar, tenta novamente após sync com a API
+  if (!_tryShow()) {
+    DB.ready.then(() => { _tryShow(); }).catch(() => {});
+  }
 })();
 
 /* ──────────────────────────────────────────────────────────────────────────
