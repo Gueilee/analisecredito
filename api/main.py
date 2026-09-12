@@ -79,6 +79,17 @@ def _mk_ssl() -> _ssl_mod.SSLContext:
     return ctx
 
 
+async def _pg_conn_init(conn) -> None:
+    """Codec JSONB: asyncpg usa json.dumps/loads para colunas jsonb."""
+    await conn.set_type_codec(
+        "jsonb",
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema="pg_catalog",
+        format="text",
+    )
+
+
 async def _pg_init() -> None:
     global _PG_POOL
     if not (_PG_HOST and _PG_USER and _PG_PASS):
@@ -92,6 +103,7 @@ async def _pg_init() -> None:
             ssl=_mk_ssl(),
             min_size=1, max_size=8,
             command_timeout=15,
+            init=_pg_conn_init,
         )
         print(f"[DB] Pool PostgreSQL conectado → {_PG_HOST}/{_PG_DB}")
     except Exception as exc:
@@ -105,6 +117,19 @@ def _sql_pg(sql: str) -> str:
     for i, part in enumerate(parts[1:], 1):
         result += f"${i}" + part
     return result
+
+
+def _pg_json(v):
+    """Garante que campos JSONB chegam como objeto Python (dict/list), não como string.
+    Necessário quando o asyncpg retorna JSONB como str (sem codec) ou como dict (com codec)."""
+    if v is None:
+        return None
+    if isinstance(v, str):
+        try:
+            return json.loads(v)
+        except Exception:
+            return v
+    return v  # já é dict/list (codec ativo)
 
 
 async def _turso_query(sql: str, args: list | None = None) -> list[dict]:
@@ -4030,10 +4055,10 @@ async def sol_list(current_user=Depends(_get_current_user)):
                 "codigoConexos":    ca["codigo_conexos"],
                 "createdAt":        str(atualizado_em or today),
                 "updatedAt":        str(atualizado_em or today),
-                "rf_data":          ca.get("rf_data"),
-                "idwall":           ca.get("idwall_data"),
-                "idwall_pending":   ca.get("idwall_pending"),
-                "pereira_analise":  ca.get("pereira_analise"),
+                "rf_data":          _pg_json(ca.get("rf_data")),
+                "idwall":           _pg_json(ca.get("idwall_data")),
+                "idwall_pending":   _pg_json(ca.get("idwall_pending")),
+                "pereira_analise":  _pg_json(ca.get("pereira_analise")),
             })
     except Exception:
         pass  # Não quebra a listagem de solicitações se a tabela ainda não existir
@@ -4061,14 +4086,11 @@ async def ca_analise_update(ca_id: int, request: Request, current_user=Depends(_
         params.append(val)
 
     if "rf_data" in body:
-        v = body["rf_data"]
-        _add("rf_data", json.dumps(v, ensure_ascii=False) if v is not None else None)
+        _add("rf_data", body["rf_data"])         # dict → codec JSONB serializa
     if "idwall_data" in body:
-        v = body["idwall_data"]
-        _add("idwall_data", json.dumps(v, ensure_ascii=False) if v is not None else None)
+        _add("idwall_data", body["idwall_data"])
     if "idwall_pending" in body:
-        v = body["idwall_pending"]
-        _add("idwall_pending", json.dumps(v, ensure_ascii=False) if v is not None else None)
+        _add("idwall_pending", body["idwall_pending"])
     if "status" in body:
         sc = _STATUS_TO_CLIENTE.get(body["status"], "REAVALIAR")
         _add("status_cliente", sc)
@@ -4096,8 +4118,7 @@ async def ca_analise_update(ca_id: int, request: Request, current_user=Depends(_
     if "decisao_at" in body:
         _add("decisao_at", body["decisao_at"] or None)
     if "pereira_analise" in body:
-        v = body["pereira_analise"]
-        _add("pereira_analise", json.dumps(v, ensure_ascii=False) if v is not None else None)
+        _add("pereira_analise", body["pereira_analise"])  # dict → codec JSONB serializa
 
     if not set_clauses:
         return {"ok": True}
@@ -4911,7 +4932,7 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
     if _is_ca:
         await _turso_exec(
             "UPDATE ac_clientes_ativos SET pereira_analise=? WHERE id=?",
-            [json.dumps(pereira_result, ensure_ascii=False), _ca_numeric_id],
+            [pereira_result, _ca_numeric_id],  # dict → codec JSONB serializa
         )
     else:
         sol_data["pereira_analise"] = pereira_result
