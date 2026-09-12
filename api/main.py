@@ -28,7 +28,7 @@ import pdfplumber
 from dotenv import load_dotenv
 from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -302,6 +302,16 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    """Garante que erros não tratados retornem JSON (não texto plano) para facilitar debug no frontend."""
+    import traceback as _tb
+    _tb.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Erro interno: {type(exc).__name__}: {str(exc)[:300]}"},
+    )
 
 # ── CORS (origens configuradas via .env) ──────────────────────────────────────
 _ORIGINS = [o.strip() for o in os.getenv(
@@ -4900,8 +4910,8 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
     # 6. Persiste resultado na tabela correta
     if _is_ca:
         await _turso_exec(
-            "UPDATE ac_clientes_ativos SET pereira_analise=?, atualizado_em=? WHERE id=?",
-            [json.dumps(pereira_result, ensure_ascii=False), datetime.utcnow().isoformat(), _ca_numeric_id],
+            "UPDATE ac_clientes_ativos SET pereira_analise=? WHERE id=?",
+            [json.dumps(pereira_result, ensure_ascii=False), _ca_numeric_id],
         )
     else:
         sol_data["pereira_analise"] = pereira_result

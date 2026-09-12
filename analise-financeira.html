@@ -5057,8 +5057,9 @@ async function runPereiraCompleto() {
   try {
     await runPereira();
     _faSetStep('pereira', 'done', 'Parecer gerado');
-  } catch (_) {
-    _faSetStep('pereira', 'error', 'Erro ao gerar parecer — verifique os documentos');
+  } catch (pereiraErr) {
+    const _errMsg = pereiraErr?.message || 'Erro desconhecido';
+    _faSetStep('pereira', 'error', 'Erro: ' + _errMsg.slice(0, 80));
   }
 
   /* Finaliza */
