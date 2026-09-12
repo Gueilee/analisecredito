@@ -845,6 +845,66 @@
     .fin-doc-err-msg {
       font-size: .8rem; color: var(--red); padding: .5rem .25rem; line-height: 1.6;
     }
+
+    /* ── PEREIRA — Parecer de Crédito ─────────────────────── */
+    .pereira-meta-bar {
+      display: flex; flex-wrap: wrap; gap: .5rem .9rem;
+      font-size: .7rem; color: var(--text-faint);
+      padding: .45rem .65rem; background: rgba(124,58,237,.06);
+      border-radius: 6px; margin-bottom: .85rem; border: 1px solid rgba(124,58,237,.12);
+    }
+    .pereira-meta-bar span { display: flex; align-items: center; gap: .3rem; }
+    .pereira-parecer-wrap {
+      font-size: .82rem; line-height: 1.75; color: var(--text-secondary);
+      max-height: 520px; overflow-y: auto;
+      border-left: 2px solid rgba(124,58,237,.25);
+      padding: .6rem .9rem; margin: 0;
+    }
+    .pereira-parecer-wrap h1 { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 1.1rem 0 .35rem; }
+    .pereira-parecer-wrap h2 { font-size: .88rem; font-weight: 700; color: var(--text-primary); margin: .9rem 0 .3rem; }
+    .pereira-parecer-wrap h3 { font-size: .82rem; font-weight: 600; color: var(--text-secondary); margin: .7rem 0 .2rem; }
+    .pereira-parecer-wrap p  { margin: .35rem 0; }
+    .pereira-parecer-wrap ul, .pereira-parecer-wrap ol { padding-left: 1.2rem; margin: .3rem 0; }
+    .pereira-parecer-wrap li { margin: .2rem 0; }
+    .pereira-parecer-wrap table { border-collapse: collapse; width: 100%; margin: .6rem 0; font-size: .78rem; }
+    .pereira-parecer-wrap th {
+      text-align: left; padding: .35rem .6rem; background: rgba(255,255,255,.05);
+      border-bottom: 1px solid rgba(255,255,255,.1); font-weight: 600; color: var(--text-primary);
+    }
+    .pereira-parecer-wrap td {
+      padding: .28rem .6rem; border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .pereira-parecer-wrap strong { color: var(--text-primary); }
+    .pereira-parecer-wrap hr { border: none; border-top: 1px solid rgba(255,255,255,.07); margin: .8rem 0; }
+    .pereira-loading {
+      display: flex; flex-direction: column; align-items: center; gap: .75rem;
+      padding: 1.8rem 1rem; text-align: center;
+    }
+    .pereira-spinner {
+      width: 32px; height: 32px; border: 3px solid rgba(124,58,237,.2);
+      border-top-color: var(--purple-light); border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-pereira {
+      display: inline-flex; align-items: center; gap: .45rem;
+      padding: .55rem 1.1rem; font-size: .78rem; font-weight: 600; border: none;
+      border-radius: 7px; cursor: pointer; transition: opacity .15s, transform .15s;
+      background: linear-gradient(135deg, #4c1d95, #7c3aed); color: #fff;
+      box-shadow: 0 3px 12px rgba(124,58,237,.35);
+    }
+    .btn-pereira:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+    .btn-pereira:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-pereira svg { flex-shrink: 0; }
+    .btn-pereira-refresh {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .38rem .7rem; font-size: .72rem; font-weight: 600;
+      border: 1px solid rgba(124,58,237,.3); border-radius: 6px;
+      background: transparent; color: var(--purple-light); cursor: pointer;
+      transition: background .14s, border-color .14s;
+    }
+    .btn-pereira-refresh:hover:not(:disabled) { background: rgba(124,58,237,.08); border-color: rgba(124,58,237,.5); }
+    .btn-pereira-refresh:disabled { opacity: .4; cursor: not-allowed; }
       </style>
 </head>
 <body>
@@ -1420,6 +1480,49 @@
           <!-- Elementos ocultos mantidos para compatibilidade com JS -->
           <div id="trigger-card" style="display:none;"></div>
           <div id="limits-card" style="display:none;"></div>
+
+          <!-- ── PEREIRA — Parecer Documental de Crédito ── -->
+          <div class="card animate-in" id="pereira-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:.75rem;">
+              <div style="display:flex;align-items:center;gap:.5rem;">
+                <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style="color:var(--purple-light);flex-shrink:0"><path d="M12 2a5 5 0 0 1 5 5c0 2.21-1.43 4.1-3.43 4.75C15.61 12.94 18 15.79 18 19v1H6v-1c0-3.21 2.39-6.06 4.43-7.25A5 5 0 0 1 12 2z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 13.5c-1.5.9-3 2.5-3 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M15 13.5c1.5.9 3 2.5 3 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                <div>
+                  <div class="card-title" style="margin-bottom:.1rem;">Parecer PEREIRA</div>
+                  <div style="font-size:.68rem;color:var(--text-faint);">Análise documental completa · claude-sonnet</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:.45rem;align-items:center;">
+                <button class="btn-pereira-refresh" id="btn-pereira-refresh" onclick="runPereira()" style="display:none;" disabled>
+                  <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Reanalisar
+                </button>
+                <button class="btn-pereira" id="btn-pereira" onclick="runPereira()">
+                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Gerar Parecer
+                </button>
+              </div>
+            </div>
+
+            <!-- Estado inicial -->
+            <div id="pereira-hint" style="padding:.8rem .25rem .4rem;text-align:center;">
+              <svg viewBox="0 0 24 24" fill="none" width="26" height="26" style="color:rgba(124,58,237,.3);margin-bottom:.6rem"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div style="font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:.4rem;">Parecer Analítico de Crédito</div>
+              <p style="font-size:.72rem;color:var(--text-faint);line-height:1.65;max-width:320px;margin:0 auto;">Analisa balanços, DRE, contrato social, RF e IDwall. Gera parecer com indicadores, matriz de riscos e proposta de limite para o analista.</p>
+            </div>
+
+            <!-- Loading -->
+            <div id="pereira-loading" class="pereira-loading" style="display:none;">
+              <div class="pereira-spinner"></div>
+              <div style="font-size:.78rem;color:var(--text-secondary);font-weight:600;">Analisando documentos…</div>
+              <div style="font-size:.7rem;color:var(--text-faint);">Isso pode levar até 60 segundos dependendo do tamanho dos documentos.</div>
+            </div>
+
+            <!-- Resultado -->
+            <div id="pereira-result" style="display:none;">
+              <div class="pereira-meta-bar" id="pereira-meta"></div>
+              <div class="pereira-parecer-wrap" id="pereira-parecer-body"></div>
+            </div>
+          </div>
 
           <!-- Banner para Operações: decisão fica com Financeiro -->
           <div id="pending-decision-banner" style="display:none;background:rgba(255,180,0,.07);border:1px solid rgba(255,180,0,.18);border-radius:10px;padding:.85rem 1.1rem;font-size:.82rem;color:rgba(255,200,80,.9);margin-bottom:1rem;">
@@ -4689,6 +4792,151 @@ function ctblUsarLimite() {
   if (warn) warn.style.display = hasBothPeriods ? 'none' : '';
 
   ctblCalc();
+})();
+
+
+/* ─── PEREIRA — Parecer Documental de Crédito ────────────────────────────── */
+
+function _mdToHtml(text) {
+  if (!text) return '';
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines = text.split('\n');
+  const out = [];
+  let inTable = false, inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    let l = lines[i];
+
+    // Tabelas Markdown
+    if (/^\|/.test(l)) {
+      if (!inTable) { out.push('<table>'); inTable = true; }
+      const isHeader = /^\|[-| ]+\|$/.test(lines[i + 1] || '');
+      const cells = l.replace(/^\||\|$/g,'').split('|').map(c => esc(c.trim()));
+      if (isHeader) {
+        out.push('<tr>' + cells.map(c => `<th>${c}</th>`).join('') + '</tr>');
+        i++; // pula linha de separação
+      } else {
+        out.push('<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>');
+      }
+      continue;
+    }
+    if (inTable) { out.push('</table>'); inTable = false; }
+
+    // Headers
+    if (/^### /.test(l)) { if (inList) { out.push('</ul>'); inList=false; } out.push(`<h3>${esc(l.slice(4))}</h3>`); continue; }
+    if (/^## /. test(l)) { if (inList) { out.push('</ul>'); inList=false; } out.push(`<h2>${esc(l.slice(3))}</h2>`); continue; }
+    if (/^# /.test(l))   { if (inList) { out.push('</ul>'); inList=false; } out.push(`<h1>${esc(l.slice(2))}</h1>`); continue; }
+
+    // Listas
+    if (/^[-*] /.test(l)) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push(`<li>${_inlineHtml(esc(l.slice(2)))}</li>`);
+      continue;
+    }
+    if (inList) { out.push('</ul>'); inList = false; }
+
+    // HR
+    if (/^---+$/.test(l.trim())) { out.push('<hr>'); continue; }
+
+    // Linhas em branco
+    if (!l.trim()) { out.push('<p></p>'); continue; }
+
+    // Parágrafo
+    out.push(`<p>${_inlineHtml(esc(l))}</p>`);
+  }
+  if (inTable) out.push('</table>');
+  if (inList)  out.push('</ul>');
+  return out.join('');
+}
+
+function _inlineHtml(s) {
+  return s
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,         '<em>$1</em>')
+    .replace(/`(.+?)`/g,           '<code>$1</code>');
+}
+
+async function runPereira() {
+  if (!sol || !sol.id || sol.id.startsWith('ca_')) {
+    _showToast('Análise PEREIRA disponível apenas para solicitações completas.', 'warning');
+    return;
+  }
+  const btnPrimary  = document.getElementById('btn-pereira');
+  const btnRefresh  = document.getElementById('btn-pereira-refresh');
+  const hint        = document.getElementById('pereira-hint');
+  const loading     = document.getElementById('pereira-loading');
+  const result      = document.getElementById('pereira-result');
+
+  [btnPrimary, btnRefresh].forEach(b => { if (b) b.disabled = true; });
+  hint.style.display    = 'none';
+  loading.style.display = 'flex';
+  result.style.display  = 'none';
+
+  try {
+    const r = await _fetch(`/api/pereira/analisar/${sol.id}`, { method: 'POST' });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const data = await r.json();
+    _renderPereiraAnalise(data);
+    _showToast('Parecer PEREIRA gerado com sucesso.', 'success');
+  } catch (e) {
+    loading.style.display = 'none';
+    hint.style.display    = 'block';
+    hint.innerHTML = `
+      <div style="color:var(--red);font-size:.78rem;padding:.6rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);">
+        <strong>Erro na análise:</strong> ${e.message}
+      </div>`;
+    _showToast('Erro ao gerar parecer PEREIRA.', 'error');
+  } finally {
+    [btnPrimary, btnRefresh].forEach(b => { if (b) b.disabled = false; });
+  }
+}
+
+function _renderPereiraAnalise(data) {
+  const loading = document.getElementById('pereira-loading');
+  const result  = document.getElementById('pereira-result');
+  const meta    = document.getElementById('pereira-meta');
+  const body    = document.getElementById('pereira-parecer-body');
+  const btnPrimary = document.getElementById('btn-pereira');
+  const btnRefresh = document.getElementById('btn-pereira-refresh');
+
+  loading.style.display = 'none';
+
+  const docs = (data.documentos_analisados || []);
+  const at   = data.analisado_at
+    ? new Date(data.analisado_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    : '—';
+
+  meta.innerHTML = `
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M22 2 12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      ${data.modelo || 'claude-sonnet'}
+    </span>
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      ${at}
+    </span>
+    <span>
+      <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/></svg>
+      ${docs.length} documento(s)${docs.length ? ': ' + docs.slice(0,2).join(', ') + (docs.length > 2 ? '…' : '') : ''}
+    </span>`;
+
+  // Remove o bloco JSON do final do parecer antes de renderizar como HTML
+  const parecer = (data.parecer || '').replace(/```json[\s\S]*?```\s*$/i, '').trim();
+  body.innerHTML = _mdToHtml(parecer);
+
+  result.style.display  = 'block';
+  if (btnPrimary) btnPrimary.style.display = 'none';
+  if (btnRefresh) btnRefresh.style.display = '';
+}
+
+// Bootstrap: carrega análise salva se existir
+(function _bootstrapPereira() {
+  if (!sol || !sol.pereira_analise || !sol.pereira_analise.parecer) return;
+  _renderPereiraAnalise(sol.pereira_analise);
 })();
 </script>
 </body>

@@ -1253,6 +1253,47 @@ def _load_anthropic_key() -> str:
     return raw.strip('"').strip("'").strip()
 
 
+def _load_pereira_methodology() -> str:
+    """Carrega metodologia de análise de crédito do arquivo MD do projeto.
+    Extrai os dois blocos de código do arquivo (prompt principal + saída estruturada).
+    """
+    for candidate in [
+        Path(__file__).parent.parent / "Prompt_Sistema_Analise_Credito.md",
+        Path(__file__).parent / "Prompt_Sistema_Analise_Credito.md",
+    ]:
+        if candidate.exists():
+            try:
+                raw = candidate.read_text("utf-8")
+                blocks: list[str] = []
+                in_block = False
+                buf: list[str] = []
+                for line in raw.splitlines():
+                    if line.strip() == "```":
+                        if in_block:
+                            blocks.append("\n".join(buf))
+                            in_block = False
+                            buf = []
+                        else:
+                            in_block = True
+                    elif in_block:
+                        buf.append(line)
+                if len(blocks) >= 2:
+                    return blocks[0].strip() + "\n\n" + blocks[1].strip()
+                if blocks:
+                    return blocks[0].strip()
+            except Exception:
+                pass
+    return (
+        "Você é analista sênior de crédito da Vendemmia Comércio Internacional Ltda. "
+        "Analise a documentação financeira do cliente e produza um parecer técnico completo "
+        "com indicadores de liquidez, endividamento, rentabilidade, ciclo financeiro, "
+        "bureau de crédito, dimensionamento de exposição, matriz de riscos e proposta de crédito. "
+        "Idioma: português brasileiro. Tom: direto, técnico, assertivo."
+    )
+
+_PEREIRA_METHODOLOGY = _load_pereira_methodology()
+
+
 # ── Extração de BP/DRE por regex (sem IA) ────────────────────────────────────
 
 _BR_NUM_RE = re.compile(
@@ -4581,6 +4622,188 @@ async def pereira_log(limit: int = 50, current_user=Depends(_get_current_user)):
         [limit],
     )
     return rows
+
+
+# ─── PEREIRA — Análise Documental de Crédito (sem daemon) ────────────────────
+
+@app.post("/api/pereira/analisar/{sol_id}")
+@limiter.limit("3/minute")
+async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_get_current_user)):
+    """Gera parecer completo de crédito via Claude Sonnet — documentos + RF + IDwall.
+    Sem daemon: chamada direta à API Anthropic dentro do servidor FastAPI.
+    """
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID de solicitação inválido.")
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
+
+    anthropic_key = _load_anthropic_key()
+    if not anthropic_key:
+        raise HTTPException(503, "ANTHROPIC_API_KEY não configurada no servidor.")
+
+    # 1. Dados da solicitação
+    sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
+    if not sol_rows:
+        raise HTTPException(404, "Solicitação não encontrada.")
+    sol_data = json.loads(sol_rows[0]["data"] or "{}")
+
+    # 2. Documentos anexados
+    doc_rows = await _turso_query(
+        "SELECT nome, tipo, content, mime FROM ac_documents WHERE sol_id=? ORDER BY tipo, nome",
+        [sol_id],
+    )
+
+    # 3. Monta contexto
+    rf_raw   = sol_data.get("rf_data", {})
+    rf_info  = rf_raw.get("data", rf_raw) if isinstance(rf_raw, dict) else {}
+    idwall   = sol_data.get("idwall", {})
+    contabil = sol_data.get("contabil_result", {})
+
+    razao      = (sol_data.get("razaoSocial") or sol_data.get("nomeEmpresa")
+                  or rf_info.get("razao_social") or "—")
+    cnpj       = sol_data.get("cnpj") or rf_info.get("cnpj") or "—"
+    modalidade = sol_data.get("tipoOperacao") or sol_data.get("modalidade") or "não especificada"
+    valor      = sol_data.get("valorOperacao") or sol_data.get("limiteCredito") or "não especificado"
+    prazo      = sol_data.get("prazoReembolso") or sol_data.get("prazo") or "não especificado"
+
+    meta = (
+        f"DADOS DA SOLICITAÇÃO\n"
+        f"Empresa: {razao}\nCNPJ: {cnpj}\n"
+        f"Modalidade pretendida: {modalidade}\n"
+        f"Valor e periodicidade: {valor}\n"
+        f"Prazo de reembolso pretendido: {prazo}\n"
+        f"Data de referência da análise: {datetime.utcnow().strftime('%Y-%m-%d')}\n\n"
+    )
+    if rf_info:
+        meta += f"RECEITA FEDERAL (BrasilAPI):\n{json.dumps(rf_info, ensure_ascii=False, indent=2)}\n\n"
+    else:
+        meta += "RECEITA FEDERAL: Consulta não realizada.\n\n"
+    if idwall:
+        meta += f"BUREAU IDwall:\n{json.dumps(idwall, ensure_ascii=False, indent=2)}\n\n"
+    else:
+        meta += "BUREAU IDwall: Consulta não realizada.\n\n"
+    if contabil:
+        meta += f"INDICADORES CONTÁBEIS (sistema):\n{json.dumps(contabil, ensure_ascii=False, indent=2)}\n\n"
+
+    content_blocks: list[dict] = [{"type": "text", "text": meta}]
+
+    tipo_labels = {
+        "balanco": "Balanço Patrimonial",
+        "dre": "Demonstração de Resultado (DRE)",
+        "contrato": "Contrato Social",
+        "fat": "Comprovante de Faturamento",
+    }
+    has_pdf = False
+
+    for row in doc_rows:
+        raw_bytes = base64.standard_b64decode(row["content"])
+        nome  = row["nome"]
+        tipo  = row["tipo"]
+        mime  = (row.get("mime") or "").lower()
+        label = tipo_labels.get(tipo, tipo.upper())
+
+        content_blocks.append({"type": "text", "text": f"\n\n=== {label}: {nome} ==="})
+
+        if "pdf" in mime or nome.lower().endswith(".pdf"):
+            has_pdf = True
+            content_blocks.append({
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": row["content"],  # já em base64
+                },
+            })
+        else:
+            ext = Path(nome).suffix.lower()
+            try:
+                structured = _xlsx_to_structured(raw_bytes, nome) if ext in (".xlsx", ".xls") \
+                             else _pdf_to_structured(raw_bytes, nome)
+                lines: list[str] = []
+                for sec in structured.get("secoes", []):
+                    if sec["tipo"] == "texto":
+                        lines.append(sec["conteudo"])
+                    elif sec["tipo"] in ("tabela", "planilha"):
+                        for lr in sec.get("linhas", []):
+                            lines.append(" | ".join(str(c) for c in lr))
+                content_blocks.append({
+                    "type": "text",
+                    "text": "\n".join(lines) if lines else "(sem texto extraído)",
+                })
+            except Exception as exc:
+                content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
+
+    if not doc_rows:
+        content_blocks.append({
+            "type": "text",
+            "text": (
+                "\n\nATENÇÃO: Nenhum documento financeiro foi anexado a esta solicitação. "
+                "Execute a análise com base nos dados de RF e IDwall disponíveis. "
+                "Sinalize esta limitação no inventário documental e classifique a "
+                "base probatória como 'baixa'."
+            ),
+        })
+
+    # 4. Chama Claude Sonnet via httpx async
+    hdrs: dict[str, str] = {
+        "x-api-key": anthropic_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    if has_pdf:
+        hdrs["anthropic-beta"] = "pdfs-2024-09-25"
+
+    payload: dict = {
+        "model": "claude-sonnet-4-6",
+        "max_tokens": 8192,
+        "system": _PEREIRA_METHODOLOGY,
+        "messages": [{"role": "user", "content": content_blocks}],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as hc:
+            resp = await hc.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=hdrs,
+                json=payload,
+            )
+        if resp.status_code != 200:
+            raise RuntimeError(f"Anthropic {resp.status_code}: {resp.text[:300]}")
+        parecer = resp.json()["content"][0]["text"]
+    except Exception as exc:
+        raise HTTPException(500, f"Erro na análise PEREIRA: {str(exc)[:400]}")
+
+    # 5. Extrai JSON estruturado (bloco ```json no final do parecer)
+    analise_json = _extract_json(parecer)
+
+    # 6. Persiste no registro da solicitação
+    pereira_result = {
+        "parecer": parecer,
+        "dados_estruturados": analise_json,
+        "analisado_at": datetime.utcnow().isoformat(),
+        "modelo": "claude-sonnet-4-6",
+        "documentos_analisados": [r["nome"] for r in doc_rows],
+    }
+    sol_data["pereira_analise"] = pereira_result
+    await _turso_exec(
+        "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
+        [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
+    )
+
+    return {"ok": True, **pereira_result, "documentos_total": len(doc_rows)}
+
+
+@app.get("/api/pereira/analise/{sol_id}")
+async def pereira_analise_get(sol_id: str, current_user=Depends(_get_current_user)):
+    """Retorna análise PEREIRA já salva para a solicitação."""
+    sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
+    if not sol_rows:
+        raise HTTPException(404, "Solicitação não encontrada.")
+    sol_data = json.loads(sol_rows[0]["data"] or "{}")
+    analise = sol_data.get("pereira_analise")
+    if not analise:
+        return {"ok": False, "message": "Análise PEREIRA ainda não gerada para esta solicitação."}
+    return {"ok": True, **analise}
 
 
 # Serve os arquivos HTML/JS/CSS estáticos na raiz
