@@ -848,34 +848,56 @@
 
     /* ── PEREIRA — Parecer de Crédito ─────────────────────── */
     .pereira-meta-bar {
-      display: flex; flex-wrap: wrap; gap: .5rem .9rem;
-      font-size: .7rem; color: var(--text-faint);
-      padding: .45rem .65rem; background: rgba(124,58,237,.06);
-      border-radius: 6px; margin-bottom: .85rem; border: 1px solid rgba(124,58,237,.12);
+      display: flex; flex-wrap: wrap; gap: .5rem 1.2rem;
+      font-size: .75rem; color: var(--text-faint);
+      padding: .6rem .85rem; background: rgba(124,58,237,.06);
+      border-radius: 8px; margin-bottom: 1.1rem; border: 1px solid rgba(124,58,237,.14);
     }
-    .pereira-meta-bar span { display: flex; align-items: center; gap: .3rem; }
+    .pereira-meta-bar span { display: flex; align-items: center; gap: .35rem; }
     .pereira-parecer-wrap {
-      font-size: .82rem; line-height: 1.75; color: var(--text-secondary);
-      max-height: 520px; overflow-y: auto;
-      border-left: 2px solid rgba(124,58,237,.25);
-      padding: .6rem .9rem; margin: 0;
+      font-size: .9rem; line-height: 1.85; color: var(--text-secondary);
+      border-left: 3px solid rgba(124,58,237,.3);
+      padding: .75rem 1.2rem; margin: 0;
     }
-    .pereira-parecer-wrap h1 { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 1.1rem 0 .35rem; }
-    .pereira-parecer-wrap h2 { font-size: .88rem; font-weight: 700; color: var(--text-primary); margin: .9rem 0 .3rem; }
-    .pereira-parecer-wrap h3 { font-size: .82rem; font-weight: 600; color: var(--text-secondary); margin: .7rem 0 .2rem; }
-    .pereira-parecer-wrap p  { margin: .35rem 0; }
-    .pereira-parecer-wrap ul, .pereira-parecer-wrap ol { padding-left: 1.2rem; margin: .3rem 0; }
-    .pereira-parecer-wrap li { margin: .2rem 0; }
-    .pereira-parecer-wrap table { border-collapse: collapse; width: 100%; margin: .6rem 0; font-size: .78rem; }
+    .pereira-parecer-wrap h1 { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin: 1.4rem 0 .45rem; border-bottom: 1px solid rgba(124,58,237,.15); padding-bottom: .35rem; }
+    .pereira-parecer-wrap h2 { font-size: .97rem; font-weight: 700; color: var(--text-primary); margin: 1.1rem 0 .35rem; }
+    .pereira-parecer-wrap h3 { font-size: .88rem; font-weight: 600; color: rgba(167,139,250,.9); margin: .85rem 0 .25rem; text-transform: uppercase; letter-spacing: .04em; }
+    .pereira-parecer-wrap p  { margin: .5rem 0; }
+    .pereira-parecer-wrap ul, .pereira-parecer-wrap ol { padding-left: 1.4rem; margin: .4rem 0; }
+    .pereira-parecer-wrap li { margin: .3rem 0; }
+    .pereira-parecer-wrap table { border-collapse: collapse; width: 100%; margin: .8rem 0; font-size: .82rem; }
     .pereira-parecer-wrap th {
-      text-align: left; padding: .35rem .6rem; background: rgba(255,255,255,.05);
-      border-bottom: 1px solid rgba(255,255,255,.1); font-weight: 600; color: var(--text-primary);
+      text-align: left; padding: .45rem .75rem; background: rgba(124,58,237,.08);
+      border-bottom: 1px solid rgba(124,58,237,.2); font-weight: 700; color: var(--text-primary);
     }
     .pereira-parecer-wrap td {
-      padding: .28rem .6rem; border-bottom: 1px solid rgba(255,255,255,.04);
+      padding: .4rem .75rem; border-bottom: 1px solid rgba(255,255,255,.05);
     }
-    .pereira-parecer-wrap strong { color: var(--text-primary); }
-    .pereira-parecer-wrap hr { border: none; border-top: 1px solid rgba(255,255,255,.07); margin: .8rem 0; }
+    .pereira-parecer-wrap tr:hover td { background: rgba(124,58,237,.04); }
+    .pereira-parecer-wrap strong { color: var(--text-primary); font-weight: 700; }
+    .pereira-parecer-wrap code { background: rgba(124,58,237,.1); border-radius: 3px; padding: .1em .35em; font-size: .85em; }
+    .pereira-parecer-wrap hr { border: none; border-top: 1px solid rgba(124,58,237,.15); margin: 1.1rem 0; }
+    /* Card principal PEREIRA (coluna principal, full-width) */
+    #pereira-main-card {
+      background: linear-gradient(160deg, rgba(76,29,149,.07) 0%, transparent 60%);
+      border-color: rgba(124,58,237,.22);
+    }
+    .pereira-main-header {
+      display: flex; align-items: center; gap: 1rem;
+      padding-bottom: 1rem; margin-bottom: 1rem;
+      border-bottom: 1px solid rgba(124,58,237,.15);
+    }
+    .pereira-main-header-left { display: flex; align-items: center; gap: .85rem; flex: 1; min-width: 0; }
+    .pereira-main-avatar-sm {
+      width: 52px; height: 52px; border-radius: 50%; object-fit: contain; flex-shrink: 0;
+      filter: drop-shadow(0 2px 14px rgba(139,92,246,.8));
+    }
+    .pereira-main-title {
+      font-size: 1rem; font-weight: 800; letter-spacing: .03em;
+      background: linear-gradient(135deg, #ddd6fe 0%, #a78bfa 50%, #7c3aed 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .pereira-main-subtitle { font-size: .75rem; color: var(--text-faint); margin-top: .18rem; }
     .pereira-loading {
       display: flex; flex-direction: column; align-items: center; gap: .75rem;
       padding: 1.8rem 1rem; text-align: center;
@@ -1524,6 +1546,40 @@
             <div id="rf-content"></div>
           </div>
 
+          <!-- ── PEREIRA — Parecer Documental (largura completa) ── -->
+          <div class="card animate-in" id="pereira-main-card" style="display:none;">
+            <div class="pereira-main-header">
+              <div class="pereira-main-header-left">
+                <img src="PEREIRA3.png" alt="PEREIRA" class="pereira-main-avatar-sm"
+                     onerror="this.style.display='none'">
+                <div>
+                  <div class="pereira-main-title">Parecer Documental de Crédito</div>
+                  <div class="pereira-main-subtitle">Análise realizada por PEREIRA — IA de Crédito Vendemmia</div>
+                </div>
+              </div>
+              <button class="btn-pereira-refresh" id="btn-pereira-refresh" onclick="runPereiraCompleto()" style="display:none;" disabled>
+                <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Reanalisar
+              </button>
+            </div>
+
+            <!-- Estado inicial / erros -->
+            <div id="pereira-hint" style="display:none;"></div>
+
+            <!-- Loading -->
+            <div id="pereira-loading" class="pereira-loading" style="display:none;">
+              <div class="pereira-spinner"></div>
+              <div style="font-size:.85rem;color:var(--text-secondary);font-weight:600;">PEREIRA analisando documentos…</div>
+              <div style="font-size:.78rem;color:var(--text-faint);margin-top:.2rem;">Isso pode levar até 90 segundos dependendo do volume de documentos.</div>
+            </div>
+
+            <!-- Resultado -->
+            <div id="pereira-result" style="display:none;">
+              <div class="pereira-meta-bar" id="pereira-meta"></div>
+              <div class="pereira-parecer-wrap" id="pereira-parecer-body"></div>
+            </div>
+          </div>
+
           <!-- Dados da solicitação (ops) -->
           <div class="card animate-in">
             <div class="card-title" style="margin-bottom:.9rem;">Dados da Solicitação</div>
@@ -1539,18 +1595,10 @@
           <div id="trigger-card" style="display:none;"></div>
           <div id="limits-card" style="display:none;"></div>
 
-          <!-- ── PEREIRA — Parecer Documental de Crédito ── -->
-          <div class="card animate-in" id="pereira-card" style="position:relative;">
-            <!-- Botão Reanalisar posicionado no canto superior direito -->
-            <div style="position:absolute;top:.9rem;right:.9rem;">
-              <button class="btn-pereira-refresh" id="btn-pereira-refresh" onclick="runPereiraCompleto()" style="display:none;" disabled>
-                <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Reanalisar
-              </button>
-            </div>
-
+          <!-- ── PEREIRA — Widget de status (sidebar) ── -->
+          <div class="card animate-in" id="pereira-card">
             <!-- Avatar PEREIRA centralizado -->
-            <div class="pereira-hero-section" style="padding:.5rem 0 .9rem;">
+            <div class="pereira-hero-section" style="padding:.5rem 0 1rem;">
               <div class="pereira-avatar-wrap">
                 <div class="pereira-glow-orb"></div>
                 <img src="PEREIRA3.png" alt="PEREIRA" class="pereira-avatar-img"
@@ -1565,21 +1613,14 @@
                 </div>
               </div>
             </div>
-
-            <!-- Estado inicial / erros (vazio por padrão) -->
-            <div id="pereira-hint" style="display:none;"></div>
-
-            <!-- Loading -->
-            <div id="pereira-loading" class="pereira-loading" style="display:none;">
-              <div class="pereira-spinner"></div>
-              <div style="font-size:.78rem;color:var(--text-secondary);font-weight:600;">PEREIRA analisando documentos…</div>
-              <div style="font-size:.7rem;color:var(--text-faint);">Isso pode levar até 90 segundos dependendo do volume de documentos.</div>
-            </div>
-
-            <!-- Resultado -->
-            <div id="pereira-result" style="display:none;">
-              <div class="pereira-meta-bar" id="pereira-meta"></div>
-              <div class="pereira-parecer-wrap" id="pereira-parecer-body"></div>
+            <div style="text-align:center;padding-top:.3rem;border-top:1px solid rgba(124,58,237,.12);">
+              <p style="font-size:.72rem;color:var(--text-faint);margin:.65rem 0 .75rem;line-height:1.5;">
+                IA analisa documentos, dados da RF e IDwall para gerar um parecer documental de crédito.
+              </p>
+              <a href="#pereira-main-card" style="font-size:.73rem;color:rgba(167,139,250,.8);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;" onclick="document.getElementById('pereira-main-card').scrollIntoView({behavior:'smooth',block:'start'});return false;">
+                <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Ver parecer completo
+              </a>
             </div>
           </div>
 
@@ -4938,6 +4979,8 @@ async function runPereira() {
   hint.style.display    = 'none';
   loading.style.display = 'flex';
   result.style.display  = 'none';
+  const mainCard = document.getElementById('pereira-main-card');
+  if (mainCard) mainCard.style.display = 'block';
   _pereiraSetStatus('Analisando documentos…', 'rgba(245,158,11,.9)');
 
   try {
@@ -5010,6 +5053,8 @@ function _renderPereiraAnalise(data) {
 // Bootstrap: carrega análise salva se existir
 (function _bootstrapPereira() {
   if (!sol || !sol.pereira_analise || !sol.pereira_analise.parecer) return;
+  const mainCard = document.getElementById('pereira-main-card');
+  if (mainCard) mainCard.style.display = 'block';
   _renderPereiraAnalise(sol.pereira_analise);
   _pereiraSetStatus('Parecer disponível', 'rgba(1,225,142,.9)');
 })();
