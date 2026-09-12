@@ -4653,6 +4653,37 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         [sol_id],
     )
 
+    # ── helpers de redução de tokens ──────────────────────────────────────────
+    def _rf_slim(d: dict) -> dict:
+        """Extrai apenas os campos relevantes do retorno BrasilAPI — reduz ~60% dos tokens."""
+        keep = [
+            "razao_social", "cnpj", "situacao_cadastral", "data_situacao_cadastral",
+            "data_abertura", "porte", "natureza_juridica", "capital_social",
+            "cnae_fiscal", "cnae_fiscal_descricao", "municipio", "uf",
+            "descricao_situacao_cadastral",
+        ]
+        slim = {k: d[k] for k in keep if k in d}
+        qsa = d.get("qsa") or []
+        slim["socios"] = [
+            {"nome": s.get("nome_socio"), "qualificacao": s.get("qualificacao_socio"),
+             "faixa_etaria": s.get("faixa_etaria")}
+            for s in qsa[:6]
+        ]
+        cnaes_sec = d.get("cnaes_secundarios") or []
+        slim["cnaes_secundarios"] = [
+            f"{c.get('codigo')} {c.get('descricao','')}" for c in cnaes_sec[:5]
+        ]
+        return slim
+
+    def _idwall_slim(d: dict) -> dict:
+        """Mantém apenas campos de risco/score do IDwall — descarta campos de metadados."""
+        if not d:
+            return {}
+        important = ["score", "classification", "risk_level", "status", "alerts",
+                     "flags", "negative_data", "protests", "debts", "lawsuits",
+                     "situacao", "restricoes", "score_credito", "nivel_risco"]
+        return {k: v for k, v in d.items() if k in important and v not in (None, [], {})}
+
     # 3. Monta contexto
     rf_raw   = sol_data.get("rf_data", {})
     rf_info  = rf_raw.get("data", rf_raw) if isinstance(rf_raw, dict) else {}
@@ -4681,28 +4712,29 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
                 if _r.status_code == 200:
                     rf_info = _r.json()
                     razao   = rf_info.get("razao_social") or razao
-                    rf_fonte = "BrasilAPI (consultado agora pelo PEREIRA)"
+                    rf_fonte = "BrasilAPI (consultado pelo PEREIRA)"
             except Exception:
                 pass
 
     meta = (
         f"DADOS DA SOLICITAÇÃO\n"
         f"Empresa: {razao}\nCNPJ: {cnpj}\n"
-        f"Modalidade pretendida: {modalidade}\n"
-        f"Valor e periodicidade: {valor}\n"
-        f"Prazo de reembolso pretendido: {prazo}\n"
-        f"Data de referência da análise: {datetime.utcnow().strftime('%Y-%m-%d')}\n\n"
+        f"Modalidade: {modalidade} | Valor: {valor} | Prazo: {prazo}\n"
+        f"Data: {datetime.utcnow().strftime('%Y-%m-%d')}\n\n"
     )
     if rf_info:
-        meta += f"RECEITA FEDERAL ({rf_fonte}):\n{json.dumps(rf_info, ensure_ascii=False, indent=2)}\n\n"
+        meta += f"RECEITA FEDERAL ({rf_fonte}):\n{json.dumps(_rf_slim(rf_info), ensure_ascii=False, indent=2)}\n\n"
     else:
-        meta += f"RECEITA FEDERAL: Consulta não realizada (CNPJ: {cnpj}).\n\n"
-    if idwall:
-        meta += f"BUREAU IDwall:\n{json.dumps(idwall, ensure_ascii=False, indent=2)}\n\n"
+        meta += f"RECEITA FEDERAL: Não disponível (CNPJ: {cnpj}).\n\n"
+
+    idwall_slim = _idwall_slim(idwall)
+    if idwall_slim:
+        meta += f"BUREAU IDwall:\n{json.dumps(idwall_slim, ensure_ascii=False, indent=2)}\n\n"
     else:
-        meta += "BUREAU IDwall: Resultado pendente ou não solicitado.\n\n"
+        meta += "BUREAU IDwall: Pendente ou não solicitado.\n\n"
+
     if contabil:
-        meta += f"INDICADORES CONTÁBEIS (sistema):\n{json.dumps(contabil, ensure_ascii=False, indent=2)}\n\n"
+        meta += f"INDICADORES CONTÁBEIS:\n{json.dumps(contabil, ensure_ascii=False, indent=2)}\n\n"
 
     content_blocks: list[dict] = [{"type": "text", "text": meta}]
 
@@ -4745,10 +4777,10 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
                     elif sec["tipo"] in ("tabela", "planilha"):
                         for lr in sec.get("linhas", []):
                             lines.append(" | ".join(str(c) for c in lr))
-                content_blocks.append({
-                    "type": "text",
-                    "text": "\n".join(lines) if lines else "(sem texto extraído)",
-                })
+                texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
+                if len(texto_doc) > 8000:
+                    texto_doc = texto_doc[:8000] + "\n[... truncado para reduzir custo de análise]"
+                content_blocks.append({"type": "text", "text": texto_doc})
             except Exception as exc:
                 content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
 
@@ -4774,19 +4806,27 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
             ),
         })
 
-    # 4. Chama Claude Sonnet via httpx async
+    # 4. Chama Claude Haiku via httpx async (custo mínimo + prompt caching)
+    betas = ["prompt-caching-2024-07-31"]
+    if has_pdf:
+        betas.append("pdfs-2024-09-25")
     hdrs: dict[str, str] = {
         "x-api-key": anthropic_key,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
+        "anthropic-beta": ",".join(betas),
     }
-    if has_pdf:
-        hdrs["anthropic-beta"] = "pdfs-2024-09-25"
 
     payload: dict = {
-        "model": "claude-sonnet-4-6",
-        "max_tokens": 8192,
-        "system": _PEREIRA_METHODOLOGY,
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 3500,
+        "system": [
+            {
+                "type": "text",
+                "text": _PEREIRA_METHODOLOGY,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         "messages": [{"role": "user", "content": content_blocks}],
     }
 
@@ -4811,7 +4851,7 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         "parecer": parecer,
         "dados_estruturados": analise_json,
         "analisado_at": datetime.utcnow().isoformat(),
-        "modelo": "claude-sonnet-4-6",
+        "modelo": "claude-haiku-4-5-20251001",
         "documentos_analisados": [r["nome"] for r in doc_rows],
     }
     sol_data["pereira_analise"] = pereira_result
