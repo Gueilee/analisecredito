@@ -60,6 +60,11 @@ desktop.ini
 # -- Dependencias Node
 node_modules/
 
+# ── PEREIRA daemon ───────────────────────────────────
+pereira/pereira.lock
+pereira/memoria/
+pereira/__pycache__/
+
 # -- Arquivos desnecessarios para o sistema
 modelo.zip
 Prospec*.png

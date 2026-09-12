@@ -1,0 +1,5 @@
+browser-use==0.13.10
+anthropic>=0.40.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+playwright>=1.40.0

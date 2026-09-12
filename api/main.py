@@ -235,6 +235,36 @@ async def _ensure_tables() -> None:
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_status  ON ac_clientes_ativos(status_cliente)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_conexos ON ac_clientes_ativos(codigo_conexos)")
 
+        # ── PEREIRA ──────────────────────────────────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_pereira_tasks (
+                slug         TEXT        PRIMARY KEY,
+                nome         TEXT        NOT NULL DEFAULT '',
+                descricao    TEXT        DEFAULT '',
+                url_inicial  TEXT        DEFAULT '',
+                passos       TEXT        DEFAULT '[]',
+                atualizado_em TEXT       DEFAULT ''
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_pereira_log (
+                id           SERIAL      PRIMARY KEY,
+                tarefa_slug  TEXT        NOT NULL,
+                dados        TEXT        DEFAULT '{}',
+                status       TEXT        NOT NULL DEFAULT 'pendente',
+                resultado    TEXT        DEFAULT '',
+                criado_em    TEXT        DEFAULT '',
+                executado_em TEXT        DEFAULT ''
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ac_pereira_heartbeat (
+                id  INTEGER DEFAULT 1,
+                ts  TEXT    NOT NULL DEFAULT '',
+                PRIMARY KEY (id)
+            )
+        """)
+
         # Semeia usuários do users.json se a tabela estiver vazia
         count = await conn.fetchval("SELECT COUNT(*) FROM ac_users")
         if count == 0:
@@ -4420,6 +4450,137 @@ async def detalhe_cliente_ativo(
     if not rows:
         raise HTTPException(404, "Cliente não encontrado.")
     return {"modalidades": rows, "razao_social": rows[0]["razao_social"], "cnpj": rows[0]["cnpj"]}
+
+
+# ─── PEREIRA — Agente de Automação ───────────────────────────────────────────
+
+class PereiraJobCreate(BaseModel):
+    tarefa_slug: str
+    dados: dict = {}
+
+class PereiraResultBody(BaseModel):
+    status: str
+    resultado: str = ""
+
+class PereiraSyncTask(BaseModel):
+    slug: str
+    nome: str
+    descricao: str = ""
+    url_inicial: str = ""
+    passos: list = []
+
+
+@app.get("/api/pereira/pending")
+async def pereira_pending(current_user=Depends(_get_current_user)):
+    """Retorna o próximo job pendente para o daemon executar."""
+    rows = await _turso_query(
+        "SELECT l.id, l.tarefa_slug, t.nome as tarefa_nome, t.descricao, "
+        "t.url_inicial, t.passos, l.dados "
+        "FROM ac_pereira_log l "
+        "LEFT JOIN ac_pereira_tasks t ON t.slug = l.tarefa_slug "
+        "WHERE l.status = 'pendente' ORDER BY l.criado_em LIMIT 1"
+    )
+    if not rows:
+        return None
+    row = rows[0]
+    return {
+        "id":          row["id"],
+        "tarefa_slug": row["tarefa_slug"],
+        "tarefa_nome": row.get("tarefa_nome") or row["tarefa_slug"],
+        "descricao":   row.get("descricao") or "",
+        "url_inicial": row.get("url_inicial") or "",
+        "passos":      json.loads(row.get("passos") or "[]"),
+        "dados":       json.loads(row.get("dados") or "{}"),
+    }
+
+
+@app.post("/api/pereira/result/{job_id}")
+async def pereira_result(job_id: int, body: PereiraResultBody, current_user=Depends(_get_current_user)):
+    """Daemon reporta resultado de um job."""
+    await _turso_exec(
+        "UPDATE ac_pereira_log SET status=?, resultado=?, executado_em=? WHERE id=?",
+        [body.status, body.resultado, datetime.utcnow().isoformat(), job_id],
+    )
+    return {"ok": True}
+
+
+@app.post("/api/pereira/heartbeat")
+async def pereira_heartbeat(current_user=Depends(_get_current_user)):
+    """Daemon sinaliza que está online."""
+    await _turso_exec(
+        "INSERT INTO ac_pereira_heartbeat (id, ts) VALUES (1, ?) "
+        "ON CONFLICT (id) DO UPDATE SET ts=EXCLUDED.ts",
+        [datetime.utcnow().isoformat()],
+    )
+    return {"ok": True}
+
+
+@app.get("/api/pereira/heartbeat")
+async def pereira_heartbeat_status(current_user=Depends(_get_current_user)):
+    """Retorna timestamp do último heartbeat (para UI mostrar Online/Offline)."""
+    rows = await _turso_query("SELECT ts FROM ac_pereira_heartbeat WHERE id=1")
+    if not rows:
+        return {"ts": None, "online": False}
+    ts_str = rows[0]["ts"]
+    try:
+        ts = datetime.fromisoformat(ts_str)
+        online = (datetime.utcnow() - ts).total_seconds() < 90
+    except Exception:
+        online = False
+    return {"ts": ts_str, "online": online}
+
+
+@app.post("/api/pereira/sync-task")
+async def pereira_sync_task(body: PereiraSyncTask, current_user=Depends(_get_current_user)):
+    """Daemon sincroniza definição de tarefa do JSON local para o banco."""
+    await _turso_exec(
+        "INSERT INTO ac_pereira_tasks (slug, nome, descricao, url_inicial, passos, atualizado_em) "
+        "VALUES (?,?,?,?,?,?) "
+        "ON CONFLICT (slug) DO UPDATE SET nome=EXCLUDED.nome, descricao=EXCLUDED.descricao, "
+        "url_inicial=EXCLUDED.url_inicial, passos=EXCLUDED.passos, atualizado_em=EXCLUDED.atualizado_em",
+        [body.slug, body.nome, body.descricao, body.url_inicial,
+         json.dumps(body.passos, ensure_ascii=False), datetime.utcnow().isoformat()],
+    )
+    return {"ok": True}
+
+
+@app.post("/api/pereira/job")
+async def pereira_create_job(body: PereiraJobCreate, current_user=Depends(_get_current_user)):
+    """UI cria um novo job para o daemon executar."""
+    rows = await _turso_query(
+        "INSERT INTO ac_pereira_log (tarefa_slug, dados, status, criado_em) "
+        "VALUES (?,?,?,?) RETURNING id",
+        [body.tarefa_slug, json.dumps(body.dados, ensure_ascii=False),
+         "pendente", datetime.utcnow().isoformat()],
+    )
+    job_id = rows[0]["id"] if rows else None
+    return {"ok": True, "id": job_id}
+
+
+@app.get("/api/pereira/tasks")
+async def pereira_list_tasks(current_user=Depends(_get_current_user)):
+    """Lista tarefas conhecidas pelo PEREIRA."""
+    rows = await _turso_query(
+        "SELECT slug, nome, descricao, url_inicial, passos, atualizado_em "
+        "FROM ac_pereira_tasks ORDER BY nome"
+    )
+    return [
+        {**r, "passos": json.loads(r.get("passos") or "[]")}
+        for r in rows
+    ]
+
+
+@app.get("/api/pereira/log")
+async def pereira_log(limit: int = 50, current_user=Depends(_get_current_user)):
+    """Histórico de execuções do PEREIRA."""
+    rows = await _turso_query(
+        "SELECT l.id, l.tarefa_slug, t.nome as tarefa_nome, l.status, "
+        "l.resultado, l.criado_em, l.executado_em "
+        "FROM ac_pereira_log l LEFT JOIN ac_pereira_tasks t ON t.slug=l.tarefa_slug "
+        "ORDER BY l.id DESC LIMIT ?",
+        [limit],
+    )
+    return rows
 
 
 # Serve os arquivos HTML/JS/CSS estáticos na raiz
