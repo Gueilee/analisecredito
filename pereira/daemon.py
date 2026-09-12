@@ -215,8 +215,11 @@ async def _executar_job_async(job: dict) -> str:
     passos_db = job.get("passos", [])
     url_ini   = job.get("url_inicial", "")
 
-    mem    = _load_memory()
-    passos = passos_db or mem.get("tarefas", {}).get(slug, {}).get("passos", [])
+    mem       = _load_memory()
+    task_meta = mem.get("tarefas", {}).get(slug, {})
+    passos    = passos_db or task_meta.get("passos", [])
+    # Contexto específico da tarefa (ex: metodologia de crédito para tarefas de análise)
+    contexto  = task_meta.get("contexto", "")
 
     passos_str = ""
     if passos:
@@ -227,6 +230,7 @@ async def _executar_job_async(job: dict) -> str:
     dados_str = " | ".join(f"{k}={v}" for k, v in dados_job.items()) if dados_job else "Dados de teste"
 
     tarefa = (
+        f"{('CONTEXTO:\n' + contexto + '\n\n') if contexto else ''}"
         f"PEREIRA automação Vendemmia. Tarefa: {nome}."
         f"{f' URL: {url_ini}.' if url_ini else ''}"
         f"{passos_str}"
