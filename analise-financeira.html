@@ -3453,7 +3453,10 @@ async function runSimplifiedAnalysis() {
   try {
     const _cnpjRf = (sol.cnpj || '').replace(/\D/g, '');
     if (_cnpjRf) {
-      const _rfRes = await fetch(`${API_URL}/api/receita/${_cnpjRf}`, { credentials: 'include' });
+      const _rfCtrl = new AbortController();
+      const _rfTimeout = setTimeout(() => _rfCtrl.abort(), 20000); // 20s timeout
+      const _rfRes = await fetch(`${API_URL}/api/receita/${_cnpjRf}`, { credentials: 'include', signal: _rfCtrl.signal });
+      clearTimeout(_rfTimeout);
       if (_rfRes.ok) {
         const _rfJson = await _rfRes.json();
         const _rfd    = _rfJson.data || {};
@@ -3471,8 +3474,8 @@ async function runSimplifiedAnalysis() {
     } else {
       _faSetStep('rf', 'skip', 'CNPJ não informado');
     }
-  } catch (_) {
-    _faSetStep('rf', 'skip', 'Erro de comunicação');
+  } catch (_rfErr) {
+    _faSetStep('rf', 'skip', _rfErr?.name === 'AbortError' ? 'RF timeout (20s) — continuando' : 'Erro de comunicação');
   }
 
   /* Finaliza */
@@ -4092,14 +4095,16 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
     }
 
     if (_hasRF || _hasIdw || _pendIdw) {
-      const btn = document.getElementById('btn-run');
-      if (btn) {
-        btn.disabled = false;
-        if (_hasRF || _hasIdw) {
-          btn.className = 'btn-full-analysis done';
-          btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída';
+      if (!_runningFromPereira) { // não toca no botão enquanto análise está rodando
+        const btn = document.getElementById('btn-run');
+        if (btn) {
+          btn.disabled = false;
+          if (_hasRF || _hasIdw) {
+            btn.className = 'btn-full-analysis done';
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída';
+          }
+          // Se apenas idwall_pending: mantém estilo PEREIRA original, só habilita
         }
-        // Se apenas idwall_pending: mantém estilo PEREIRA original, só habilita
       }
     }
     return true;
@@ -5111,6 +5116,7 @@ async function runPereiraCompleto() {
 
   const btn = document.getElementById('btn-run');
   _runningFromPereira = true;
+  if (typeof showToast === 'function') showToast('PEREIRA iniciando análise…', 'info');
 
   try {
     if (btn) {
@@ -5143,9 +5149,12 @@ async function runPereiraCompleto() {
     try {
       await runPereira();
       _faSetStep('pereira', 'done', 'Parecer gerado');
+      const _pCard = document.getElementById('pereira-main-card');
+      if (_pCard) _pCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (pereiraErr) {
       const _errMsg = pereiraErr?.message || 'Erro desconhecido';
       _faSetStep('pereira', 'error', 'Erro: ' + _errMsg.slice(0, 80));
+      if (typeof showToast === 'function') showToast('Erro PEREIRA: ' + _errMsg.slice(0, 100), 'error');
     }
 
     /* Mostra card de decisão agora que o PEREIRA terminou */
