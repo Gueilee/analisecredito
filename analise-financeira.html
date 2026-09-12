@@ -5107,70 +5107,95 @@ function _renderPereiraAnalise(data) {
 let _runningFromPereira = false;
 
 async function runPereiraCompleto() {
-  // Usa _runningFromPereira como guard — não verifica btn.disabled que pode
-  // estar num estado inconsistente por timing de bootstrap
   if (_runningFromPereira) return;
 
   const btn = document.getElementById('btn-run');
-
-  // Lock
   _runningFromPereira = true;
-  if (btn) {
-    btn.disabled = true;
-    btn.className = 'btn-full-analysis pereira-btn';
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Iniciando…`;
-  }
 
-  const stepsEl = document.getElementById('full-analysis-steps');
-  if (stepsEl) stepsEl.style.display = '';
-  _pereiraSetStatus('Consultando RF e IDwall…', 'rgba(245,158,11,.9)');
-
-  /* Passo 1: RF + IDwall (simplificado) ou análise completa */
   try {
-    if (window._modoSimplificado) {
-      await runSimplifiedAnalysis();
-    } else {
-      await runFullAnalysis();
+    if (btn) {
+      btn.disabled = true;
+      btn.className = 'btn-full-analysis pereira-btn';
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Iniciando…`;
     }
-  } catch (_) { /* falha não fatal — continua para PEREIRA */ }
 
-  /* Passo 2: PEREIRA documental */
-  _faSetStep('pereira', 'loading', 'Gerando parecer…');
-  _pereiraSetStatus('Analisando documentos…', 'rgba(245,158,11,.9)');
+    const stepsEl = document.getElementById('full-analysis-steps');
+    if (stepsEl) stepsEl.style.display = '';
+    _pereiraSetStatus('Consultando RF e IDwall…', 'rgba(245,158,11,.9)');
 
-  if (btn) {
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> PEREIRA analisando…`;
-  }
-
-  try {
-    await runPereira();
-    _faSetStep('pereira', 'done', 'Parecer gerado');
-  } catch (pereiraErr) {
-    const _errMsg = pereiraErr?.message || 'Erro desconhecido';
-    _faSetStep('pereira', 'error', 'Erro: ' + _errMsg.slice(0, 80));
-  }
-
-  /* Finaliza */
-  _runningFromPereira = false;
-  if (btn) {
-    btn.disabled = false;
-    btn.className = 'btn-full-analysis done';
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer Concluído`;
-    setTimeout(() => {
-      if (!btn.disabled) {
-        btn.className = 'btn-full-analysis pereira-btn';
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer do Pereira`;
+    /* Passo 1: RF + IDwall */
+    try {
+      if (window._modoSimplificado) {
+        await runSimplifiedAnalysis();
+      } else {
+        await runFullAnalysis();
       }
-    }, 8000);
-  }
+    } catch (_) { /* falha não fatal — continua para PEREIRA */ }
 
-  /* Mostra card de decisão agora que o PEREIRA terminou */
-  if (!['aprovado', 'negado'].includes(sol.status)) {
-    const canDecideNow = typeof canDecide !== 'undefined' ? canDecide : true;
-    if (canDecideNow) document.getElementById('decision-card').style.display = '';
-    else              document.getElementById('pending-decision-banner').style.display = '';
+    /* Passo 2: PEREIRA documental */
+    _faSetStep('pereira', 'loading', 'Gerando parecer…');
+    _pereiraSetStatus('Analisando documentos…', 'rgba(245,158,11,.9)');
+
+    if (btn) {
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> PEREIRA analisando…`;
+    }
+
+    try {
+      await runPereira();
+      _faSetStep('pereira', 'done', 'Parecer gerado');
+    } catch (pereiraErr) {
+      const _errMsg = pereiraErr?.message || 'Erro desconhecido';
+      _faSetStep('pereira', 'error', 'Erro: ' + _errMsg.slice(0, 80));
+    }
+
+    /* Mostra card de decisão agora que o PEREIRA terminou */
+    if (!['aprovado', 'negado'].includes(sol.status)) {
+      const canDecideNow = typeof canDecide !== 'undefined' ? canDecide : true;
+      if (canDecideNow) document.getElementById('decision-card').style.display = '';
+      else              document.getElementById('pending-decision-banner').style.display = '';
+    }
+
+  } finally {
+    /* Sempre libera o lock e reabilita o botão — mesmo com erro não capturado */
+    _runningFromPereira = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn-full-analysis done';
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer Concluído`;
+      setTimeout(() => {
+        if (!btn.disabled) {
+          btn.className = 'btn-full-analysis pereira-btn';
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer do Pereira`;
+        }
+      }, 8000);
+    }
   }
 }
+
+/* ── Event delegation global para #btn-run ──────────────────────────
+   Captura clique em qualquer #btn-run da página, independente de como
+   o elemento foi criado (innerHTML, static, etc).
+   ─────────────────────────────────────────────────────────────────── */
+document.addEventListener('click', function _btnRunDelegate(e) {
+  const target = e.target.closest ? e.target.closest('[id="btn-run"]') : null;
+  if (!target) return;
+  e.stopPropagation();
+  if (typeof runPereiraCompleto === 'function') {
+    runPereiraCompleto();
+  } else {
+    showToast('Erro: função runPereiraCompleto não encontrada. Recarregue a página.', 'error');
+  }
+}, true); // capture phase — garante que chega antes de outros handlers
+
+/* ── Diagnóstico de erros JS globais ────────────────────────────── */
+window.addEventListener('error', function(ev) {
+  const msg = (ev.message || '') + ' (' + (ev.filename || '').split('/').pop() + ':' + ev.lineno + ')';
+  if (typeof showToast === 'function') showToast('Erro JS: ' + msg.slice(0, 120), 'error');
+});
+window.addEventListener('unhandledrejection', function(ev) {
+  const msg = ev.reason?.message || String(ev.reason || 'Erro desconhecido');
+  if (typeof showToast === 'function') showToast('Erro async: ' + msg.slice(0, 120), 'error');
+});
 </script>
 </body>
 </html>
