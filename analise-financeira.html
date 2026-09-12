@@ -3382,7 +3382,7 @@ let _fullAnalysisRunning = false;
 /* ── Análise Simplificada: apenas IDwall + Receita Federal ───────────── */
 async function runSimplifiedAnalysis() {
   const btn = document.getElementById('btn-run');
-  if (btn && btn.disabled) return;
+  if (!_runningFromPereira && btn && btn.disabled) return;
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Consultando…`;
@@ -3470,7 +3470,7 @@ async function _startIdwallBackground() {
 
 async function runFullAnalysis() {
   const btn = document.getElementById('btn-run');
-  if (btn && btn.disabled) return;
+  if (!_runningFromPereira && btn && btn.disabled) return;
 
   _fullAnalysisRunning = true;
   const spinSvg = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;

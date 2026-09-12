@@ -4661,10 +4661,29 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
 
     razao      = (sol_data.get("razaoSocial") or sol_data.get("nomeEmpresa")
                   or rf_info.get("razao_social") or "—")
-    cnpj       = sol_data.get("cnpj") or rf_info.get("cnpj") or "—"
+    cnpj_raw   = sol_data.get("cnpj") or rf_info.get("cnpj") or ""
+    cnpj       = cnpj_raw or "—"
     modalidade = sol_data.get("tipoOperacao") or sol_data.get("modalidade") or "não especificada"
     valor      = sol_data.get("valorOperacao") or sol_data.get("limiteCredito") or "não especificado"
     prazo      = sol_data.get("prazoReembolso") or sol_data.get("prazo") or "não especificado"
+
+    # Auto-fetch RF via BrasilAPI se ainda não consultado
+    rf_fonte = "sistema"
+    if not rf_info and cnpj_raw:
+        cnpj_digits = re.sub(r"\D", "", cnpj_raw)
+        if len(cnpj_digits) == 14:
+            try:
+                async with httpx.AsyncClient(timeout=20.0) as hc:
+                    _r = await hc.get(
+                        f"https://brasilapi.com.br/api/cnpj/v1/{cnpj_digits}",
+                        headers={"User-Agent": "Vendemmia-AnaliseCredito/1.0"},
+                    )
+                if _r.status_code == 200:
+                    rf_info = _r.json()
+                    razao   = rf_info.get("razao_social") or razao
+                    rf_fonte = "BrasilAPI (consultado agora pelo PEREIRA)"
+            except Exception:
+                pass
 
     meta = (
         f"DADOS DA SOLICITAÇÃO\n"
@@ -4675,13 +4694,13 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         f"Data de referência da análise: {datetime.utcnow().strftime('%Y-%m-%d')}\n\n"
     )
     if rf_info:
-        meta += f"RECEITA FEDERAL (BrasilAPI):\n{json.dumps(rf_info, ensure_ascii=False, indent=2)}\n\n"
+        meta += f"RECEITA FEDERAL ({rf_fonte}):\n{json.dumps(rf_info, ensure_ascii=False, indent=2)}\n\n"
     else:
-        meta += "RECEITA FEDERAL: Consulta não realizada.\n\n"
+        meta += f"RECEITA FEDERAL: Consulta não realizada (CNPJ: {cnpj}).\n\n"
     if idwall:
         meta += f"BUREAU IDwall:\n{json.dumps(idwall, ensure_ascii=False, indent=2)}\n\n"
     else:
-        meta += "BUREAU IDwall: Consulta não realizada.\n\n"
+        meta += "BUREAU IDwall: Resultado pendente ou não solicitado.\n\n"
     if contabil:
         meta += f"INDICADORES CONTÁBEIS (sistema):\n{json.dumps(contabil, ensure_ascii=False, indent=2)}\n\n"
 
@@ -4737,10 +4756,21 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         content_blocks.append({
             "type": "text",
             "text": (
-                "\n\nATENÇÃO: Nenhum documento financeiro foi anexado a esta solicitação. "
-                "Execute a análise com base nos dados de RF e IDwall disponíveis. "
-                "Sinalize esta limitação no inventário documental e classifique a "
-                "base probatória como 'baixa'."
+                "\n\n=== ANÁLISE SEM DOCUMENTOS FINANCEIROS ===\n"
+                "Nenhum documento financeiro (Balanço, DRE, Contrato Social, etc.) foi "
+                "anexado a esta solicitação. Realize a análise com base exclusivamente "
+                "nos dados da Receita Federal e IDwall fornecidos acima.\n\n"
+                "Nesta modalidade de análise:\n"
+                "- Explore os dados cadastrais da RF: porte, natureza jurídica, atividade "
+                "  econômica principal (CNAE), data de abertura, situação cadastral, quadro de sócios.\n"
+                "- Use o tempo de operação da empresa (data abertura) como proxy de maturidade.\n"
+                "- O CNAE principal indica o setor e perfil de risco setorial.\n"
+                "- Capital social declarado é indicador de comprometimento dos sócios.\n"
+                "- Ausência de documentos financeiros deve ser registrada como limitação crítica "
+                "  do inventário documental — classifique a base probatória como BAIXA.\n"
+                "- Recomende limite conservador condizente com a limitação de informação.\n"
+                "- Sinalize ao analista a necessidade de solicitar documentação complementar "
+                "  antes de aprovações acima de limites mínimos de exposição."
             ),
         })
 
