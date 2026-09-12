@@ -1838,6 +1838,13 @@
           </div>`;
       }
 
+      // Listener direto no botão — backup caso inline onclick falhe por timing
+      const _btnRunSimp = _facEl ? _facEl.querySelector('#btn-run') : null;
+      if (_btnRunSimp) {
+        _btnRunSimp.onclick = null;
+        _btnRunSimp.addEventListener('click', function() { runPereiraCompleto(); });
+      }
+
       // Oculta seções exclusivas de análise completa
       ['fin-card', 'contabil-card', 'ai-card', 'detail-card', 'limits-card', 'trigger-card'].forEach(function(id) {
         const el = document.getElementById(id);
