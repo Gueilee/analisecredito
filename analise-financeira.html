@@ -914,41 +914,42 @@
     .pereira-hero-section {
       display: flex; align-items: center; gap: 1rem;
     }
+    .pereira-hero-section {
+      flex-direction: column; align-items: center; width: 100%; text-align: center; gap: .6rem;
+    }
     .pereira-avatar-wrap {
-      position: relative; width: 70px; height: 70px; flex-shrink: 0;
+      position: relative; width: 120px; height: 120px; flex-shrink: 0; margin: 0 auto;
     }
     .pereira-glow-orb {
-      position: absolute; inset: -16px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(139,92,246,.6) 0%, rgba(124,58,237,.2) 45%, transparent 70%);
+      position: absolute; inset: -24px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(139,92,246,.65) 0%, rgba(124,58,237,.22) 45%, transparent 70%);
       animation: perOrbPulse 2.8s ease-in-out infinite; pointer-events: none;
     }
     @keyframes perOrbPulse {
-      0%, 100% { opacity: .45; transform: scale(1); }
-      50%       { opacity: 1;   transform: scale(1.18); }
+      0%, 100% { opacity: .4; transform: scale(1); }
+      50%       { opacity: 1;  transform: scale(1.16); }
     }
     .pereira-avatar-img {
-      width: 70px; height: 70px; object-fit: contain; border-radius: 50%;
+      width: 120px; height: 120px; object-fit: contain; border-radius: 50%;
       position: relative; z-index: 1;
       animation: perFloat 3.3s ease-in-out infinite;
-      filter: drop-shadow(0 2px 22px rgba(139,92,246,.85));
+      filter: drop-shadow(0 4px 28px rgba(139,92,246,.9));
     }
     @keyframes perFloat {
       0%, 100% { transform: translateY(0px); }
-      50%       { transform: translateY(-8px); }
+      50%       { transform: translateY(-9px); }
     }
     .pereira-hero-name {
-      font-size: 1rem; font-weight: 800; letter-spacing: .04em;
-      background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #7c3aed 100%);
+      font-size: 1.25rem; font-weight: 800; letter-spacing: .08em;
+      background: linear-gradient(135deg, #ddd6fe 0%, #a78bfa 50%, #7c3aed 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-top: .15rem;
     }
-    .pereira-hero-sub { font-size: .67rem; color: var(--text-faint); margin-top: .15rem; }
     .pereira-hero-status {
-      display: inline-flex; align-items: center; gap: .35rem;
-      margin-top: .45rem; font-size: .72rem; font-weight: 600; color: rgba(167,139,250,.9);
+      display: inline-flex; align-items: center; gap: .4rem;
+      margin-top: .35rem; font-size: .75rem; font-weight: 600; color: rgba(167,139,250,.9);
     }
-    .pereira-card-divider {
-      border: none; border-top: 1px solid rgba(124,58,237,.13); margin: .7rem 0 .8rem;
-    }
+    .pereira-card-divider { display: none; }
     /* btn-run com branding PEREIRA */
     .btn-full-analysis.pereira-btn {
       background: linear-gradient(135deg, #4c1d95, #7c3aed, #6d28d9);
@@ -1028,7 +1029,7 @@
             <!-- Cabeçalho + botão principal -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.9rem;">
               <div>
-                <div class="card-title" style="margin-bottom:.25rem;">Análise Completa</div>
+                <div class="card-title" style="margin-bottom:.25rem;">Análise de Crédito</div>
                 <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall · Documentos · Contábil · IA &mdash; tudo em um clique</div>
               </div>
               <button id="btn-run" class="btn-full-analysis pereira-btn" onclick="runPereiraCompleto()">
@@ -1539,39 +1540,34 @@
           <div id="limits-card" style="display:none;"></div>
 
           <!-- ── PEREIRA — Parecer Documental de Crédito ── -->
-          <div class="card animate-in" id="pereira-card">
-            <!-- Header com avatar PEREIRA -->
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:.75rem;">
-              <div class="pereira-hero-section">
-                <div class="pereira-avatar-wrap">
-                  <div class="pereira-glow-orb"></div>
-                  <img src="PEREIRA3.png" alt="PEREIRA" class="pereira-avatar-img"
-                       onerror="this.style.display='none';this.nextSibling.style.display='flex'">
-                  <div style="display:none;width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#4c1d95,#7c3aed);align-items:center;justify-content:center;font-size:1.8rem;position:relative;z-index:1;">🤖</div>
-                </div>
-                <div>
-                  <div class="pereira-hero-name">PEREIRA</div>
-                  <div class="pereira-hero-sub">Analista de Crédito · claude-sonnet-4-6</div>
-                  <div class="pereira-hero-status" id="pereira-status-badge">
-                    <svg viewBox="0 0 10 10" width="8" height="8" fill="rgba(139,92,246,.7)"><circle cx="5" cy="5" r="5"/></svg>
-                    Aguardando análise
-                  </div>
-                </div>
+          <div class="card animate-in" id="pereira-card" style="position:relative;">
+            <!-- Botão Reanalisar posicionado no canto superior direito -->
+            <div style="position:absolute;top:.9rem;right:.9rem;">
+              <button class="btn-pereira-refresh" id="btn-pereira-refresh" onclick="runPereiraCompleto()" style="display:none;" disabled>
+                <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Reanalisar
+              </button>
+            </div>
+
+            <!-- Avatar PEREIRA centralizado -->
+            <div class="pereira-hero-section" style="padding:.5rem 0 .9rem;">
+              <div class="pereira-avatar-wrap">
+                <div class="pereira-glow-orb"></div>
+                <img src="PEREIRA3.png" alt="PEREIRA" class="pereira-avatar-img"
+                     onerror="this.style.display='none';this.nextSibling.style.display='flex'">
+                <div style="display:none;width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#4c1d95,#7c3aed);align-items:center;justify-content:center;font-size:3rem;position:relative;z-index:1;">🤖</div>
               </div>
-              <div style="display:flex;gap:.45rem;align-items:center;">
-                <button class="btn-pereira-refresh" id="btn-pereira-refresh" onclick="runPereiraCompleto()" style="display:none;" disabled>
-                  <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Reanalisar
-                </button>
+              <div>
+                <div class="pereira-hero-name">PEREIRA</div>
+                <div class="pereira-hero-status" id="pereira-status-badge">
+                  <svg viewBox="0 0 10 10" width="8" height="8" fill="rgba(139,92,246,.7)"><circle cx="5" cy="5" r="5"/></svg>
+                  Aguardando análise
+                </div>
               </div>
             </div>
 
-            <hr class="pereira-card-divider">
-
-            <!-- Estado inicial -->
-            <div id="pereira-hint" style="padding:.6rem .25rem .8rem;text-align:center;">
-              <p style="font-size:.75rem;color:var(--text-faint);line-height:1.7;max-width:340px;margin:0 auto;">Clique em <strong style="color:rgba(167,139,250,.9);">Parecer do Pereira</strong> para iniciar. O PEREIRA consulta Receita Federal, IDwall e analisa todos os documentos financeiros anexados. Ao final, gera um parecer completo com indicadores, matriz de riscos e proposta de limite.</p>
-            </div>
+            <!-- Estado inicial / erros (vazio por padrão) -->
+            <div id="pereira-hint" style="display:none;"></div>
 
             <!-- Loading -->
             <div id="pereira-loading" class="pereira-loading" style="display:none;">
@@ -1781,7 +1777,7 @@
         _facEl.innerHTML = `
           <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.9rem;">
             <div>
-              <div class="card-title" style="margin-bottom:.25rem;">Consulta Simplificada</div>
+              <div class="card-title" style="margin-bottom:.25rem;">Análise de Crédito</div>
               <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall BGC · Receita Federal · Quadro Societário</div>
             </div>
             <button id="btn-run" class="btn-full-analysis pereira-btn" onclick="runPereiraCompleto()">
