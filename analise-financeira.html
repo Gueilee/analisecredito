@@ -905,6 +905,58 @@
     }
     .btn-pereira-refresh:hover:not(:disabled) { background: rgba(124,58,237,.08); border-color: rgba(124,58,237,.5); }
     .btn-pereira-refresh:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── PEREIRA Hero Card ── */
+    #pereira-card {
+      background: linear-gradient(160deg, rgba(76,29,149,.07) 0%, transparent 55%);
+      border-color: rgba(124,58,237,.22);
+    }
+    .pereira-hero-section {
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .pereira-avatar-wrap {
+      position: relative; width: 70px; height: 70px; flex-shrink: 0;
+    }
+    .pereira-glow-orb {
+      position: absolute; inset: -16px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(139,92,246,.6) 0%, rgba(124,58,237,.2) 45%, transparent 70%);
+      animation: perOrbPulse 2.8s ease-in-out infinite; pointer-events: none;
+    }
+    @keyframes perOrbPulse {
+      0%, 100% { opacity: .45; transform: scale(1); }
+      50%       { opacity: 1;   transform: scale(1.18); }
+    }
+    .pereira-avatar-img {
+      width: 70px; height: 70px; object-fit: contain; border-radius: 50%;
+      position: relative; z-index: 1;
+      animation: perFloat 3.3s ease-in-out infinite;
+      filter: drop-shadow(0 2px 22px rgba(139,92,246,.85));
+    }
+    @keyframes perFloat {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-8px); }
+    }
+    .pereira-hero-name {
+      font-size: 1rem; font-weight: 800; letter-spacing: .04em;
+      background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #7c3aed 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .pereira-hero-sub { font-size: .67rem; color: var(--text-faint); margin-top: .15rem; }
+    .pereira-hero-status {
+      display: inline-flex; align-items: center; gap: .35rem;
+      margin-top: .45rem; font-size: .72rem; font-weight: 600; color: rgba(167,139,250,.9);
+    }
+    .pereira-card-divider {
+      border: none; border-top: 1px solid rgba(124,58,237,.13); margin: .7rem 0 .8rem;
+    }
+    /* btn-run com branding PEREIRA */
+    .btn-full-analysis.pereira-btn {
+      background: linear-gradient(135deg, #4c1d95, #7c3aed, #6d28d9);
+      box-shadow: 0 4px 18px rgba(109,40,217,.45);
+    }
+    .btn-full-analysis.pereira-btn:hover:not(:disabled) {
+      box-shadow: 0 8px 32px rgba(109,40,217,.6);
+    }
       </style>
 </head>
 <body>
@@ -979,9 +1031,9 @@
                 <div class="card-title" style="margin-bottom:.25rem;">Análise Completa</div>
                 <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall · Documentos · Contábil · IA &mdash; tudo em um clique</div>
               </div>
-              <button id="btn-run" class="btn-full-analysis" onclick="runFullAnalysis()">
+              <button id="btn-run" class="btn-full-analysis pereira-btn" onclick="runPereiraCompleto()">
                 <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Iniciar Análise Completa
+                Parecer do Pereira
               </button>
             </div>
 
@@ -1006,6 +1058,11 @@
                 <span class="fa-step-dot"></span>
                 <span class="fa-step-label">Análise com IA</span>
                 <span class="fa-step-status" id="fa-status-ia">Aguardando</span>
+              </div>
+              <div class="fa-step" id="fa-step-pereira">
+                <span class="fa-step-dot"></span>
+                <span class="fa-step-label">Parecer PEREIRA</span>
+                <span class="fa-step-status" id="fa-status-pereira">Aguardando</span>
               </div>
             </div>
 
@@ -1483,38 +1540,44 @@
 
           <!-- ── PEREIRA — Parecer Documental de Crédito ── -->
           <div class="card animate-in" id="pereira-card">
+            <!-- Header com avatar PEREIRA -->
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:.75rem;">
-              <div style="display:flex;align-items:center;gap:.5rem;">
-                <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style="color:var(--purple-light);flex-shrink:0"><path d="M12 2a5 5 0 0 1 5 5c0 2.21-1.43 4.1-3.43 4.75C15.61 12.94 18 15.79 18 19v1H6v-1c0-3.21 2.39-6.06 4.43-7.25A5 5 0 0 1 12 2z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 13.5c-1.5.9-3 2.5-3 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M15 13.5c1.5.9 3 2.5 3 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              <div class="pereira-hero-section">
+                <div class="pereira-avatar-wrap">
+                  <div class="pereira-glow-orb"></div>
+                  <img src="PEREIRA3.png" alt="PEREIRA" class="pereira-avatar-img"
+                       onerror="this.style.display='none';this.nextSibling.style.display='flex'">
+                  <div style="display:none;width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#4c1d95,#7c3aed);align-items:center;justify-content:center;font-size:1.8rem;position:relative;z-index:1;">🤖</div>
+                </div>
                 <div>
-                  <div class="card-title" style="margin-bottom:.1rem;">Parecer PEREIRA</div>
-                  <div style="font-size:.68rem;color:var(--text-faint);">Análise documental completa · claude-sonnet</div>
+                  <div class="pereira-hero-name">PEREIRA</div>
+                  <div class="pereira-hero-sub">Analista de Crédito · claude-sonnet-4-6</div>
+                  <div class="pereira-hero-status" id="pereira-status-badge">
+                    <svg viewBox="0 0 10 10" width="8" height="8" fill="rgba(139,92,246,.7)"><circle cx="5" cy="5" r="5"/></svg>
+                    Aguardando análise
+                  </div>
                 </div>
               </div>
               <div style="display:flex;gap:.45rem;align-items:center;">
-                <button class="btn-pereira-refresh" id="btn-pereira-refresh" onclick="runPereira()" style="display:none;" disabled>
+                <button class="btn-pereira-refresh" id="btn-pereira-refresh" onclick="runPereiraCompleto()" style="display:none;" disabled>
                   <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M23 4v6h-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20v-6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   Reanalisar
-                </button>
-                <button class="btn-pereira" id="btn-pereira" onclick="runPereira()">
-                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Gerar Parecer
                 </button>
               </div>
             </div>
 
+            <hr class="pereira-card-divider">
+
             <!-- Estado inicial -->
-            <div id="pereira-hint" style="padding:.8rem .25rem .4rem;text-align:center;">
-              <svg viewBox="0 0 24 24" fill="none" width="26" height="26" style="color:rgba(124,58,237,.3);margin-bottom:.6rem"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <div style="font-size:.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:.4rem;">Parecer Analítico de Crédito</div>
-              <p style="font-size:.72rem;color:var(--text-faint);line-height:1.65;max-width:320px;margin:0 auto;">Analisa balanços, DRE, contrato social, RF e IDwall. Gera parecer com indicadores, matriz de riscos e proposta de limite para o analista.</p>
+            <div id="pereira-hint" style="padding:.6rem .25rem .8rem;text-align:center;">
+              <p style="font-size:.75rem;color:var(--text-faint);line-height:1.7;max-width:340px;margin:0 auto;">Clique em <strong style="color:rgba(167,139,250,.9);">Parecer do Pereira</strong> para iniciar. O PEREIRA consulta Receita Federal, IDwall e analisa todos os documentos financeiros anexados. Ao final, gera um parecer completo com indicadores, matriz de riscos e proposta de limite.</p>
             </div>
 
             <!-- Loading -->
             <div id="pereira-loading" class="pereira-loading" style="display:none;">
               <div class="pereira-spinner"></div>
-              <div style="font-size:.78rem;color:var(--text-secondary);font-weight:600;">Analisando documentos…</div>
-              <div style="font-size:.7rem;color:var(--text-faint);">Isso pode levar até 60 segundos dependendo do tamanho dos documentos.</div>
+              <div style="font-size:.78rem;color:var(--text-secondary);font-weight:600;">PEREIRA analisando documentos…</div>
+              <div style="font-size:.7rem;color:var(--text-faint);">Isso pode levar até 90 segundos dependendo do volume de documentos.</div>
             </div>
 
             <!-- Resultado -->
@@ -1688,6 +1751,7 @@
 
     // Simplificado: só IDwall + RF (sem IA, docs, contábil)
     const _isSimplificado = _isTransporte || _isArmazemVDM || _isContaOrdem || _isGestao;
+    window._modoSimplificado = _isSimplificado;
 
     // Botão Exposição: apenas para Trade Encomenda (operação de risco total)
     const _showExposicao = !_isSimplificado && !_isLicenciamento && _isEncomenda;
@@ -1720,14 +1784,15 @@
               <div class="card-title" style="margin-bottom:.25rem;">Consulta Simplificada</div>
               <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall BGC · Receita Federal · Quadro Societário</div>
             </div>
-            <button id="btn-run" class="btn-full-analysis" onclick="runSimplifiedAnalysis()">
-              <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              Consultar CNPJ
+            <button id="btn-run" class="btn-full-analysis pereira-btn" onclick="runPereiraCompleto()">
+              <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Parecer do Pereira
             </button>
           </div>
           <div class="fa-steps" id="full-analysis-steps" style="display:none;">
             <div class="fa-step" id="fa-step-idwall"><span class="fa-step-dot"></span><span class="fa-step-label">IDwall BGC</span><span class="fa-step-status" id="fa-status-idwall">Aguardando</span></div>
             <div class="fa-step" id="fa-step-rf"><span class="fa-step-dot"></span><span class="fa-step-label">Receita Federal</span><span class="fa-step-status" id="fa-status-rf">Aguardando</span></div>
+            <div class="fa-step" id="fa-step-pereira"><span class="fa-step-dot"></span><span class="fa-step-label">Parecer PEREIRA</span><span class="fa-step-status" id="fa-status-pereira">Aguardando</span></div>
           </div>
           <div style="display:none;">
             <div class="bureau-icon wait" id="idwall-icon"></div>
@@ -3367,14 +3432,14 @@ async function runSimplifiedAnalysis() {
   }
 
   /* Finaliza */
-  if (btn) {
+  if (!_runningFromPereira && btn) {
     btn.disabled = false;
     btn.className = 'btn-full-analysis done';
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída`;
   }
 
-  // Mostra o card de decisão
-  if (!['aprovado', 'negado'].includes(sol.status)) {
+  // Mostra o card de decisão (suprime se chamado de dentro do runPereiraCompleto)
+  if (!_runningFromPereira && !['aprovado', 'negado'].includes(sol.status)) {
     const canDecideNow = typeof canDecide !== 'undefined' ? canDecide : true;
     if (canDecideNow) document.getElementById('decision-card').style.display = '';
     else              document.getElementById('pending-decision-banner').style.display = '';
@@ -3501,14 +3566,14 @@ async function runFullAnalysis() {
 
   /* ── Finaliza ───────────────────────────────────────────────────── */
   _fullAnalysisRunning = false;
-  if (btn) {
+  if (!_runningFromPereira && btn) {
     btn.disabled = false;
     btn.className = 'btn-full-analysis done';
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Análise Concluída`;
     setTimeout(() => {
       if (!btn.disabled) {
-        btn.className = 'btn-full-analysis';
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Iniciar Análise Completa`;
+        btn.className = 'btn-full-analysis pereira-btn';
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer do Pereira`;
       }
     }, 6000);
   }
@@ -4857,31 +4922,38 @@ function _inlineHtml(s) {
     .replace(/`(.+?)`/g,           '<code>$1</code>');
 }
 
+function _pereiraSetStatus(text, color) {
+  const badge = document.getElementById('pereira-status-badge');
+  if (!badge) return;
+  badge.innerHTML = `<svg viewBox="0 0 10 10" width="8" height="8" fill="${color || 'rgba(139,92,246,.7)'}"><circle cx="5" cy="5" r="5"/></svg> ${text}`;
+}
+
 async function runPereira() {
   if (!sol || !sol.id || sol.id.startsWith('ca_')) {
-    _showToast('Análise PEREIRA disponível apenas para solicitações completas.', 'warning');
+    showToast('Análise PEREIRA disponível apenas para solicitações completas.', 'warning');
     return;
   }
-  const btnPrimary  = document.getElementById('btn-pereira');
-  const btnRefresh  = document.getElementById('btn-pereira-refresh');
-  const hint        = document.getElementById('pereira-hint');
-  const loading     = document.getElementById('pereira-loading');
-  const result      = document.getElementById('pereira-result');
+  const btnRefresh = document.getElementById('btn-pereira-refresh');
+  const hint       = document.getElementById('pereira-hint');
+  const loading    = document.getElementById('pereira-loading');
+  const result     = document.getElementById('pereira-result');
 
-  [btnPrimary, btnRefresh].forEach(b => { if (b) b.disabled = true; });
+  if (btnRefresh) btnRefresh.disabled = true;
   hint.style.display    = 'none';
   loading.style.display = 'flex';
   result.style.display  = 'none';
+  _pereiraSetStatus('Analisando documentos…', 'rgba(245,158,11,.9)');
 
   try {
-    const r = await _fetch(`/api/pereira/analisar/${sol.id}`, { method: 'POST' });
+    const r = await fetch(`${API_URL}/api/pereira/analisar/${sol.id}`, { method: 'POST', credentials: 'include' });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${r.status}`);
     }
     const data = await r.json();
     _renderPereiraAnalise(data);
-    _showToast('Parecer PEREIRA gerado com sucesso.', 'success');
+    _pereiraSetStatus('Parecer concluído', 'rgba(1,225,142,.9)');
+    showToast('Parecer PEREIRA gerado com sucesso.', 'success');
   } catch (e) {
     loading.style.display = 'none';
     hint.style.display    = 'block';
@@ -4889,18 +4961,19 @@ async function runPereira() {
       <div style="color:var(--red);font-size:.78rem;padding:.6rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);">
         <strong>Erro na análise:</strong> ${e.message}
       </div>`;
-    _showToast('Erro ao gerar parecer PEREIRA.', 'error');
+    _pereiraSetStatus('Erro na análise', 'rgba(239,68,68,.9)');
+    showToast('Erro ao gerar parecer PEREIRA.', 'error');
+    throw e;
   } finally {
-    [btnPrimary, btnRefresh].forEach(b => { if (b) b.disabled = false; });
+    if (btnRefresh) btnRefresh.disabled = false;
   }
 }
 
 function _renderPereiraAnalise(data) {
-  const loading = document.getElementById('pereira-loading');
-  const result  = document.getElementById('pereira-result');
-  const meta    = document.getElementById('pereira-meta');
-  const body    = document.getElementById('pereira-parecer-body');
-  const btnPrimary = document.getElementById('btn-pereira');
+  const loading    = document.getElementById('pereira-loading');
+  const result     = document.getElementById('pereira-result');
+  const meta       = document.getElementById('pereira-meta');
+  const body       = document.getElementById('pereira-parecer-body');
   const btnRefresh = document.getElementById('btn-pereira-refresh');
 
   loading.style.display = 'none';
@@ -4929,15 +5002,84 @@ function _renderPereiraAnalise(data) {
   body.innerHTML = _mdToHtml(parecer);
 
   result.style.display  = 'block';
-  if (btnPrimary) btnPrimary.style.display = 'none';
-  if (btnRefresh) btnRefresh.style.display = '';
+  if (btnRefresh) { btnRefresh.style.display = ''; btnRefresh.disabled = false; }
 }
 
 // Bootstrap: carrega análise salva se existir
 (function _bootstrapPereira() {
   if (!sol || !sol.pereira_analise || !sol.pereira_analise.parecer) return;
   _renderPereiraAnalise(sol.pereira_analise);
+  _pereiraSetStatus('Parecer disponível', 'rgba(1,225,142,.9)');
 })();
+
+/* ──────────────────────────────────────────────────────────────────────────
+   PARECER DO PEREIRA — orquestrador unificado
+   Roda: RF + IDwall → PEREIRA (documental)
+   Suprime o card de decisão durante a execução; mostra só ao final.
+   ────────────────────────────────────────────────────────────────────────── */
+let _runningFromPereira = false;
+
+async function runPereiraCompleto() {
+  const btn = document.getElementById('btn-run');
+  if (btn && btn.disabled) return;
+
+  // Lock
+  _runningFromPereira = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.className = 'btn-full-analysis pereira-btn';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Iniciando…`;
+  }
+
+  const stepsEl = document.getElementById('full-analysis-steps');
+  if (stepsEl) stepsEl.style.display = '';
+  _pereiraSetStatus('Consultando RF e IDwall…', 'rgba(245,158,11,.9)');
+
+  /* Passo 1: RF + IDwall (simplificado) ou análise completa */
+  try {
+    if (window._modoSimplificado) {
+      await runSimplifiedAnalysis();
+    } else {
+      await runFullAnalysis();
+    }
+  } catch (_) { /* falha não fatal — continua para PEREIRA */ }
+
+  /* Passo 2: PEREIRA documental */
+  _faSetStep('pereira', 'loading', 'Gerando parecer…');
+  _pereiraSetStatus('Analisando documentos…', 'rgba(245,158,11,.9)');
+
+  if (btn) {
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> PEREIRA analisando…`;
+  }
+
+  try {
+    await runPereira();
+    _faSetStep('pereira', 'done', 'Parecer gerado');
+  } catch (_) {
+    _faSetStep('pereira', 'error', 'Erro ao gerar parecer — verifique os documentos');
+  }
+
+  /* Finaliza */
+  _runningFromPereira = false;
+  if (btn) {
+    btn.disabled = false;
+    btn.className = 'btn-full-analysis done';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer Concluído`;
+    setTimeout(() => {
+      if (!btn.disabled) {
+        btn.className = 'btn-full-analysis pereira-btn';
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer do Pereira`;
+      }
+    }, 8000);
+  }
+
+  /* Mostra card de decisão agora que o PEREIRA terminou */
+  if (!['aprovado', 'negado'].includes(sol.status)) {
+    const canDecideNow = typeof canDecide !== 'undefined' ? canDecide : true;
+    if (canDecideNow) document.getElementById('decision-card').style.display = '';
+    else              document.getElementById('pending-decision-banner').style.display = '';
+  }
+}
 </script>
 </body>
 </html>
