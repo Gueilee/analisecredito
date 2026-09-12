@@ -4084,12 +4084,15 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
       if (_hasRF)         _faSetStep('rf',     'done',    'Dados cadastrais carregados');
     }
 
-    if (_hasRF || _hasIdw) {
+    if (_hasRF || _hasIdw || _pendIdw) {
       const btn = document.getElementById('btn-run');
       if (btn) {
-        btn.disabled  = false;
-        btn.className = 'btn-full-analysis done';
-        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída';
+        btn.disabled = false;
+        if (_hasRF || _hasIdw) {
+          btn.className = 'btn-full-analysis done';
+          btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída';
+        }
+        // Se apenas idwall_pending: mantém estilo PEREIRA original, só habilita
       }
     }
     return true;
