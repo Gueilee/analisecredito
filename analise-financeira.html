@@ -4097,9 +4097,9 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
     }
     return true;
   }
-  if (!_trySimplified()) {
-    DB.ready.then(() => { _trySimplified(); }).catch(() => {});
-  }
+  _trySimplified();
+  // Sempre tenta novamente após sync — garante estado correto independente de timing
+  DB.ready.then(() => { _trySimplified(); }).catch(() => {});
 })();
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -5100,8 +5100,11 @@ function _renderPereiraAnalise(data) {
 let _runningFromPereira = false;
 
 async function runPereiraCompleto() {
+  // Usa _runningFromPereira como guard — não verifica btn.disabled que pode
+  // estar num estado inconsistente por timing de bootstrap
+  if (_runningFromPereira) return;
+
   const btn = document.getElementById('btn-run');
-  if (btn && btn.disabled) return;
 
   // Lock
   _runningFromPereira = true;
