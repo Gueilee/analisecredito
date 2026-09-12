@@ -4925,8 +4925,8 @@ function _pereiraSetStatus(text, color) {
 }
 
 async function runPereira() {
-  if (!sol || !sol.id || sol.id.startsWith('ca_')) {
-    showToast('Análise PEREIRA disponível apenas para solicitações completas.', 'warning');
+  if (!sol || !sol.id) {
+    showToast('Solicitação não identificada — recarregue a página.', 'warning');
     return;
   }
   const btnRefresh = document.getElementById('btn-pereira-refresh');
@@ -4999,6 +4999,12 @@ function _renderPereiraAnalise(data) {
 
   result.style.display  = 'block';
   if (btnRefresh) { btnRefresh.style.display = ''; btnRefresh.disabled = false; }
+
+  // Persiste no cache local para que o bootstrap funcione no próximo carregamento
+  if (sol && sol.id) {
+    DB.solicitacoes.update(sol.id, { pereira_analise: data });
+    sol = DB.solicitacoes.getById(sol.id) || sol;
+  }
 }
 
 // Bootstrap: carrega análise salva se existir

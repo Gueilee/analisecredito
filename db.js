@@ -162,14 +162,16 @@ const DB = (() => {
         if ('parecerTecnico' in data) analise.parecerTecnico = data.parecerTecnico;
         if ('decisaoAnalista'in data) analise.decisaoAnalista= data.decisaoAnalista;
         if ('decisao_at'     in data) analise.decisao_at     = data.decisao_at;
+        if ('pereira_analise'in data) analise.pereira_analise= data.pereira_analise;
+        let caFetch = Promise.resolve(null);
         if (Object.keys(analise).length > 0) {
-          _fetch(`/api/clientes-ativos/${numId}/analise`, {
+          caFetch = _fetch(`/api/clientes-ativos/${numId}/analise`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(analise),
           }).catch(() => {});
         }
-        const caPromise = Promise.resolve(updated);
+        const caPromise = caFetch.then(() => updated);
         caPromise._updated = updated;
         return caPromise;
       }

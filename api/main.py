@@ -227,7 +227,8 @@ async def _ensure_tables() -> None:
                 ADD COLUMN IF NOT EXISTS prazo_aprovado   TEXT,
                 ADD COLUMN IF NOT EXISTS parecer_tecnico  TEXT,
                 ADD COLUMN IF NOT EXISTS decisao_analista TEXT,
-                ADD COLUMN IF NOT EXISTS decisao_at       TIMESTAMPTZ
+                ADD COLUMN IF NOT EXISTS decisao_at       TIMESTAMPTZ,
+                ADD COLUMN IF NOT EXISTS pereira_analise  JSONB
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_cnpj    ON ac_clientes_ativos(cnpj)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_clientes_uf      ON ac_clientes_ativos(uf)")
@@ -3961,7 +3962,7 @@ async def sol_list(current_user=Depends(_get_current_user)):
             "filial_matriz, uf, endereco, status_cliente, validade, "
             "plano_2026, faturado_ytd, fat_plano, volume_estimado_ano, "
             "limite_aprovado, atualizado_em, rf_data, idwall_data, idwall_pending, "
-            "prazo_aprovado, parecer_tecnico, decisao_analista, decisao_at "
+            "prazo_aprovado, parecer_tecnico, decisao_analista, decisao_at, pereira_analise "
             "FROM ac_clientes_ativos ORDER BY razao_social"
         )
         today = datetime.utcnow().date()
@@ -4022,6 +4023,7 @@ async def sol_list(current_user=Depends(_get_current_user)):
                 "rf_data":          ca.get("rf_data"),
                 "idwall":           ca.get("idwall_data"),
                 "idwall_pending":   ca.get("idwall_pending"),
+                "pereira_analise":  ca.get("pereira_analise"),
             })
     except Exception:
         pass  # Não quebra a listagem de solicitações se a tabela ainda não existir
@@ -4083,6 +4085,9 @@ async def ca_analise_update(ca_id: int, request: Request, current_user=Depends(_
         _add("decisao_analista", body["decisaoAnalista"] or None)
     if "decisao_at" in body:
         _add("decisao_at", body["decisao_at"] or None)
+    if "pereira_analise" in body:
+        v = body["pereira_analise"]
+        _add("pereira_analise", json.dumps(v, ensure_ascii=False) if v is not None else None)
 
     if not set_clauses:
         return {"ok": True}
@@ -4641,11 +4646,35 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
     if not anthropic_key:
         raise HTTPException(503, "ANTHROPIC_API_KEY não configurada no servidor.")
 
-    # 1. Dados da solicitação
-    sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
-    if not sol_rows:
-        raise HTTPException(404, "Solicitação não encontrada.")
-    sol_data = json.loads(sol_rows[0]["data"] or "{}")
+    # 1. Dados da solicitação — suporta tanto ac_solicitacoes quanto ac_clientes_ativos (ca_)
+    _is_ca = sol_id.startswith("ca_")
+    _ca_numeric_id: str | None = None
+
+    if _is_ca:
+        _ca_numeric_id = sol_id[3:]  # remove prefixo 'ca_'
+        ca_rows = await _turso_query(
+            "SELECT cnpj, razao_social, modalidade1, modalidade2, "
+            "rf_data, idwall_data, idwall_pending "
+            "FROM ac_clientes_ativos WHERE id=?",
+            [_ca_numeric_id],
+        )
+        if not ca_rows:
+            raise HTTPException(404, "Cliente ativo não encontrado.")
+        ca = ca_rows[0]
+        # Monta sol_data com o mesmo formato esperado pelo restante do endpoint
+        sol_data: dict = {
+            "razaoSocial":  ca.get("razao_social") or "",
+            "cnpj":         ca.get("cnpj") or "",
+            "tipoOperacao": ca.get("modalidade1") or "",
+            "modalidade":   ca.get("modalidade2") or "",
+            "rf_data":      ca.get("rf_data") or {},
+            "idwall":       ca.get("idwall_data") or {},
+        }
+    else:
+        sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
+        if not sol_rows:
+            raise HTTPException(404, "Solicitação não encontrada.")
+        sol_data = json.loads(sol_rows[0]["data"] or "{}")
 
     # 2. Documentos anexados
     doc_rows = await _turso_query(
@@ -4854,11 +4883,18 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         "modelo": "claude-haiku-4-5-20251001",
         "documentos_analisados": [r["nome"] for r in doc_rows],
     }
-    sol_data["pereira_analise"] = pereira_result
-    await _turso_exec(
-        "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
-        [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
-    )
+    # 6. Persiste resultado na tabela correta
+    if _is_ca:
+        await _turso_exec(
+            "UPDATE ac_clientes_ativos SET pereira_analise=?, atualizado_em=? WHERE id=?",
+            [json.dumps(pereira_result, ensure_ascii=False), datetime.utcnow().isoformat(), _ca_numeric_id],
+        )
+    else:
+        sol_data["pereira_analise"] = pereira_result
+        await _turso_exec(
+            "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
+            [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
+        )
 
     return {"ok": True, **pereira_result, "documentos_total": len(doc_rows)}
 
