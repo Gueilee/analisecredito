@@ -4646,12 +4646,15 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
     if not anthropic_key:
         raise HTTPException(503, "ANTHROPIC_API_KEY não configurada no servidor.")
 
-    # 1. Dados da solicitação — suporta tanto ac_solicitacoes quanto ac_clientes_ativos (ca_)
+    # 1. Dados da solicitação — suporta ac_solicitacoes e ac_clientes_ativos (ca_)
     _is_ca = sol_id.startswith("ca_")
-    _ca_numeric_id: str | None = None
+    _ca_numeric_id = None  # int quando _is_ca
 
     if _is_ca:
-        _ca_numeric_id = sol_id[3:]  # remove prefixo 'ca_'
+        try:
+            _ca_numeric_id = int(sol_id[3:])
+        except ValueError:
+            raise HTTPException(400, "ID de cliente ativo inválido.")
         ca_rows = await _turso_query(
             "SELECT cnpj, razao_social, modalidade1, modalidade2, "
             "rf_data, idwall_data, idwall_pending "
@@ -4661,14 +4664,25 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         if not ca_rows:
             raise HTTPException(404, "Cliente ativo não encontrado.")
         ca = ca_rows[0]
-        # Monta sol_data com o mesmo formato esperado pelo restante do endpoint
-        sol_data: dict = {
+        rf_stored = ca.get("rf_data") or {}
+        if isinstance(rf_stored, str):
+            try:
+                rf_stored = json.loads(rf_stored)
+            except Exception:
+                rf_stored = {}
+        idwall_stored = ca.get("idwall_data") or {}
+        if isinstance(idwall_stored, str):
+            try:
+                idwall_stored = json.loads(idwall_stored)
+            except Exception:
+                idwall_stored = {}
+        sol_data = {
             "razaoSocial":  ca.get("razao_social") or "",
             "cnpj":         ca.get("cnpj") or "",
             "tipoOperacao": ca.get("modalidade1") or "",
             "modalidade":   ca.get("modalidade2") or "",
-            "rf_data":      ca.get("rf_data") or {},
-            "idwall":       ca.get("idwall_data") or {},
+            "rf_data":      rf_stored,
+            "idwall":       idwall_stored,
         }
     else:
         sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
