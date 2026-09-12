@@ -88,20 +88,37 @@ const DB = (() => {
     },
 
     async sync() {
+      // Campos de análise que devem ser preservados do cache local se a API retornar null.
+      // Isso protege contra race condition: PUT assíncrono que ainda não persistiu no banco
+      // antes do próximo sync sobrescrever o localStorage.
+      const _ANALYSIS_FIELDS = ['rf_data', 'pereira_analise', 'idwall', 'idwall_pending'];
+
       try {
         const r = await _fetch('/api/solicitacoes');
         if (r.ok) {
           const d = await r.json();
-          this._cache = d.items || [];
+          const prevCache = this._cache || [];
+          const incoming  = d.items || [];
+
+          // Merge defensivo: para cada item da API, preserva campos de análise do
+          // cache local que a API retornou como null (save ainda não chegou ao banco).
+          this._cache = incoming.map(apiItem => {
+            const local = prevCache.find(l => l.id === apiItem.id);
+            if (!local) return apiItem;
+            const merged = { ...apiItem };
+            for (const f of _ANALYSIS_FIELDS) {
+              if (merged[f] == null && local[f] != null) merged[f] = local[f];
+            }
+            return merged;
+          });
+
           this._saveCache();
-          localStorage.removeItem(KEYS.SOL_LEGACY); // remove localStorage legado após sync
-          // Atualiza badges do sidebar com contagens corretas pós-sync
+          localStorage.removeItem(KEYS.SOL_LEGACY);
           if (typeof App !== 'undefined' && App.refreshNav) App.refreshNav();
         } else if (r.status === 401) {
           this._cache = [];
         }
       } catch {
-        // Fallback: usa dados legados do localStorage se API falhar
         if (!this._cache) {
           const legacy = read(KEYS.SOL_LEGACY);
           this._cache = legacy || [];
@@ -169,7 +186,12 @@ const DB = (() => {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(analise),
-          }).catch(() => {});
+          }).then(async r => {
+            if (!r.ok) {
+              const txt = await r.text().catch(() => '');
+              console.error(`[DB] ca_ analise PUT ${r.status}:`, txt.slice(0, 200));
+            }
+          }).catch(err => console.error('[DB] ca_ analise PUT falhou (rede):', err));
         }
         const caPromise = caFetch.then(() => updated);
         caPromise._updated = updated;

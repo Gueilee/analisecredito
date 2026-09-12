@@ -4041,44 +4041,61 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
 }
 
 // Bootstrap RF: se já houver resultado salvo, renderiza sem precisar reconsultar.
-if (typeof sol !== 'undefined' && sol?.rf_data?.status === 'ok' && sol?.rf_data?.data?.razao_social) {
-  if (typeof renderRF === 'function') {
+// Tenta com cache local; se não encontrar, tenta novamente após sync com a API.
+(function _bootstrapRF() {
+  function _tryRF() {
+    const fresh = DB.solicitacoes.getById(solId);
+    if (fresh) sol = fresh;
+    if (!(sol?.rf_data?.status === 'ok' && sol?.rf_data?.data?.razao_social)) return false;
+    if (typeof renderRF !== 'function') return false;
     const _rfd = sol.rf_data.data;
-    document.getElementById('rf-icon').className    = 'bureau-icon ok';
+    document.getElementById('rf-icon').className     = 'bureau-icon ok';
     document.getElementById('rf-status').textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
     renderRF(_rfd);
     const _bRf = document.getElementById('btn-rf-consult');
     if (_bRf) _bRf.style.display = 'none';
+    return true;
   }
-}
+  if (!_tryRF()) {
+    DB.ready.then(() => { _tryRF(); }).catch(() => {});
+  }
+})();
 
 // Bootstrap Consulta Simplificada: restaura o estado do card (botão + steps) se já
 // houver dados de análise salvos, evitando que o analista precise reconsultar ao
 // navegar de volta para a ficha.
 (function _bootstrapSimplifiedCard() {
-  if (typeof sol === 'undefined' || !sol) return;
-  const _hasRF   = sol?.rf_data?.status === 'ok';
-  const _hasIdw  = !!sol?.idwall;
-  const _pendIdw = sol?.idwall_pending?.numero;
-  if (!_hasRF && !_hasIdw && !_pendIdw) return;
+  function _trySimplified() {
+    const fresh = DB.solicitacoes.getById(solId);
+    if (fresh) sol = fresh;
+    if (typeof sol === 'undefined' || !sol) return false;
+    const _hasRF   = sol?.rf_data?.status === 'ok';
+    const _hasIdw  = !!sol?.idwall;
+    const _pendIdw = sol?.idwall_pending?.numero;
+    if (!_hasRF && !_hasIdw && !_pendIdw) return false;
 
-  const stepsEl = document.getElementById('full-analysis-steps');
-  if (!stepsEl) return; // não é card simplificado
-  stepsEl.style.display = '';
+    const stepsEl = document.getElementById('full-analysis-steps');
+    if (!stepsEl) return false; // não é card simplificado
+    stepsEl.style.display = '';
 
-  if (typeof _faSetStep === 'function') {
-    if (_hasIdw)        _faSetStep('idwall', 'done',    'Relatório já disponível');
-    else if (_pendIdw)  _faSetStep('idwall', 'loading', 'Aguardando resultado IDwall…');
-    if (_hasRF)         _faSetStep('rf',     'done',    'Dados cadastrais carregados');
-  }
-
-  if (_hasRF || _hasIdw) {
-    const btn = document.getElementById('btn-run');
-    if (btn) {
-      btn.disabled  = false;
-      btn.className = 'btn-full-analysis done';
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída';
+    if (typeof _faSetStep === 'function') {
+      if (_hasIdw)        _faSetStep('idwall', 'done',    'Relatório já disponível');
+      else if (_pendIdw)  _faSetStep('idwall', 'loading', 'Aguardando resultado IDwall…');
+      if (_hasRF)         _faSetStep('rf',     'done',    'Dados cadastrais carregados');
     }
+
+    if (_hasRF || _hasIdw) {
+      const btn = document.getElementById('btn-run');
+      if (btn) {
+        btn.disabled  = false;
+        btn.className = 'btn-full-analysis done';
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída';
+      }
+    }
+    return true;
+  }
+  if (!_trySimplified()) {
+    DB.ready.then(() => { _trySimplified(); }).catch(() => {});
   }
 })();
 
