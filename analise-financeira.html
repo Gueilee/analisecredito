@@ -5230,6 +5230,8 @@ window.addEventListener('error', function(ev) {
 });
 window.addEventListener('unhandledrejection', function(ev) {
   const msg = ev.reason?.message || String(ev.reason || 'Erro desconhecido');
+  // Filtra erros internos do browser (View Transitions API, scroll animations, etc.)
+  if (/transition was skipped|aborted|ResizeObserver loop/i.test(msg)) return;
   if (typeof showToast === 'function') showToast('Erro async: ' + msg.slice(0, 120), 'error');
 });
 </script>
