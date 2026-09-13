@@ -5120,6 +5120,7 @@ function _renderPereiraAnalise(data) {
     if (sideLink) sideLink.style.display = '';
     _renderPereiraAnalise(sol.pereira_analise);
     _pereiraSetStatus('Parecer disponível', 'rgba(1,225,142,.9)');
+    if (typeof _faSetStep === 'function') _faSetStep('pereira', 'done', 'Parecer gerado');
     return true;
   }
   // Tenta imediatamente com cache local e sempre tenta novamente após sync com a API,
