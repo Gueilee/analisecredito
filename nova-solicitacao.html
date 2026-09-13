@@ -2699,6 +2699,19 @@
     if (s5comment) s5comment.textContent = tipo === 'licenciamento' ? '2. Comentário do Comercial' : '4. Comentário do Trader / Operações';
     if (s5docs)    s5docs.textContent    = tipo === 'licenciamento' ? '3. Documentos Obrigatórios'  : '5. Documentos Obrigatórios';
 
+    // Armazém: ajusta label e visibilidade conforme subtipo
+    const aqLabel = document.querySelector('label[for="a-qtd-posicoes"]');
+    if (aqLabel) aqLabel.innerHTML = tipo === 'licenciamento'
+      ? 'Quantidade de Posições Disponíveis <span class="required">*</span>'
+      : 'Quantidade de Posições / Mês <span class="required">*</span>';
+    const valorMensalGrp = document.getElementById('a-valor-mensal')?.closest('.form-group');
+    const valorMensalInput = document.getElementById('a-valor-mensal');
+    if (valorMensalGrp) {
+      const show = tipo === 'armazem';
+      valorMensalGrp.style.display = show ? '' : 'none';
+      if (valorMensalInput) valorMensalInput.required = show;
+    }
+
     if (tipo === 'trade') { initPagtoExportador(); updatePrazosExposure(); }
     updateDocChecklist();
     updateSummary();
@@ -4052,7 +4065,7 @@
       tipoAnalise: 'licenciamento', segmento: 'LICENCIAMENTO',
       dataSolicitacao: v('a-data-sol'), empresa: v('a-empresa'), cnpj: v('a-cnpj'),
       fundacao: v('a-fundacao'), ramo: v('a-ramo'), qtdPosicoes: v('a-qtd-posicoes'),
-      descricao: v('a-descricao'), valorMensal: v('a-valor-mensal'),
+      descricao: v('a-descricao'),
       comentario: v('comentario'), documentos: storedDocNames,
     };
 
