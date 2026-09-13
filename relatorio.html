@@ -544,8 +544,15 @@ if (!sol) location.href = 'solicitacoes.html';
 
 document.getElementById('back-link').href = 'analise-financeira.html?id=' + solId;
 
+const _isSimplificado = solId.startsWith('ca_')
+  || ['transporte','armazem','conta-ordem','gestao'].includes((sol.origem||'').toLowerCase())
+  || ['simplificada','simples'].includes((sol.tipoAnalise||'').toLowerCase())
+  || ['transporte','armazem'].includes((sol.modalidade1||'').toLowerCase());
+
 const an  = (sol.analise || {}).analysis  || {};
-let rf  = (sol.analise || {}).cnpj_data || {};
+let rf  = _isSimplificado
+  ? (sol.rf_data || {})
+  : ((sol.analise || {}).cnpj_data || sol.rf_data || {});
 let rfd = rf.data || {};
 
 /* ── Financial Indicators Data ──────────────────── */
@@ -1443,6 +1450,7 @@ function buildDetailTableHTML(cycles, P, solObj) {
    RENDER
 ════════════════════════════════════════════════════ */
 function render() {
+  let _sn = 0;
   const statusClass = st;
   const statusLbl   = STATUS_LABEL[st] || st;
   const solicitante = sol.solicitanteNome || '—';
@@ -1494,7 +1502,7 @@ function render() {
   html += `
   <div class="sec-head">
     <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/></svg>
-    1. Identificação do Cliente
+    ${++_sn}. Identificação do Cliente
   </div>
   <div class="data-grid avoid-break">
     ${iv('Razão Social / Empresa', sol.empresa)}
@@ -1515,7 +1523,9 @@ function render() {
 
   /* ══════════════════════════════════════════════
      2. DADOS OPERACIONAIS E COMERCIAIS
+         (apenas para análise completa)
   ══════════════════════════════════════════════ */
+  if (!_isSimplificado) {
   const rentText = sol.rentabilidadeObs
     || (sol.rentabilidade ? sol.rentabilidade + '%' : '—');
   const custoAdmText = sol.custoAdm || '—';
@@ -1523,7 +1533,7 @@ function render() {
   html += `
   <div class="sec-head">
     <svg viewBox="0 0 24 24" fill="none"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.58 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.51 1.12h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.06 6.06l1.17-1.17a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" stroke-width="1.8"/></svg>
-    2. Dados Operacionais e Comerciais
+    ${++_sn}. Dados Operacionais e Comerciais
   </div>
   <div class="data-grid avoid-break">
     ${iv('Modal Logístico', MODAL_LABEL[sol.modal] || sol.modal)}
@@ -1663,11 +1673,12 @@ function render() {
 
   /* ══════════════════════════════════════════════
      3. GRÁFICO DA EXPOSIÇÃO FINANCEIRA — 3 CICLOS
+         (apenas para análise completa)
   ══════════════════════════════════════════════ */
   html += `
   <div class="sec-head page-break" style="background:linear-gradient(135deg,#0f172a,#1e1b4b)">
     <svg viewBox="0 0 24 24" fill="none"><polyline points="18 20 18 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="12 20 12 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="6 20 6 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    3. Gráfico da Exposição Financeira — 3 Ciclos Simultâneos
+    ${++_sn}. Gráfico da Exposição Financeira — 3 Ciclos Simultâneos
   </div>`;
 
   {
@@ -1701,6 +1712,7 @@ function render() {
       </div>`;
     }
   }
+  } // if (!_isSimplificado) — seções 2 e 3
 
   /* ══════════════════════════════════════════════
      4. CONSULTA RECEITA FEDERAL
@@ -1708,7 +1720,7 @@ function render() {
   html += `
   <div class="sec-head-blue page-break">
     <svg viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2"/></svg>
-    4. Consulta Receita Federal (BrasilAPI)
+    ${++_sn}. Consulta Receita Federal (BrasilAPI)
   </div>`;
 
   if (rf.status === 'ok' && rfd.razao_social) {
@@ -1762,7 +1774,7 @@ function render() {
   html += `
   <div class="sec-head-teal page-break">
     <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    5. IDwall BGC — Verificação Cadastral Completa
+    ${++_sn}. IDwall BGC — Verificação Cadastral Completa
   </div>`;
 
   (function() {
@@ -1981,12 +1993,75 @@ function render() {
   })();
 
   /* ══════════════════════════════════════════════
-     6. ANÁLISE FINANCEIRA — INDICADORES
+     PARECER DO PEREIRA — ANÁLISE DOCUMENTAL
   ══════════════════════════════════════════════ */
+  html += `
+  <div class="sec-head page-break">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/></svg>
+    ${++_sn}. Parecer do Pereira
+  </div>`;
+
+  (function() {
+    const pa = sol.pereira_analise;
+    if (!pa || (!pa.parecer && !pa.modelo)) {
+      html += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:10px 14px;font-size:10px;color:#78350f;margin-bottom:14px;">
+        Análise do Pereira ainda não realizada para esta solicitação.
+      </div>`;
+      return;
+    }
+
+    const fmtDT = v => {
+      if (!v) return '—';
+      try { return new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}); } catch(e) { return String(v); }
+    };
+
+    html += `
+    <div class="data-grid avoid-break">
+      ${iv('Modelo', pa.modelo)}
+      ${iv('Analisado em', fmtDT(pa.analisado_at))}
+      ${iv('Documentos Analisados', Array.isArray(pa.documentos_analisados) ? pa.documentos_analisados.join(', ') : pa.documentos_analisados)}
+    </div>`;
+
+    if (pa.parecer) {
+      html += `
+      <div class="avoid-break" style="margin-bottom:14px;padding:14px 16px;background:#f0fdf4;border-left:4px solid #01E18E;border-radius:6px;">
+        <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#059669;margin-bottom:8px;">Parecer — Análise Documental Pereira</div>
+        <div style="font-size:10.5px;color:#1a2e22;line-height:1.75;white-space:pre-wrap;">${esc(pa.parecer)}</div>
+      </div>`;
+    }
+
+    const ds = pa.dados_estruturados;
+    if (ds && typeof ds === 'object') {
+      const rows = [
+        ds.score_risco       != null ? iv('Score de Risco',       ds.score_risco)       : '',
+        ds.classificacao     != null ? iv('Classificação',         ds.classificacao)     : '',
+        ds.recomendacao      != null ? iv('Recomendação',          ds.recomendacao)      : '',
+        ds.limite_sugerido   != null ? iv('Limite Sugerido',       ds.limite_sugerido)   : '',
+        ds.prazo_sugerido    != null ? iv('Prazo Sugerido',        ds.prazo_sugerido)    : '',
+        ds.situacao_fiscal   != null ? iv('Situação Fiscal',       ds.situacao_fiscal)   : '',
+        ds.situacao_cadastral!= null ? iv('Situação Cadastral',    ds.situacao_cadastral): '',
+        ds.quadro_societario != null ? iv('Quadro Societário',     ds.quadro_societario) : '',
+        ds.restricoes        != null ? iv('Restrições Encontradas',ds.restricoes)        : '',
+        ds.observacoes       != null ? iv('Observações',           ds.observacoes)       : '',
+      ].filter(Boolean).join('');
+
+      if (rows) {
+        html += `
+        <div class="sec-head-alt">Dados Estruturados — Análise Pereira</div>
+        <div class="data-grid avoid-break">${rows}</div>`;
+      }
+    }
+  })();
+
+  /* ══════════════════════════════════════════════
+     6. ANÁLISE FINANCEIRA — INDICADORES
+         (apenas para análise completa)
+  ══════════════════════════════════════════════ */
+  if (!_isSimplificado) {
   html += `
   <div class="sec-head-emerald page-break">
     <svg viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    6. Análise Financeira — Indicadores
+    ${++_sn}. Análise Financeira — Indicadores
   </div>`;
 
   const hasFinData = finRaw.some(d => d && Object.values(d).some(v => v !== '' && v != null));
@@ -2035,7 +2110,7 @@ function render() {
   html += `
   <div class="sec-head page-break">
     <svg viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><line x1="2" y1="10" x2="22" y2="10" stroke="currentColor" stroke-width="2"/></svg>
-    7. Limites de Crédito Solicitados
+    ${++_sn}. Limites de Crédito Solicitados
   </div>
   <table class="data-table avoid-break">
     <thead><tr><th>Componente</th><th>Limite Proposto</th><th>Prazo</th><th>Forma de Pagamento</th><th>Observação</th></tr></thead>
@@ -2074,7 +2149,7 @@ function render() {
   html += `
   <div class="sec-head page-break">
     <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    8. Análise gerada pelo Sistema
+    ${++_sn}. Análise gerada pelo Sistema
   </div>`;
 
   if (an.score !== undefined) {
@@ -2168,14 +2243,15 @@ function render() {
       Análise pelo Sistema ainda não realizada para esta solicitação.
     </div>`;
   }
+  } // if (!_isSimplificado) — seções 6, 7 e 8
 
   /* ══════════════════════════════════════════════
-     9. PARECER DO ANALISTA FINANCEIRO
+     PARECER DO ANALISTA FINANCEIRO
   ══════════════════════════════════════════════ */
   html += `
   <div class="sec-head page-break">
     <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/></svg>
-    9. Parecer do Analista Financeiro
+    ${++_sn}. Parecer do Analista Financeiro
   </div>`;
 
   if (['aprovado','negado','em_analise','em_comite'].includes(sol.status)) {
@@ -2284,7 +2360,7 @@ function render() {
     html += `
     <div class="sec-head-gold page-break">
       <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      10. Deliberação do Comitê de Crédito
+      ${++_sn}. Deliberação do Comitê de Crédito
     </div>
     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:9px 12px;font-size:9.5px;color:#78350f;margin-bottom:12px;display:flex;align-items:flex-start;gap:8px;">
       <svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="flex-shrink:0;margin-top:1px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
