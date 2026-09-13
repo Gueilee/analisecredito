@@ -4066,6 +4066,13 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
   }
 })();
 
+// Declaradas antes dos IIFEs bootstrap para evitar TDZ (Temporal Dead Zone):
+// _bootstrapSimplifiedCard acessa _runningFromPereira antes de runPereiraCompleto
+// ser definido — sem essa declaração antecipada o script trava com ReferenceError
+// quando o cliente já tem RF/IDwall no cache local, quebrando toda a página.
+let _runningFromPereira = false;
+let _runningFromPereiraAt = null;
+
 // Bootstrap Consulta Simplificada: restaura o estado do card (botão + steps) se já
 // houver dados de análise salvos, evitando que o analista precise reconsultar ao
 // navegar de volta para a ficha.
@@ -5115,8 +5122,7 @@ function _renderPereiraAnalise(data) {
    Roda: RF + IDwall → PEREIRA (documental)
    Suprime o card de decisão durante a execução; mostra só ao final.
    ────────────────────────────────────────────────────────────────────────── */
-let _runningFromPereira = false;
-let _runningFromPereiraAt = null;
+// _runningFromPereira e _runningFromPereiraAt declarados antes de _bootstrapSimplifiedCard
 
 async function runPereiraCompleto() {
   // Auto-libera o lock se travado há mais de 5 minutos (timeout > backend Anthropic 3min)
