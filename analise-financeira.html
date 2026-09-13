@@ -4061,8 +4061,12 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
     if (!(sol?.rf_data?.status === 'ok' && sol?.rf_data?.data?.razao_social)) return false;
     if (typeof renderRF !== 'function') return false;
     const _rfd = sol.rf_data.data;
-    document.getElementById('rf-icon').className     = 'bureau-icon ok';
-    document.getElementById('rf-status').textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
+    // No modo simplificado (ca_ clientes ativos), rf-icon e rf-content não existem no template
+    const _rfIcon   = document.getElementById('rf-icon');
+    const _rfStatus = document.getElementById('rf-status');
+    if (!_rfIcon || !_rfStatus) return false;
+    _rfIcon.className     = 'bureau-icon ok';
+    _rfStatus.textContent = 'Consultado — ' + (_rfd.descricao_situacao_cadastral || 'OK');
     renderRF(_rfd);
     const _bRf = document.getElementById('btn-rf-consult');
     if (_bRf) _bRf.style.display = 'none';
