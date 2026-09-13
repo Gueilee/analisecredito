@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Análise Financeira — Vendemmia</title>
   <link rel="icon" type="image/png" href="favicon.png" />
-  <script src="db.js?v=9"></script>
-  <script src="components.js?v=9"></script>
-  <link rel="stylesheet" href="shared.css?v=9" />
+  <script src="db.js?v=10"></script>
+  <script src="components.js?v=10"></script>
+  <link rel="stylesheet" href="shared.css?v=10" />
   <style>
     /* ── Grid principal ──────────────────────────────────── */
     .analysis-grid {
@@ -1776,8 +1779,12 @@
     const _mod1 = (sol.modalidade1  || '').toLowerCase();
     const _mod2 = (sol.modalidade2  || '').toLowerCase();
 
+    // ca_ (clientes ativos) nunca têm tipoAnalise/tipoOp — usam modalidade1
+    const _isCaClientBoot = String(solId || '').startsWith('ca_');
+
     const _isTransporte     = _ta === 'transporte' || _mod1 === 'transporte';
-    const _isArmazemVDM     = _ta === 'armazem';
+    // Armazém: verifica tanto tipoAnalise quanto modalidade1 (ca_ só tem modalidade1)
+    const _isArmazemVDM     = _ta === 'armazem' || _mod1 === 'armazem' || _mod1 === 'armazém' || _mod1 === 'armazenagem';
     const _isLicenciamento  = _ta === 'licenciamento';
     const _isContaOrdem     = !_isTransporte && !_isArmazemVDM && !_isLicenciamento
                               && (_top === 'conta-ordem' || _mod2.includes('conta'));
@@ -1786,8 +1793,9 @@
     const _isEncomenda      = !_isTransporte && !_isArmazemVDM && !_isLicenciamento
                               && (_top === 'encomenda' || _mod2.includes('encomenda'));
 
-    // Simplificado: só IDwall + RF (sem IA, docs, contábil)
-    const _isSimplificado = _isTransporte || _isArmazemVDM || _isContaOrdem || _isGestao;
+    // Simplificado: só IDwall + RF (sem IA, docs, contábil).
+    // ca_ clientes ativos: sempre simplificado — são revisões periódicas, não novas solicitações.
+    const _isSimplificado = _isCaClientBoot || _isTransporte || _isArmazemVDM || _isContaOrdem || _isGestao;
     window._modoSimplificado = _isSimplificado;
 
     // Botão Exposição: apenas para Trade Encomenda (operação de risco total)
@@ -1891,11 +1899,10 @@
 
     // Se já tem decisão final, renderiza resultado; em_comite ainda mostra card de decisão
     // ca_ (clientes ativos) nunca são bloqueados — revisão periódica, sem lockReadOnly
-    const _isCaClient = String(solId || '').startsWith('ca_');
-    if (!_isCaClient && ['aprovado','negado'].includes(sol.status)) renderDecisionResult();
+    if (!_isCaClientBoot && ['aprovado','negado'].includes(sol.status)) renderDecisionResult();
 
     // Bloquear edição em processos finalizados (nunca para ca_ — sempre permitem reanálise)
-    if (!_isCaClient && ['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
+    if (!_isCaClientBoot && ['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
 
     // IDwall — renderizado no 2º bloco <script>, depois que renderIdwallCard é definido
 

@@ -4009,9 +4009,7 @@ async def sol_list(current_user=Depends(_get_current_user)):
         print(f"[API] ca_ query falhou: {_ca_err}")
 
     today = datetime.utcnow().date()
-    # ca_ clientes ativos: ATIVO = em revisão periódica (não "aprovado" de crédito)
-    # "aprovado" no frontend aciona lockReadOnly e oculta o botão de análise.
-    _status_map = {"ATIVO": "em_analise", "BLOQUEADO": "negado", "REAVALIAR": "em_analise"}
+    _status_map = {"ATIVO": "aprovado", "BLOQUEADO": "negado", "REAVALIAR": "em_analise"}
     for ca in ca_rows:
         try:
             validade      = ca.get("validade")
@@ -4037,7 +4035,7 @@ async def sol_list(current_user=Depends(_get_current_user)):
                     limite_str = str(limite_raw)
 
             sc = (ca.get("status_cliente") or "ATIVO").strip().upper()
-            reg_status = _status_map.get(sc, "em_analise")
+            reg_status = _status_map.get(sc, "aprovado")
 
             decisao_at_str = None
             if ca.get("decisao_at") and hasattr(ca["decisao_at"], "isoformat"):
