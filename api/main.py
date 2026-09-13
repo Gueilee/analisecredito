@@ -4928,18 +4928,33 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         "modelo": "claude-haiku-4-5-20251001",
         "documentos_analisados": [r["nome"] for r in doc_rows],
     }
-    # 6. Persiste resultado na tabela correta
-    if _is_ca:
-        await _turso_exec(
-            "UPDATE ac_clientes_ativos SET pereira_analise=? WHERE id=?",
-            [pereira_result, _ca_numeric_id],  # dict → codec JSONB serializa
-        )
-    else:
-        sol_data["pereira_analise"] = pereira_result
-        await _turso_exec(
-            "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
-            [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
-        )
+
+    # 6. Persiste resultado na tabela correta — try/except para não bloquear o retorno
+    # ao frontend se houver falha transitória de banco (o dado já fica no cache local).
+    try:
+        if _is_ca:
+            # Para ca_: também persiste rf_data se foi auto-buscado nesta chamada
+            set_parts: list[str] = ["pereira_analise = ?"]
+            upd_params: list = [pereira_result]
+            if rf_fonte != "sistema" and rf_info:
+                rf_to_store = {"status": "ok", "data": rf_info, "fonte": "brasilapi"}
+                set_parts.append("rf_data = ?")
+                upd_params.append(rf_to_store)
+            upd_params.append(_ca_numeric_id)
+            await _turso_exec(
+                f"UPDATE ac_clientes_ativos SET {', '.join(set_parts)} WHERE id = ?",
+                upd_params,
+            )
+        else:
+            sol_data["pereira_analise"] = pereira_result
+            await _turso_exec(
+                "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
+                [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
+            )
+    except Exception as _db_err:
+        # Falha no DB não impede o retorno da análise ao frontend —
+        # o frontend salva via PUT /analise separado e o cache local serve de fallback.
+        print(f"[PEREIRA] Aviso: falha ao persistir no banco — {_db_err}")
 
     return {"ok": True, **pereira_result, "documentos_total": len(doc_rows)}
 

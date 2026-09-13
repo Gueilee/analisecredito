@@ -5098,10 +5098,10 @@ function _renderPereiraAnalise(data) {
     _pereiraSetStatus('Parecer disponível', 'rgba(1,225,142,.9)');
     return true;
   }
-  // Tenta primeiro com cache local; se falhar, tenta novamente após sync com a API
-  if (!_tryShow()) {
-    DB.ready.then(() => { _tryShow(); }).catch(() => {});
-  }
+  // Tenta imediatamente com cache local e sempre tenta novamente após sync com a API,
+  // garantindo que dados do banco sejam exibidos mesmo quando o cache local está desatualizado.
+  _tryShow();
+  DB.ready.then(() => { _tryShow(); }).catch(() => {});
 })();
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -5194,23 +5194,10 @@ async function runPereiraCompleto() {
   }
 }
 
-/* ── Delegação global #btn-run — fallback apenas (sem stopPropagation)
-   O onclick no atributo HTML é o handler primário. Esta delegação existe
-   como redundância para elementos criados via innerHTML onde onclick pode
-   não registrar em contextos específicos de sandbox/CSP.
-   Sem stopPropagation para não bloquear o onclick do próprio botão.
-   O guard _runningFromPereira evita dupla-execução.
+/* ── #btn-run — o onclick="runPereiraCompleto()" no atributo HTML é o handler único.
+   A delegação global foi removida para evitar dupla-execução (capture + target)
+   que causava toast "em andamento" imediato confundindo o usuário.
    ─────────────────────────────────────────────────────────────────── */
-document.addEventListener('click', function _btnRunDelegate(e) {
-  const target = e.target.closest ? e.target.closest('#btn-run') : null;
-  if (!target) return;
-  // Sem stopPropagation — deixa o onclick do botão também disparar.
-  // A dupla chamada é inofensiva: _runningFromPereira guard bloqueia a segunda.
-  // Chama só se não há análise em curso (guard de dupla-execução)
-  if (typeof runPereiraCompleto === 'function') {
-    runPereiraCompleto();
-  }
-}, true);
 
 /* ── Diagnóstico de erros JS globais ────────────────────────────── */
 window.addEventListener('error', function(ev) {

@@ -190,8 +190,16 @@ const DB = (() => {
             if (!r.ok) {
               const txt = await r.text().catch(() => '');
               console.error(`[DB] ca_ analise PUT ${r.status}:`, txt.slice(0, 200));
+              if (typeof window.showToast === 'function') {
+                window.showToast(`Atenção: falha ao salvar análise no banco (erro ${r.status}) — dados podem não persistir após recarregar`, 'error');
+              }
             }
-          }).catch(err => console.error('[DB] ca_ analise PUT falhou (rede):', err));
+          }).catch(err => {
+            console.error('[DB] ca_ analise PUT falhou (rede):', err);
+            if (typeof window.showToast === 'function') {
+              window.showToast('Falha de conexão ao salvar análise — verifique a rede', 'warning');
+            }
+          });
         }
         const caPromise = caFetch.then(() => updated);
         caPromise._updated = updated;
