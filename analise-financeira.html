@@ -1846,11 +1846,9 @@
         if (el) el.style.display = 'none';
       });
 
-      // Decisão disponível imediatamente
-      if (!['aprovado', 'negado'].includes(sol.status)) {
-        if (canDecide) document.getElementById('decision-card').style.display = '';
-        else           document.getElementById('pending-decision-banner').style.display = '';
-      }
+      // Clientes ativos (ca_) sempre podem receber nova decisão — revisão periódica
+      if (canDecide) document.getElementById('decision-card').style.display = '';
+      else           document.getElementById('pending-decision-banner').style.display = '';
     }
 
     if (_isLicenciamento) {
@@ -1892,10 +1890,12 @@
     }
 
     // Se já tem decisão final, renderiza resultado; em_comite ainda mostra card de decisão
-    if (['aprovado','negado'].includes(sol.status)) renderDecisionResult();
+    // ca_ (clientes ativos) nunca são bloqueados — revisão periódica, sem lockReadOnly
+    const _isCaClient = String(solId || '').startsWith('ca_');
+    if (!_isCaClient && ['aprovado','negado'].includes(sol.status)) renderDecisionResult();
 
-    // Bloquear edição em processos finalizados
-    if (['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
+    // Bloquear edição em processos finalizados (nunca para ca_ — sempre permitem reanálise)
+    if (!_isCaClient && ['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
 
     // IDwall — renderizado no 2º bloco <script>, depois que renderIdwallCard é definido
 
