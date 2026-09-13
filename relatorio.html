@@ -1673,8 +1673,9 @@ function render() {
 
   /* ══════════════════════════════════════════════
      3. GRÁFICO DA EXPOSIÇÃO FINANCEIRA — 3 CICLOS
-         (apenas para análise completa)
+         (apenas para Encomenda)
   ══════════════════════════════════════════════ */
+  if (sol.tipoOp === 'encomenda') {
   html += `
   <div class="sec-head page-break" style="background:linear-gradient(135deg,#0f172a,#1e1b4b)">
     <svg viewBox="0 0 24 24" fill="none"><polyline points="18 20 18 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="12 20 12 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="6 20 6 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -1712,7 +1713,8 @@ function render() {
       </div>`;
     }
   }
-  } // if (!_isSimplificado) — seções 2 e 3
+  } // if (sol.tipoOp === 'encomenda') — seção 3
+  } // if (!_isSimplificado) — seção 2
 
   /* ══════════════════════════════════════════════
      4. CONSULTA RECEITA FEDERAL
