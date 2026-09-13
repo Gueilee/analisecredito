@@ -3991,6 +3991,10 @@ async def sol_list(current_user=Depends(_get_current_user)):
             items.append(d)
 
     # Inclui clientes ativos da tabela ac_clientes_ativos como registros aprovados
+    def _ca_num(v):
+        try: return float(v) if v is not None else None
+        except: return None
+
     try:
         ca_rows = await _turso_query(
             "SELECT id, codigo_conexos, razao_social, cnpj, modalidade1, modalidade2, "
@@ -4000,19 +4004,27 @@ async def sol_list(current_user=Depends(_get_current_user)):
             "prazo_aprovado, parecer_tecnico, decisao_analista, decisao_at, pereira_analise "
             "FROM ac_clientes_ativos ORDER BY razao_social"
         )
-        today = datetime.utcnow().date()
-        _status_map = {"ATIVO": "aprovado", "BLOQUEADO": "negado", "REAVALIAR": "em_analise"}
-        for ca in ca_rows:
-            validade      = ca["validade"]       # date object ou None
-            atualizado_em = ca["atualizado_em"]  # datetime object ou None
+    except Exception as _ca_err:
+        ca_rows = []
+        print(f"[API] ca_ query falhou: {_ca_err}")
+
+    today = datetime.utcnow().date()
+    _status_map = {"ATIVO": "aprovado", "BLOQUEADO": "negado", "REAVALIAR": "em_analise"}
+    for ca in ca_rows:
+        try:
+            validade      = ca.get("validade")
+            atualizado_em = ca.get("atualizado_em")
             decisao_dt    = atualizado_em if atualizado_em else datetime.utcnow()
             decisao_date  = decisao_dt.date() if hasattr(decisao_dt, "date") else today
 
             valid_dias = None
             if validade:
-                valid_dias = (validade - decisao_date).days
+                try:
+                    valid_dias = (validade - decisao_date).days
+                except Exception:
+                    valid_dias = None
 
-            limite_raw = ca["limite_aprovado"]
+            limite_raw = ca.get("limite_aprovado")
             limite_str = ""
             if limite_raw is not None:
                 try:
@@ -4022,46 +4034,48 @@ async def sol_list(current_user=Depends(_get_current_user)):
                 except Exception:
                     limite_str = str(limite_raw)
 
-            def _num(v):
-                try: return float(v) if v is not None else None
-                except: return None
-
-            sc = (ca["status_cliente"] or "ATIVO").strip().upper()
+            sc = (ca.get("status_cliente") or "ATIVO").strip().upper()
             reg_status = _status_map.get(sc, "aprovado")
+
+            decisao_at_str = None
+            if ca.get("decisao_at") and hasattr(ca["decisao_at"], "isoformat"):
+                decisao_at_str = ca["decisao_at"].isoformat()
+            if not decisao_at_str:
+                decisao_at_str = decisao_dt.isoformat() if hasattr(decisao_dt, "isoformat") else str(decisao_dt)
 
             items.append({
                 "id":               f"ca_{ca['id']}",
                 "status":           reg_status,
-                "empresa":          ca["razao_social"] or "",
-                "cnpj":             ca["cnpj"] or "",
-                "segmento":         ca["modalidade1"] or "",
-                "modalidade1":      ca["modalidade1"] or "",
-                "modalidade2":      ca["modalidade2"] or "",
-                "filialMatriz":     ca["filial_matriz"] or "",
-                "uf":               ca["uf"] or "",
-                "endereco":         ca["endereco"] or "",
-                "statusCliente":    ca["status_cliente"] or "",
-                "plano2026":        _num(ca["plano_2026"]),
-                "faturadoYtd":      _num(ca["faturado_ytd"]),
-                "fatPlano":         _num(ca["fat_plano"]),
-                "volumeEstimadoAno": _num(ca["volume_estimado_ano"]),
+                "empresa":          ca.get("razao_social") or "",
+                "cnpj":             ca.get("cnpj") or "",
+                "segmento":         ca.get("modalidade1") or "",
+                "modalidade1":      ca.get("modalidade1") or "",
+                "modalidade2":      ca.get("modalidade2") or "",
+                "filialMatriz":     ca.get("filial_matriz") or "",
+                "uf":               ca.get("uf") or "",
+                "endereco":         ca.get("endereco") or "",
+                "statusCliente":    ca.get("status_cliente") or "",
+                "plano2026":        _ca_num(ca.get("plano_2026")),
+                "faturadoYtd":      _ca_num(ca.get("faturado_ytd")),
+                "fatPlano":         _ca_num(ca.get("fat_plano")),
+                "volumeEstimadoAno": _ca_num(ca.get("volume_estimado_ano")),
                 "limiteAprovado":   limite_str,
                 "prazoAprovado":    ca.get("prazo_aprovado") or "",
                 "parecerTecnico":   ca.get("parecer_tecnico") or "",
                 "validadeDias":     valid_dias,
-                "decisao_at":       (ca["decisao_at"].isoformat() if ca.get("decisao_at") and hasattr(ca["decisao_at"], "isoformat") else None) or (decisao_dt.isoformat() if hasattr(decisao_dt, "isoformat") else str(decisao_dt)),
+                "decisao_at":       decisao_at_str,
                 "decisaoAnalista":  ca.get("decisao_analista") or "Time Financeiro",
                 "origem":           "clientes_ativos",
-                "codigoConexos":    ca["codigo_conexos"],
-                "createdAt":        str(atualizado_em or today),
-                "updatedAt":        str(atualizado_em or today),
+                "codigoConexos":    ca.get("codigo_conexos"),
+                "createdAt":        atualizado_em.isoformat() if hasattr(atualizado_em, "isoformat") else str(today),
+                "updatedAt":        atualizado_em.isoformat() if hasattr(atualizado_em, "isoformat") else str(today),
                 "rf_data":          _pg_json(ca.get("rf_data")),
                 "idwall":           _pg_json(ca.get("idwall_data")),
                 "idwall_pending":   _pg_json(ca.get("idwall_pending")),
                 "pereira_analise":  _pg_json(ca.get("pereira_analise")),
             })
-    except Exception:
-        pass  # Não quebra a listagem de solicitações se a tabela ainda não existir
+        except Exception as _ca_item_err:
+            print(f"[API] ca_ item id={ca.get('id')} falhou ao serializar: {_ca_item_err}")
 
     return {"items": items}
 

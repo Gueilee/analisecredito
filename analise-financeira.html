@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Análise Financeira — Vendemmia</title>
   <link rel="icon" type="image/png" href="favicon.png" />
-  <script src="db.js?v=7"></script>
-  <script src="components.js?v=7"></script>
-  <link rel="stylesheet" href="shared.css?v=8" />
+  <script src="db.js?v=9"></script>
+  <script src="components.js?v=9"></script>
+  <link rel="stylesheet" href="shared.css?v=9" />
   <style>
     /* ── Grid principal ──────────────────────────────────── */
     .analysis-grid {
@@ -4094,9 +4094,15 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
         const btn = document.getElementById('btn-run');
         if (btn) {
           btn.disabled = false;
+          const _hasPereira = !!(sol?.pereira_analise?.parecer);
           if (_hasRF || _hasIdw) {
-            btn.className = 'btn-full-analysis done';
-            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Consulta Concluída';
+            // Mantém botão sempre no estilo PEREIRA (ação clara)
+            btn.className = 'btn-full-analysis pereira-btn';
+            if (_hasPereira) {
+              btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Atualizar Parecer';
+            } else {
+              btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Gerar Parecer PEREIRA';
+            }
           }
           // Se apenas idwall_pending: mantém estilo PEREIRA original, só habilita
         }
