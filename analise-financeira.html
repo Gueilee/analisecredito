@@ -1838,12 +1838,7 @@
           </div>`;
       }
 
-      // Listener direto no botão — backup caso inline onclick falhe por timing
-      const _btnRunSimp = _facEl ? _facEl.querySelector('#btn-run') : null;
-      if (_btnRunSimp) {
-        _btnRunSimp.onclick = null;
-        _btnRunSimp.addEventListener('click', function() { runPereiraCompleto(); });
-      }
+      // onclick já está no atributo HTML — não é necessário adicionar listener separado
 
       // Oculta seções exclusivas de análise completa
       ['fin-card', 'contabil-card', 'ai-card', 'detail-card', 'limits-card', 'trigger-card'].forEach(function(id) {
@@ -3441,7 +3436,7 @@ async function runSimplifiedAnalysis() {
   _faSetStep('rf',     '', 'Aguardando');
 
   /* 1. IDwall BGC */
-  if (sol?.idwall) {
+  if (sol?.idwall || sol?.idwall_data) { // ca_: backend armazena como idwall_data
     _faSetStep('idwall', 'done', 'Relatório já disponível');
   } else {
     _faSetStep('idwall', 'loading', 'Consultando IDwall BGC…');
@@ -4080,7 +4075,7 @@ if (typeof sol !== 'undefined' && sol && sol.idwall) {
     if (fresh) sol = fresh;
     if (typeof sol === 'undefined' || !sol) return false;
     const _hasRF   = sol?.rf_data?.status === 'ok';
-    const _hasIdw  = !!sol?.idwall;
+    const _hasIdw  = !!(sol?.idwall || sol?.idwall_data); // ca_: backend retorna idwall_data
     const _pendIdw = sol?.idwall_pending?.numero;
     if (!_hasRF && !_hasIdw && !_pendIdw) return false;
 
@@ -5115,8 +5110,16 @@ function _renderPereiraAnalise(data) {
    Suprime o card de decisão durante a execução; mostra só ao final.
    ────────────────────────────────────────────────────────────────────────── */
 let _runningFromPereira = false;
+let _runningFromPereiraAt = null;
 
 async function runPereiraCompleto() {
+  // Auto-libera o lock se travado há mais de 5 minutos (timeout > backend Anthropic 3min)
+  if (_runningFromPereira && _runningFromPereiraAt && (Date.now() - _runningFromPereiraAt) > 300000) {
+    _runningFromPereira = false;
+    _runningFromPereiraAt = null;
+    if (typeof showToast === 'function') showToast('Análise anterior expirou — reiniciando…', 'warning');
+  }
+
   if (_runningFromPereira) {
     if (typeof showToast === 'function') showToast('Análise em andamento — aguarde o PEREIRA concluir…', 'warning');
     return;
@@ -5124,6 +5127,7 @@ async function runPereiraCompleto() {
 
   const btn = document.getElementById('btn-run');
   _runningFromPereira = true;
+  _runningFromPereiraAt = Date.now();
   if (typeof showToast === 'function') showToast('PEREIRA iniciando análise…', 'info');
 
   try {
@@ -5175,6 +5179,7 @@ async function runPereiraCompleto() {
   } finally {
     /* Sempre libera o lock e reabilita o botão — mesmo com erro não capturado */
     _runningFromPereira = false;
+    _runningFromPereiraAt = null;
     if (btn) {
       btn.disabled = false;
       btn.className = 'btn-full-analysis done';
@@ -5189,20 +5194,23 @@ async function runPereiraCompleto() {
   }
 }
 
-/* ── Event delegation global para #btn-run ──────────────────────────
-   Captura clique em qualquer #btn-run da página, independente de como
-   o elemento foi criado (innerHTML, static, etc).
+/* ── Delegação global #btn-run — fallback apenas (sem stopPropagation)
+   O onclick no atributo HTML é o handler primário. Esta delegação existe
+   como redundância para elementos criados via innerHTML onde onclick pode
+   não registrar em contextos específicos de sandbox/CSP.
+   Sem stopPropagation para não bloquear o onclick do próprio botão.
+   O guard _runningFromPereira evita dupla-execução.
    ─────────────────────────────────────────────────────────────────── */
 document.addEventListener('click', function _btnRunDelegate(e) {
-  const target = e.target.closest ? e.target.closest('[id="btn-run"]') : null;
+  const target = e.target.closest ? e.target.closest('#btn-run') : null;
   if (!target) return;
-  e.stopPropagation();
+  // Sem stopPropagation — deixa o onclick do botão também disparar.
+  // A dupla chamada é inofensiva: _runningFromPereira guard bloqueia a segunda.
+  // Chama só se não há análise em curso (guard de dupla-execução)
   if (typeof runPereiraCompleto === 'function') {
     runPereiraCompleto();
-  } else {
-    showToast('Erro: função runPereiraCompleto não encontrada. Recarregue a página.', 'error');
   }
-}, true); // capture phase — garante que chega antes de outros handlers
+}, true);
 
 /* ── Diagnóstico de erros JS globais ────────────────────────────── */
 window.addEventListener('error', function(ev) {
