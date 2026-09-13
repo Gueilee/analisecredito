@@ -5015,8 +5015,12 @@ async function runPereira() {
   if (mainCard) mainCard.style.display = 'block';
   _pereiraSetStatus('Analisando documentos…', 'rgba(245,158,11,.9)');
 
+  const _pCtrl  = new AbortController();
+  let   _pTimer = null;
   try {
-    const r = await fetch(`${API_URL}/api/pereira/analisar/${sol.id}`, { method: 'POST', credentials: 'include' });
+    _pTimer = setTimeout(() => _pCtrl.abort(), 180000); // 3 min max — espelha timeout do backend
+    const r = await fetch(`${API_URL}/api/pereira/analisar/${sol.id}`, { method: 'POST', credentials: 'include', signal: _pCtrl.signal });
+    clearTimeout(_pTimer);
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${r.status}`);
@@ -5026,14 +5030,15 @@ async function runPereira() {
     _pereiraSetStatus('Parecer concluído', 'rgba(1,225,142,.9)');
     showToast('Parecer PEREIRA gerado com sucesso.', 'success');
   } catch (e) {
-    loading.style.display = 'none';
-    hint.style.display    = 'block';
-    hint.innerHTML = `
-      <div style="color:var(--red);font-size:.78rem;padding:.6rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);">
-        <strong>Erro na análise:</strong> ${e.message}
-      </div>`;
+    clearTimeout(_pTimer);
+    const _eMsg = e?.name === 'AbortError' ? 'Tempo limite excedido (3 min) — tente novamente' : e.message;
+    if (loading) loading.style.display = 'none';
+    if (hint) {
+      hint.style.display = 'block';
+      hint.innerHTML = `<div style="color:var(--red);font-size:.78rem;padding:.6rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);"><strong>Erro na análise:</strong> ${_eMsg}</div>`;
+    }
     _pereiraSetStatus('Erro na análise', 'rgba(239,68,68,.9)');
-    showToast('Erro ao gerar parecer PEREIRA.', 'error');
+    showToast('Erro PEREIRA: ' + _eMsg.slice(0, 100), 'error');
     throw e;
   } finally {
     if (btnRefresh) btnRefresh.disabled = false;
@@ -5112,7 +5117,10 @@ function _renderPereiraAnalise(data) {
 let _runningFromPereira = false;
 
 async function runPereiraCompleto() {
-  if (_runningFromPereira) return;
+  if (_runningFromPereira) {
+    if (typeof showToast === 'function') showToast('Análise em andamento — aguarde o PEREIRA concluir…', 'warning');
+    return;
+  }
 
   const btn = document.getElementById('btn-run');
   _runningFromPereira = true;
