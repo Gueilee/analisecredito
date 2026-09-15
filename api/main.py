@@ -1533,7 +1533,7 @@ Retorne APENAS o JSON válido, sem markdown, sem texto extra."""
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-haiku-4-5-20251001",
+                "model": "claude-haiku-4-5",
                 "max_tokens": 4096,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -3029,7 +3029,7 @@ def _anthropic_scanner(
         text = _scanner_word_to_text(content)
         messages = [{"role": "user", "content": f"{text[:28000]}\n\n{_SCANNER_PROMPT}"}]
 
-    _MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
+    _MODELS = ["claude-haiku-4-5", "claude-sonnet-4-6"]
     last_err: Exception = RuntimeError("Nenhum modelo disponível.")
 
     for model in _MODELS:
@@ -3159,7 +3159,7 @@ def _anthropic_scanner_multi(file_list: list[tuple[bytes, str]], anthropic_key: 
     else:
         raise RuntimeError("Nenhum conteúdo extraído dos arquivos.")
 
-    _MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
+    _MODELS = ["claude-haiku-4-5", "claude-sonnet-4-6"]
     last_err: Exception = RuntimeError("Nenhum modelo disponível.")
     for model in _MODELS:
         try:
@@ -4894,19 +4894,16 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
             ),
         })
 
-    # 4. Chama Claude Haiku via httpx async (custo mínimo + prompt caching)
-    betas = ["prompt-caching-2024-07-31"]
-    if has_pdf:
-        betas.append("pdfs-2024-09-25")
+    # 4. Chama Claude Haiku 4.5 via httpx async
+    # Prompt caching e PDF são GA — não precisam de beta header.
     hdrs: dict[str, str] = {
         "x-api-key": anthropic_key,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
-        "anthropic-beta": ",".join(betas),
     }
 
     payload: dict = {
-        "model": "claude-haiku-4-5-20251001",
+        "model": "claude-haiku-4-5",
         "max_tokens": 3500,
         "system": [
             {
@@ -4939,7 +4936,7 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         "parecer": parecer,
         "dados_estruturados": analise_json,
         "analisado_at": datetime.utcnow().isoformat(),
-        "modelo": "claude-haiku-4-5-20251001",
+        "modelo": "claude-haiku-4-5",
         "documentos_analisados": [r["nome"] for r in doc_rows],
     }
 
