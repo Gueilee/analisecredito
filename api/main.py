@@ -26,7 +26,7 @@ import httpx
 import openpyxl
 import pdfplumber
 from dotenv import load_dotenv
-from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import BackgroundTasks, Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -4674,268 +4674,206 @@ async def pereira_log(limit: int = 50, current_user=Depends(_get_current_user)):
     return rows
 
 
-# ─── PEREIRA — Análise Documental de Crédito (sem daemon) ────────────────────
+# ─── PEREIRA — helpers de redução de tokens (módulo-level) ──────────────────
 
-@app.post("/api/pereira/analisar/{sol_id}")
-@limiter.limit("3/minute")
-async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_get_current_user)):
-    """Gera parecer completo de crédito via Claude Sonnet — documentos + RF + IDwall.
-    Sem daemon: chamada direta à API Anthropic dentro do servidor FastAPI.
-    """
-    if not _SOL_ID_RE.match(sol_id):
-        raise HTTPException(400, "ID de solicitação inválido.")
-    if not _turso_ok():
-        raise HTTPException(503, "Banco de dados não configurado.")
+def _pereira_rf_slim(d: dict) -> dict:
+    keep = [
+        "razao_social", "cnpj", "situacao_cadastral", "data_situacao_cadastral",
+        "data_abertura", "porte", "natureza_juridica", "capital_social",
+        "cnae_fiscal", "cnae_fiscal_descricao", "municipio", "uf",
+        "descricao_situacao_cadastral",
+    ]
+    slim = {k: d[k] for k in keep if k in d}
+    slim["socios"] = [
+        {"nome": s.get("nome_socio"), "qualificacao": s.get("qualificacao_socio"),
+         "faixa_etaria": s.get("faixa_etaria")}
+        for s in (d.get("qsa") or [])[:6]
+    ]
+    slim["cnaes_secundarios"] = [
+        f"{c.get('codigo')} {c.get('descricao','')}" for c in (d.get("cnaes_secundarios") or [])[:5]
+    ]
+    return slim
 
-    anthropic_key = _load_anthropic_key()
-    if not anthropic_key:
-        raise HTTPException(503, "ANTHROPIC_API_KEY não configurada no servidor.")
 
-    # 1. Dados da solicitação — suporta ac_solicitacoes e ac_clientes_ativos (ca_)
+def _pereira_idwall_slim(d: dict) -> dict:
+    if not d:
+        return {}
+    important = ["score", "classification", "risk_level", "status", "alerts",
+                 "flags", "negative_data", "protests", "debts", "lawsuits",
+                 "situacao", "restricoes", "score_credito", "nivel_risco"]
+    return {k: v for k, v in d.items() if k in important and v not in (None, [], {})}
+
+
+async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
+    """Background: executa análise PEREIRA completa sem bloquear a resposta HTTP."""
     _is_ca = sol_id.startswith("ca_")
-    _ca_numeric_id = None  # int quando _is_ca
-
-    if _is_ca:
-        try:
-            _ca_numeric_id = int(sol_id[3:])
-        except ValueError:
-            raise HTTPException(400, "ID de cliente ativo inválido.")
-        ca_rows = await _turso_query(
-            "SELECT cnpj, razao_social, modalidade1, modalidade2, "
-            "rf_data, idwall_data, idwall_pending "
-            "FROM ac_clientes_ativos WHERE id=?",
-            [_ca_numeric_id],
-        )
-        if not ca_rows:
-            raise HTTPException(404, "Cliente ativo não encontrado.")
-        ca = ca_rows[0]
-        rf_stored = ca.get("rf_data") or {}
-        if isinstance(rf_stored, str):
-            try:
-                rf_stored = json.loads(rf_stored)
-            except Exception:
-                rf_stored = {}
-        idwall_stored = ca.get("idwall_data") or {}
-        if isinstance(idwall_stored, str):
-            try:
-                idwall_stored = json.loads(idwall_stored)
-            except Exception:
-                idwall_stored = {}
-        sol_data = {
-            "razaoSocial":  ca.get("razao_social") or "",
-            "cnpj":         ca.get("cnpj") or "",
-            "tipoOperacao": ca.get("modalidade1") or "",
-            "modalidade":   ca.get("modalidade2") or "",
-            "rf_data":      rf_stored,
-            "idwall":       idwall_stored,
-        }
-    else:
-        sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
-        if not sol_rows:
-            raise HTTPException(404, "Solicitação não encontrada.")
-        sol_data = json.loads(sol_rows[0]["data"] or "{}")
-
-    # 2. Documentos anexados
-    doc_rows = await _turso_query(
-        "SELECT nome, tipo, content, mime FROM ac_documents WHERE sol_id=? ORDER BY tipo, nome",
-        [sol_id],
-    )
-
-    # ── helpers de redução de tokens ──────────────────────────────────────────
-    def _rf_slim(d: dict) -> dict:
-        """Extrai apenas os campos relevantes do retorno BrasilAPI — reduz ~60% dos tokens."""
-        keep = [
-            "razao_social", "cnpj", "situacao_cadastral", "data_situacao_cadastral",
-            "data_abertura", "porte", "natureza_juridica", "capital_social",
-            "cnae_fiscal", "cnae_fiscal_descricao", "municipio", "uf",
-            "descricao_situacao_cadastral",
-        ]
-        slim = {k: d[k] for k in keep if k in d}
-        qsa = d.get("qsa") or []
-        slim["socios"] = [
-            {"nome": s.get("nome_socio"), "qualificacao": s.get("qualificacao_socio"),
-             "faixa_etaria": s.get("faixa_etaria")}
-            for s in qsa[:6]
-        ]
-        cnaes_sec = d.get("cnaes_secundarios") or []
-        slim["cnaes_secundarios"] = [
-            f"{c.get('codigo')} {c.get('descricao','')}" for c in cnaes_sec[:5]
-        ]
-        return slim
-
-    def _idwall_slim(d: dict) -> dict:
-        """Mantém apenas campos de risco/score do IDwall — descarta campos de metadados."""
-        if not d:
-            return {}
-        important = ["score", "classification", "risk_level", "status", "alerts",
-                     "flags", "negative_data", "protests", "debts", "lawsuits",
-                     "situacao", "restricoes", "score_credito", "nivel_risco"]
-        return {k: v for k, v in d.items() if k in important and v not in (None, [], {})}
-
-    # 3. Monta contexto
-    rf_raw   = sol_data.get("rf_data", {})
-    rf_info  = rf_raw.get("data", rf_raw) if isinstance(rf_raw, dict) else {}
-    idwall   = sol_data.get("idwall", {})
-    contabil = sol_data.get("contabil_result", {})
-
-    razao      = (sol_data.get("razaoSocial") or sol_data.get("nomeEmpresa")
-                  or rf_info.get("razao_social") or "—")
-    cnpj_raw   = sol_data.get("cnpj") or rf_info.get("cnpj") or ""
-    cnpj       = cnpj_raw or "—"
-    modalidade = sol_data.get("tipoOperacao") or sol_data.get("modalidade") or "não especificada"
-    valor      = sol_data.get("valorOperacao") or sol_data.get("limiteCredito") or "não especificado"
-    prazo      = sol_data.get("prazoReembolso") or sol_data.get("prazo") or "não especificado"
-
-    # Auto-fetch RF via BrasilAPI se ainda não consultado
+    _ca_numeric_id: int | None = None
     rf_fonte = "sistema"
-    if not rf_info and cnpj_raw:
-        cnpj_digits = re.sub(r"\D", "", cnpj_raw)
-        if len(cnpj_digits) == 14:
-            try:
-                async with httpx.AsyncClient(timeout=20.0) as hc:
-                    _r = await hc.get(
-                        f"https://brasilapi.com.br/api/cnpj/v1/{cnpj_digits}",
-                        headers={"User-Agent": "Vendemmia-AnaliseCredito/1.0"},
-                    )
-                if _r.status_code == 200:
-                    rf_info = _r.json()
-                    razao   = rf_info.get("razao_social") or razao
-                    rf_fonte = "BrasilAPI (consultado pelo PEREIRA)"
-            except Exception:
-                pass
-
-    meta = (
-        f"DADOS DA SOLICITAÇÃO\n"
-        f"Empresa: {razao}\nCNPJ: {cnpj}\n"
-        f"Modalidade: {modalidade} | Valor: {valor} | Prazo: {prazo}\n"
-        f"Data: {datetime.utcnow().strftime('%Y-%m-%d')}\n\n"
-    )
-    if rf_info:
-        meta += f"RECEITA FEDERAL ({rf_fonte}):\n{json.dumps(_rf_slim(rf_info), ensure_ascii=False, indent=2)}\n\n"
-    else:
-        meta += f"RECEITA FEDERAL: Não disponível (CNPJ: {cnpj}).\n\n"
-
-    idwall_slim = _idwall_slim(idwall)
-    if idwall_slim:
-        meta += f"BUREAU IDwall:\n{json.dumps(idwall_slim, ensure_ascii=False, indent=2)}\n\n"
-    else:
-        meta += "BUREAU IDwall: Pendente ou não solicitado.\n\n"
-
-    if contabil:
-        meta += f"INDICADORES CONTÁBEIS:\n{json.dumps(contabil, ensure_ascii=False, indent=2)}\n\n"
-
-    content_blocks: list[dict] = [{"type": "text", "text": meta}]
-
-    tipo_labels = {
-        "balanco": "Balanço Patrimonial",
-        "dre": "Demonstração de Resultado (DRE)",
-        "contrato": "Contrato Social",
-        "fat": "Comprovante de Faturamento",
-    }
-    for row in doc_rows:
-        raw_bytes = base64.standard_b64decode(row["content"])
-        nome  = row["nome"]
-        tipo  = row["tipo"]
-        mime  = (row.get("mime") or "").lower()
-        label = tipo_labels.get(tipo, tipo.upper())
-
-        content_blocks.append({"type": "text", "text": f"\n\n=== {label}: {nome} ==="})
-
-        ext = Path(nome).suffix.lower()
-        try:
-            structured = _xlsx_to_structured(raw_bytes, nome) if ext in (".xlsx", ".xls") \
-                         else _pdf_to_structured(raw_bytes, nome)
-            lines: list[str] = []
-            for sec in structured.get("secoes", []):
-                if sec["tipo"] == "texto":
-                    lines.append(sec["conteudo"])
-                elif sec["tipo"] in ("tabela", "planilha"):
-                    for lr in sec.get("linhas", []):
-                        lines.append(" | ".join(str(c) for c in lr))
-            texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
-            if len(texto_doc) > 8000:
-                texto_doc = texto_doc[:8000] + "\n[... truncado para reduzir custo de análise]"
-            content_blocks.append({"type": "text", "text": texto_doc})
-        except Exception as exc:
-            content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
-
-    if not doc_rows:
-        content_blocks.append({
-            "type": "text",
-            "text": (
-                "\n\n=== ANÁLISE SEM DOCUMENTOS FINANCEIROS ===\n"
-                "Nenhum documento financeiro (Balanço, DRE, Contrato Social, etc.) foi "
-                "anexado a esta solicitação. Realize a análise com base exclusivamente "
-                "nos dados da Receita Federal e IDwall fornecidos acima.\n\n"
-                "Nesta modalidade de análise:\n"
-                "- Explore os dados cadastrais da RF: porte, natureza jurídica, atividade "
-                "  econômica principal (CNAE), data de abertura, situação cadastral, quadro de sócios.\n"
-                "- Use o tempo de operação da empresa (data abertura) como proxy de maturidade.\n"
-                "- O CNAE principal indica o setor e perfil de risco setorial.\n"
-                "- Capital social declarado é indicador de comprometimento dos sócios.\n"
-                "- Ausência de documentos financeiros deve ser registrada como limitação crítica "
-                "  do inventário documental — classifique a base probatória como BAIXA.\n"
-                "- Recomende limite conservador condizente com a limitação de informação.\n"
-                "- Sinalize ao analista a necessidade de solicitar documentação complementar "
-                "  antes de aprovações acima de limites mínimos de exposição."
-            ),
-        })
-
-    # 4. Chama Claude Haiku 4.5 via httpx async
-    # Prompt caching e PDF são GA — não precisam de beta header.
-    hdrs: dict[str, str] = {
-        "x-api-key": anthropic_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
-
-    payload: dict = {
-        "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 3500,
-        "system": _PEREIRA_METHODOLOGY,
-        "messages": [{"role": "user", "content": content_blocks}],
-    }
+    rf_info: dict = {}
 
     try:
-        async with httpx.AsyncClient(timeout=180.0) as hc:
-            resp = await hc.post(
-                "https://api.anthropic.com/v1/messages",
-                headers=hdrs,
-                json=payload,
+        # 1. Dados da solicitação
+        if _is_ca:
+            _ca_numeric_id = int(sol_id[3:])
+            ca_rows = await _turso_query(
+                "SELECT cnpj, razao_social, modalidade1, modalidade2, "
+                "rf_data, idwall_data, idwall_pending FROM ac_clientes_ativos WHERE id=?",
+                [_ca_numeric_id],
             )
+            if not ca_rows:
+                return
+            ca = ca_rows[0]
+            rf_stored = ca.get("rf_data") or {}
+            if isinstance(rf_stored, str):
+                try: rf_stored = json.loads(rf_stored)
+                except Exception: rf_stored = {}
+            idwall_stored = ca.get("idwall_data") or {}
+            if isinstance(idwall_stored, str):
+                try: idwall_stored = json.loads(idwall_stored)
+                except Exception: idwall_stored = {}
+            sol_data: dict = {
+                "razaoSocial":  ca.get("razao_social") or "",
+                "cnpj":         ca.get("cnpj") or "",
+                "tipoOperacao": ca.get("modalidade1") or "",
+                "modalidade":   ca.get("modalidade2") or "",
+                "rf_data":      rf_stored,
+                "idwall":       idwall_stored,
+            }
+        else:
+            sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
+            if not sol_rows:
+                return
+            sol_data = json.loads(sol_rows[0]["data"] or "{}")
+
+        # 2. Documentos
+        doc_rows = await _turso_query(
+            "SELECT nome, tipo, content, mime FROM ac_documents WHERE sol_id=? ORDER BY tipo, nome",
+            [sol_id],
+        )
+
+        # 3. Monta contexto
+        rf_raw  = sol_data.get("rf_data", {})
+        rf_info = rf_raw.get("data", rf_raw) if isinstance(rf_raw, dict) else {}
+        idwall  = sol_data.get("idwall", {})
+        contabil = sol_data.get("contabil_result", {})
+
+        razao      = (sol_data.get("razaoSocial") or sol_data.get("nomeEmpresa")
+                      or rf_info.get("razao_social") or "—")
+        cnpj_raw   = sol_data.get("cnpj") or rf_info.get("cnpj") or ""
+        cnpj       = cnpj_raw or "—"
+        modalidade = sol_data.get("tipoOperacao") or sol_data.get("modalidade") or "não especificada"
+        valor      = sol_data.get("valorOperacao") or sol_data.get("limiteCredito") or "não especificado"
+        prazo      = sol_data.get("prazoReembolso") or sol_data.get("prazo") or "não especificado"
+
+        # Auto-fetch RF via BrasilAPI se não disponível
+        if not rf_info and cnpj_raw:
+            cnpj_digits = re.sub(r"\D", "", cnpj_raw)
+            if len(cnpj_digits) == 14:
+                try:
+                    async with httpx.AsyncClient(timeout=20.0) as hc:
+                        _r = await hc.get(
+                            f"https://brasilapi.com.br/api/cnpj/v1/{cnpj_digits}",
+                            headers={"User-Agent": "Vendemmia-AnaliseCredito/1.0"},
+                        )
+                    if _r.status_code == 200:
+                        rf_info = _r.json()
+                        razao   = rf_info.get("razao_social") or razao
+                        rf_fonte = "BrasilAPI (consultado pelo PEREIRA)"
+                except Exception:
+                    pass
+
+        meta = (
+            f"DADOS DA SOLICITAÇÃO\n"
+            f"Empresa: {razao}\nCNPJ: {cnpj}\n"
+            f"Modalidade: {modalidade} | Valor: {valor} | Prazo: {prazo}\n"
+            f"Data: {datetime.utcnow().strftime('%Y-%m-%d')}\n\n"
+        )
+        if rf_info:
+            meta += f"RECEITA FEDERAL ({rf_fonte}):\n{json.dumps(_pereira_rf_slim(rf_info), ensure_ascii=False, indent=2)}\n\n"
+        else:
+            meta += f"RECEITA FEDERAL: Não disponível (CNPJ: {cnpj}).\n\n"
+        idwall_slim = _pereira_idwall_slim(idwall)
+        if idwall_slim:
+            meta += f"BUREAU IDwall:\n{json.dumps(idwall_slim, ensure_ascii=False, indent=2)}\n\n"
+        else:
+            meta += "BUREAU IDwall: Pendente ou não solicitado.\n\n"
+        if contabil:
+            meta += f"INDICADORES CONTÁBEIS:\n{json.dumps(contabil, ensure_ascii=False, indent=2)}\n\n"
+
+        content_blocks: list[dict] = [{"type": "text", "text": meta}]
+        tipo_labels = {
+            "balanco": "Balanço Patrimonial", "dre": "Demonstração de Resultado (DRE)",
+            "contrato": "Contrato Social", "fat": "Comprovante de Faturamento",
+        }
+        for row in doc_rows:
+            raw_bytes = base64.standard_b64decode(row["content"])
+            nome  = row["nome"]
+            tipo  = row["tipo"]
+            label = tipo_labels.get(tipo, tipo.upper())
+            content_blocks.append({"type": "text", "text": f"\n\n=== {label}: {nome} ==="})
+            ext = Path(nome).suffix.lower()
+            try:
+                structured = _xlsx_to_structured(raw_bytes, nome) if ext in (".xlsx", ".xls") \
+                             else _pdf_to_structured(raw_bytes, nome)
+                lines: list[str] = []
+                for sec in structured.get("secoes", []):
+                    if sec["tipo"] == "texto":
+                        lines.append(sec["conteudo"])
+                    elif sec["tipo"] in ("tabela", "planilha"):
+                        for lr in sec.get("linhas", []):
+                            lines.append(" | ".join(str(c) for c in lr))
+                texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
+                if len(texto_doc) > 8000:
+                    texto_doc = texto_doc[:8000] + "\n[... truncado]"
+                content_blocks.append({"type": "text", "text": texto_doc})
+            except Exception as exc:
+                content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
+
+        if not doc_rows:
+            content_blocks.append({"type": "text", "text": (
+                "\n\n=== ANÁLISE SEM DOCUMENTOS FINANCEIROS ===\n"
+                "Nenhum documento financeiro foi anexado. Analise com base exclusivamente "
+                "nos dados da Receita Federal e IDwall fornecidos acima."
+            )})
+
+        # 4. Chama Claude Haiku 4.5
+        hdrs: dict[str, str] = {
+            "x-api-key": anthropic_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+        payload: dict = {
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": 3500,
+            "system": _PEREIRA_METHODOLOGY,
+            "messages": [{"role": "user", "content": content_blocks}],
+        }
+        async with httpx.AsyncClient(timeout=300.0) as hc:
+            resp = await hc.post("https://api.anthropic.com/v1/messages", headers=hdrs, json=payload)
         if resp.status_code != 200:
             raise RuntimeError(f"Anthropic {resp.status_code}: {resp.text}")
         parecer = resp.json()["content"][0]["text"]
-    except Exception as exc:
-        raise HTTPException(500, f"Erro na análise PEREIRA: {str(exc)}")
 
-    # 5. Extrai JSON estruturado (bloco ```json no final do parecer)
-    analise_json = _extract_json(parecer)
+        # 5. Extrai JSON estruturado
+        analise_json = _extract_json(parecer)
 
-    # 6. Persiste no registro da solicitação
-    pereira_result = {
-        "parecer": parecer,
-        "dados_estruturados": analise_json,
-        "analisado_at": datetime.utcnow().isoformat(),
-        "modelo": "claude-haiku-4-5-20251001",
-        "documentos_analisados": [r["nome"] for r in doc_rows],
-    }
-
-    # 6. Persiste resultado na tabela correta — try/except para não bloquear o retorno
-    # ao frontend se houver falha transitória de banco (o dado já fica no cache local).
-    try:
-        if _is_ca:
-            # Para ca_: também persiste rf_data se foi auto-buscado nesta chamada
+        # 6. Persiste
+        pereira_result = {
+            "parecer": parecer,
+            "dados_estruturados": analise_json,
+            "analisado_at": datetime.utcnow().isoformat(),
+            "modelo": "claude-haiku-4-5-20251001",
+            "documentos_analisados": [r["nome"] for r in doc_rows],
+        }
+        if _is_ca and _ca_numeric_id is not None:
             set_parts: list[str] = ["pereira_analise = ?"]
             upd_params: list = [pereira_result]
             if rf_fonte != "sistema" and rf_info:
-                rf_to_store = {"status": "ok", "data": rf_info, "fonte": "brasilapi"}
                 set_parts.append("rf_data = ?")
-                upd_params.append(rf_to_store)
+                upd_params.append({"status": "ok", "data": rf_info, "fonte": "brasilapi"})
             upd_params.append(_ca_numeric_id)
             await _turso_exec(
-                f"UPDATE ac_clientes_ativos SET {', '.join(set_parts)} WHERE id = ?",
-                upd_params,
+                f"UPDATE ac_clientes_ativos SET {', '.join(set_parts)} WHERE id = ?", upd_params
             )
         else:
             sol_data["pereira_analise"] = pereira_result
@@ -4943,25 +4881,84 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
                 "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
                 [json.dumps(sol_data, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
             )
-    except Exception as _db_err:
-        # Falha no DB não impede o retorno da análise ao frontend —
-        # o frontend salva via PUT /analise separado e o cache local serve de fallback.
-        print(f"[PEREIRA] Aviso: falha ao persistir no banco — {_db_err}")
 
-    return {"ok": True, **pereira_result, "documentos_total": len(doc_rows)}
+    except Exception as exc:
+        # Salva marcador de erro no banco para o frontend parar de fazer polling
+        error_result = {
+            "parecer": None,
+            "error": str(exc),
+            "analisado_at": datetime.utcnow().isoformat(),
+            "modelo": "claude-haiku-4-5-20251001",
+            "documentos_analisados": [],
+        }
+        try:
+            if _is_ca and _ca_numeric_id is not None:
+                await _turso_exec(
+                    "UPDATE ac_clientes_ativos SET pereira_analise = ? WHERE id = ?",
+                    [error_result, _ca_numeric_id],
+                )
+            else:
+                rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
+                if rows:
+                    sd = json.loads(rows[0]["data"] or "{}")
+                    sd["pereira_analise"] = error_result
+                    await _turso_exec(
+                        "UPDATE ac_solicitacoes SET data=?, updated_at=? WHERE id=?",
+                        [json.dumps(sd, ensure_ascii=False), datetime.utcnow().isoformat(), sol_id],
+                    )
+        except Exception:
+            pass
+
+
+# ─── PEREIRA — Análise Documental de Crédito (sem daemon) ────────────────────
+
+@app.post("/api/pereira/analisar/{sol_id}")
+@limiter.limit("5/minute")
+async def pereira_analisar(
+    sol_id: str, request: Request, background_tasks: BackgroundTasks,
+    current_user=Depends(_get_current_user),
+):
+    """Dispara análise PEREIRA em background e retorna imediatamente (evita timeout de proxy)."""
+    if not _SOL_ID_RE.match(sol_id):
+        raise HTTPException(400, "ID de solicitação inválido.")
+    if not _turso_ok():
+        raise HTTPException(503, "Banco de dados não configurado.")
+    anthropic_key = _load_anthropic_key()
+    if not anthropic_key:
+        raise HTTPException(503, "ANTHROPIC_API_KEY não configurada no servidor.")
+    background_tasks.add_task(_pereira_bg_task, sol_id, anthropic_key)
+    return {"status": "processing", "message": "Análise PEREIRA iniciada — verifique o resultado em instantes."}
 
 
 @app.get("/api/pereira/analise/{sol_id}")
 async def pereira_analise_get(sol_id: str, current_user=Depends(_get_current_user)):
-    """Retorna análise PEREIRA já salva para a solicitação."""
-    sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
-    if not sol_rows:
-        raise HTTPException(404, "Solicitação não encontrada.")
-    sol_data = json.loads(sol_rows[0]["data"] or "{}")
-    analise = sol_data.get("pereira_analise")
+    """Retorna análise PEREIRA salva — usada pelo frontend para polling após disparo em background."""
+    if sol_id.startswith("ca_"):
+        try:
+            ca_id = int(sol_id[3:])
+        except ValueError:
+            raise HTTPException(400, "ID inválido.")
+        rows = await _turso_query(
+            "SELECT pereira_analise FROM ac_clientes_ativos WHERE id=?", [ca_id]
+        )
+        if not rows:
+            raise HTTPException(404, "Cliente não encontrado.")
+        analise = rows[0].get("pereira_analise") or {}
+        if isinstance(analise, str):
+            try: analise = json.loads(analise)
+            except Exception: analise = {}
+    else:
+        sol_rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
+        if not sol_rows:
+            raise HTTPException(404, "Solicitação não encontrada.")
+        sol_data = json.loads(sol_rows[0]["data"] or "{}")
+        analise = sol_data.get("pereira_analise") or {}
+
     if not analise:
-        return {"ok": False, "message": "Análise PEREIRA ainda não gerada para esta solicitação."}
-    return {"ok": True, **analise}
+        return {"ok": False, "status": "processing"}
+    if analise.get("error") and not analise.get("parecer"):
+        return {"ok": False, "status": "error", "error": analise["error"]}
+    return {"ok": True, "status": "done", **analise}
 
 
 # Serve os arquivos HTML/JS/CSS estáticos na raiz

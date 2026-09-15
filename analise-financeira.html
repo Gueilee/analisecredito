@@ -5046,30 +5046,49 @@ async function runPereira() {
   if (mainCard) mainCard.style.display = 'block';
   _pereiraSetStatus('Analisando documentos…', 'rgba(245,158,11,.9)');
 
-  const _pCtrl  = new AbortController();
-  let   _pTimer = null;
   try {
-    _pTimer = setTimeout(() => _pCtrl.abort(), 180000); // 3 min max — espelha timeout do backend
-    const r = await fetch(`${API_URL}/api/pereira/analisar/${sol.id}`, { method: 'POST', credentials: 'include', signal: _pCtrl.signal });
-    clearTimeout(_pTimer);
+    // 1. Dispara a análise — backend retorna imediatamente com {status:"processing"}
+    const r = await fetch(`${API_URL}/api/pereira/analisar/${sol.id}`, { method: 'POST', credentials: 'include' });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${r.status}`);
     }
-    const data = await r.json();
-    _renderPereiraAnalise(data);
-    _pereiraSetStatus('Parecer concluído', 'rgba(1,225,142,.9)');
-    showToast('Parecer PEREIRA gerado com sucesso.', 'success');
+    const fired = await r.json();
+
+    // 2. Se já retornou resultado direto (compatibilidade), renderiza imediatamente
+    if (fired.ok && fired.parecer) {
+      _renderPereiraAnalise(fired);
+      _pereiraSetStatus('Parecer concluído', 'rgba(1,225,142,.9)');
+      showToast('Parecer PEREIRA gerado com sucesso.', 'success');
+      return;
+    }
+
+    // 3. Polling: consulta GET /api/pereira/analise/{id} a cada 6s por até 5 min
+    const MAX_POLLS = 50; // 50 × 6s = 5 min
+    for (let i = 0; i < MAX_POLLS; i++) {
+      await new Promise(res => setTimeout(res, 6000));
+      const pr = await fetch(`${API_URL}/api/pereira/analise/${sol.id}`, { credentials: 'include' });
+      if (!pr.ok) continue;
+      const pd = await pr.json();
+      if (pd.status === 'error') throw new Error(pd.error || 'Erro na análise PEREIRA');
+      if (pd.ok && pd.parecer) {
+        _renderPereiraAnalise(pd);
+        _pereiraSetStatus('Parecer concluído', 'rgba(1,225,142,.9)');
+        showToast('Parecer PEREIRA gerado com sucesso.', 'success');
+        return;
+      }
+      // ainda "processing" — continua polling
+    }
+    throw new Error('Tempo limite excedido (5 min) — tente novamente');
   } catch (e) {
-    clearTimeout(_pTimer);
-    const _eMsg = e?.name === 'AbortError' ? 'Tempo limite excedido (3 min) — tente novamente' : e.message;
+    const _eMsg = e.message || 'Erro desconhecido';
     if (loading) loading.style.display = 'none';
     if (hint) {
       hint.style.display = 'block';
       hint.innerHTML = `<div style="color:var(--red);font-size:.78rem;padding:.6rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);"><strong>Erro na análise:</strong> ${_eMsg}</div>`;
     }
     _pereiraSetStatus('Erro na análise', 'rgba(239,68,68,.9)');
-    showToast('Erro PEREIRA: ' + _eMsg.slice(0, 100), 'error');
+    showToast('Erro PEREIRA: ' + _eMsg.slice(0, 120), 'error');
     throw e;
   } finally {
     if (btnRefresh) btnRefresh.disabled = false;
