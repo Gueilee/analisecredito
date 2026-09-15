@@ -1533,7 +1533,7 @@ Retorne APENAS o JSON válido, sem markdown, sem texto extra."""
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-haiku-4-5",
+                "model": "claude-haiku-4-5-20251001",
                 "max_tokens": 4096,
                 "messages": [{"role": "user", "content": prompt}],
             },
@@ -3029,7 +3029,7 @@ def _anthropic_scanner(
         text = _scanner_word_to_text(content)
         messages = [{"role": "user", "content": f"{text[:28000]}\n\n{_SCANNER_PROMPT}"}]
 
-    _MODELS = ["claude-haiku-4-5", "claude-sonnet-4-6"]
+    _MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
     last_err: Exception = RuntimeError("Nenhum modelo disponível.")
 
     for model in _MODELS:
@@ -3159,7 +3159,7 @@ def _anthropic_scanner_multi(file_list: list[tuple[bytes, str]], anthropic_key: 
     else:
         raise RuntimeError("Nenhum conteúdo extraído dos arquivos.")
 
-    _MODELS = ["claude-haiku-4-5", "claude-sonnet-4-6"]
+    _MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
     last_err: Exception = RuntimeError("Nenhum modelo disponível.")
     for model in _MODELS:
         try:
@@ -4903,15 +4903,9 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
     }
 
     payload: dict = {
-        "model": "claude-haiku-4-5",
+        "model": "claude-haiku-4-5-20251001",
         "max_tokens": 3500,
-        "system": [
-            {
-                "type": "text",
-                "text": _PEREIRA_METHODOLOGY,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
+        "system": _PEREIRA_METHODOLOGY,
         "messages": [{"role": "user", "content": content_blocks}],
     }
 
@@ -4936,7 +4930,7 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         "parecer": parecer,
         "dados_estruturados": analise_json,
         "analisado_at": datetime.utcnow().isoformat(),
-        "modelo": "claude-haiku-4-5",
+        "modelo": "claude-haiku-4-5-20251001",
         "documentos_analisados": [r["nome"] for r in doc_rows],
     }
 
