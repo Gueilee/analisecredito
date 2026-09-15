@@ -4823,8 +4823,8 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
                         for lr in sec.get("linhas", []):
                             lines.append(" | ".join(str(c) for c in lr))
                 texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
-                if len(texto_doc) > 8000:
-                    texto_doc = texto_doc[:8000] + "\n[... truncado]"
+                if len(texto_doc) > 15000:
+                    texto_doc = texto_doc[:15000] + "\n[... truncado para reduzir custo]"
                 content_blocks.append({"type": "text", "text": texto_doc})
             except Exception as exc:
                 content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
@@ -4836,19 +4836,36 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
                 "nos dados da Receita Federal e IDwall fornecidos acima."
             )})
 
-        # 4. Chama Claude Haiku 4.5
+        # 4. Substitui variáveis do template de metodologia e chama Claude Sonnet
+        _model = "claude-sonnet-4-6"
+        system_prompt = _PEREIRA_METHODOLOGY
+        _vars = {
+            "{{MODALIDADE}}":        modalidade,
+            "{{VALOR_OPERACAO}}":    str(valor),
+            "{{MOEDA}}":             sol_data.get("moeda") or "USD",
+            "{{CAMBIO}}":            str(sol_data.get("cambio") or "não informado"),
+            "{{PRAZO_REEMBOLSO}}":   str(prazo),
+            "{{HA_ADIANTAMENTO}}":   str(sol_data.get("adiantamento") or "não informado"),
+            "{{CONTRAPARTE}}":       f"{razao} — CNPJ {cnpj}",
+            "{{NCM}}":               str(sol_data.get("ncm") or "não informado"),
+            "{{UF_DESEMBARACO}}":    str(sol_data.get("ufDesembaraco") or "não informado"),
+            "{{DATA_ANALISE}}":      datetime.utcnow().strftime("%d/%m/%Y"),
+        }
+        for k, v in _vars.items():
+            system_prompt = system_prompt.replace(k, v)
+
         hdrs: dict[str, str] = {
             "x-api-key": anthropic_key,
             "anthropic-version": "2023-06-01",
             "content-type": "application/json",
         }
         payload: dict = {
-            "model": "claude-haiku-4-5-20251001",
-            "max_tokens": 3500,
-            "system": _PEREIRA_METHODOLOGY,
+            "model": _model,
+            "max_tokens": 8000,
+            "system": system_prompt,
             "messages": [{"role": "user", "content": content_blocks}],
         }
-        async with httpx.AsyncClient(timeout=300.0) as hc:
+        async with httpx.AsyncClient(timeout=420.0) as hc:
             resp = await hc.post("https://api.anthropic.com/v1/messages", headers=hdrs, json=payload)
         if resp.status_code != 200:
             raise RuntimeError(f"Anthropic {resp.status_code}: {resp.text}")
@@ -4862,7 +4879,7 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
             "parecer": parecer,
             "dados_estruturados": analise_json,
             "analisado_at": datetime.utcnow().isoformat(),
-            "modelo": "claude-haiku-4-5-20251001",
+            "modelo": _model,
             "documentos_analisados": [r["nome"] for r in doc_rows],
         }
         if _is_ca and _ca_numeric_id is not None:
