@@ -4832,8 +4832,6 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
         "contrato": "Contrato Social",
         "fat": "Comprovante de Faturamento",
     }
-    has_pdf = False
-
     for row in doc_rows:
         raw_bytes = base64.standard_b64decode(row["content"])
         nome  = row["nome"]
@@ -4843,34 +4841,23 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
 
         content_blocks.append({"type": "text", "text": f"\n\n=== {label}: {nome} ==="})
 
-        if "pdf" in mime or nome.lower().endswith(".pdf"):
-            has_pdf = True
-            content_blocks.append({
-                "type": "document",
-                "source": {
-                    "type": "base64",
-                    "media_type": "application/pdf",
-                    "data": row["content"],  # já em base64
-                },
-            })
-        else:
-            ext = Path(nome).suffix.lower()
-            try:
-                structured = _xlsx_to_structured(raw_bytes, nome) if ext in (".xlsx", ".xls") \
-                             else _pdf_to_structured(raw_bytes, nome)
-                lines: list[str] = []
-                for sec in structured.get("secoes", []):
-                    if sec["tipo"] == "texto":
-                        lines.append(sec["conteudo"])
-                    elif sec["tipo"] in ("tabela", "planilha"):
-                        for lr in sec.get("linhas", []):
-                            lines.append(" | ".join(str(c) for c in lr))
-                texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
-                if len(texto_doc) > 8000:
-                    texto_doc = texto_doc[:8000] + "\n[... truncado para reduzir custo de análise]"
-                content_blocks.append({"type": "text", "text": texto_doc})
-            except Exception as exc:
-                content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
+        ext = Path(nome).suffix.lower()
+        try:
+            structured = _xlsx_to_structured(raw_bytes, nome) if ext in (".xlsx", ".xls") \
+                         else _pdf_to_structured(raw_bytes, nome)
+            lines: list[str] = []
+            for sec in structured.get("secoes", []):
+                if sec["tipo"] == "texto":
+                    lines.append(sec["conteudo"])
+                elif sec["tipo"] in ("tabela", "planilha"):
+                    for lr in sec.get("linhas", []):
+                        lines.append(" | ".join(str(c) for c in lr))
+            texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
+            if len(texto_doc) > 8000:
+                texto_doc = texto_doc[:8000] + "\n[... truncado para reduzir custo de análise]"
+            content_blocks.append({"type": "text", "text": texto_doc})
+        except Exception as exc:
+            content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
 
     if not doc_rows:
         content_blocks.append({
@@ -4917,10 +4904,10 @@ async def pereira_analisar(sol_id: str, request: Request, current_user=Depends(_
                 json=payload,
             )
         if resp.status_code != 200:
-            raise RuntimeError(f"Anthropic {resp.status_code}: {resp.text[:300]}")
+            raise RuntimeError(f"Anthropic {resp.status_code}: {resp.text}")
         parecer = resp.json()["content"][0]["text"]
     except Exception as exc:
-        raise HTTPException(500, f"Erro na análise PEREIRA: {str(exc)[:400]}")
+        raise HTTPException(500, f"Erro na análise PEREIRA: {str(exc)}")
 
     # 5. Extrai JSON estruturado (bloco ```json no final do parecer)
     analise_json = _extract_json(parecer)
