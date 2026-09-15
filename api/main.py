@@ -4804,30 +4804,61 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
         tipo_labels = {
             "balanco": "Balanço Patrimonial", "dre": "Demonstração de Resultado (DRE)",
             "contrato": "Contrato Social", "fat": "Comprovante de Faturamento",
+            "serasa": "Relatório de Bureau (Serasa/Boa Vista)",
         }
         for row in doc_rows:
             raw_bytes = base64.standard_b64decode(row["content"])
             nome  = row["nome"]
             tipo  = row["tipo"]
+            mime  = (row.get("mime") or "").lower()
             label = tipo_labels.get(tipo, tipo.upper())
             content_blocks.append({"type": "text", "text": f"\n\n=== {label}: {nome} ==="})
             ext = Path(nome).suffix.lower()
-            try:
-                structured = _xlsx_to_structured(raw_bytes, nome) if ext in (".xlsx", ".xls") \
-                             else _pdf_to_structured(raw_bytes, nome)
-                lines: list[str] = []
-                for sec in structured.get("secoes", []):
-                    if sec["tipo"] == "texto":
-                        lines.append(sec["conteudo"])
-                    elif sec["tipo"] in ("tabela", "planilha"):
-                        for lr in sec.get("linhas", []):
-                            lines.append(" | ".join(str(c) for c in lr))
-                texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
-                if len(texto_doc) > 15000:
-                    texto_doc = texto_doc[:15000] + "\n[... truncado para reduzir custo]"
-                content_blocks.append({"type": "text", "text": texto_doc})
-            except Exception as exc:
-                content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
+
+            is_pdf = "pdf" in mime or nome.lower().endswith(".pdf")
+            if is_pdf:
+                # PDFs entram nativamente como document blocks (Sonnet suporta sem beta header)
+                content_blocks.append({
+                    "type": "document",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": row["content"],  # já em base64
+                    },
+                    "title": nome,
+                    "context": f"Este documento é o {label} do cliente.",
+                })
+            elif ext in (".xlsx", ".xls"):
+                try:
+                    structured = _xlsx_to_structured(raw_bytes, nome)
+                    lines: list[str] = []
+                    for sec in structured.get("secoes", []):
+                        if sec["tipo"] in ("tabela", "planilha"):
+                            for lr in sec.get("linhas", []):
+                                lines.append(" | ".join(str(c) for c in lr))
+                    texto_doc = "\n".join(lines) if lines else "(sem dados extraídos)"
+                    if len(texto_doc) > 15000:
+                        texto_doc = texto_doc[:15000] + "\n[... truncado]"
+                    content_blocks.append({"type": "text", "text": texto_doc})
+                except Exception as exc:
+                    content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
+            else:
+                # Fallback: extração de texto via pdfplumber
+                try:
+                    structured = _pdf_to_structured(raw_bytes, nome)
+                    lines = []
+                    for sec in structured.get("secoes", []):
+                        if sec["tipo"] == "texto":
+                            lines.append(sec["conteudo"])
+                        elif sec["tipo"] == "tabela":
+                            for lr in sec.get("linhas", []):
+                                lines.append(" | ".join(str(c) for c in lr))
+                    texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
+                    if len(texto_doc) > 15000:
+                        texto_doc = texto_doc[:15000] + "\n[... truncado]"
+                    content_blocks.append({"type": "text", "text": texto_doc})
+                except Exception as exc:
+                    content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
 
         if not doc_rows:
             content_blocks.append({"type": "text", "text": (
