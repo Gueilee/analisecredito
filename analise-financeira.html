@@ -1591,6 +1591,7 @@
             <!-- Resultado -->
             <div id="pereira-result" style="display:none;">
               <div class="pereira-meta-bar" id="pereira-meta"></div>
+              <div id="pereira-indicadores" style="display:none;"></div>
               <div class="pereira-parecer-wrap" id="pereira-parecer-body"></div>
             </div>
           </div>
@@ -4336,6 +4337,55 @@ function _ctblRenderIndicadores(p1, p2) {
   }).join('');
 }
 
+// ── Indicadores do PEREIRA (análise documental) ───────────────────────────────
+
+function _pereiraRenderIndicadores(empresas) {
+  const wrap = document.getElementById('pereira-indicadores');
+  if (!wrap) return;
+  if (!empresas || !empresas.length) { wrap.style.display = 'none'; return; }
+
+  const SPECS = [
+    { key: 'mb',       lbl: 'Margem Bruta',  map: i => i.margem_bruta,       fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
+    { key: 'ml',       lbl: 'Margem Líq.',   map: i => i.margem_liquida,     fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
+    { key: 'liq_seca', lbl: 'Liq. Seca',     map: i => i.liquidez_seca,      fmt: v => v.toFixed(2).replace('.',',')+'×' },
+    { key: 'liq_geral',lbl: 'Liq. Geral',    map: i => i.liquidez_geral,     fmt: v => v.toFixed(2).replace('.',',')+'×' },
+    { key: 'roe',      lbl: 'ROE',           map: i => i.roe,                fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
+    { key: 'roa',      lbl: 'ROA',           map: i => i.roa,                fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
+    { key: 'eg',       lbl: 'Endividamento', map: i => i.endividamento_total,fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
+    { key: 'ncg',      lbl: 'NCG',           map: i => i.ncg,                fmt: v => 'R$ '+Math.round(v).toLocaleString('pt-BR') },
+    { key: 'pmr',      lbl: 'PMR (dias)',    map: i => i.pmr_dias,           fmt: v => Math.round(v)+' d' },
+    { key: 'pme',      lbl: 'PME (dias)',    map: i => i.pme_dias,           fmt: v => Math.round(v)+' d' },
+  ];
+
+  const blocks = empresas.map((emp, idx) => {
+    const indics = emp.indicadores || {};
+    const hasData = SPECS.some(s => { const v = s.map(indics); return v !== null && v !== undefined; });
+    if (!hasData) return '';
+    const cells = SPECS.map(s => {
+      const v   = s.map(indics);
+      const sem = _ctblSemaforo(s.key, v);
+      const fmtd = (v !== null && v !== undefined) ? s.fmt(v) : '—';
+      return `<div class="ctbl-indic-cell">
+        <div class="ctbl-indic-lbl">${s.lbl}</div>
+        <div class="ctbl-indic-vals"><span class="ctbl-indic-cur">${fmtd}</span></div>
+        <span class="ctbl-sem ${sem}">${_SEM_LABEL[sem]||'—'}</span>
+      </div>`;
+    }).join('');
+    const nome = emp.razao_social || `Empresa ${idx + 1}`;
+    return `<div style="margin-bottom:1.1rem;">
+      <div style="font-size:.77rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.55rem;">${nome}</div>
+      <div class="ctbl-indic-grid">${cells}</div>
+    </div>`;
+  }).join('');
+
+  if (!blocks.trim()) { wrap.style.display = 'none'; return; }
+  wrap.innerHTML = `<div style="margin:.9rem 0;padding:.85rem 1rem 1rem;border:1px solid var(--border);border-radius:8px;background:var(--surface-alt);">
+    <div style="font-size:.72rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.09em;margin-bottom:.85rem;">Indicadores Financeiros</div>
+    ${blocks}
+  </div>`;
+  wrap.style.display = 'block';
+}
+
 // ── Atualização dos totais nas tabelas BP/DRE ─────────────────────────────────
 
 function _ctblUpdateTotals(p1, p2) {
@@ -5123,9 +5173,21 @@ function _renderPereiraAnalise(data) {
       ${docs.length} documento(s)${docs.length ? ': ' + docs.slice(0,2).join(', ') + (docs.length > 2 ? '…' : '') : ''}
     </span>`;
 
+  // Extrai dados estruturados do bloco JSON embutido no parecer
+  let dadosEstruturados = null;
+  try {
+    const m = (data.parecer || '').match(/```json([\s\S]*?)```\s*$/i);
+    if (m) dadosEstruturados = JSON.parse(m[1].trim());
+  } catch (_) {}
+
   // Remove o bloco JSON do final do parecer antes de renderizar como HTML
   const parecer = (data.parecer || '').replace(/```json[\s\S]*?```\s*$/i, '').trim();
   body.innerHTML = _mdToHtml(parecer);
+
+  // Renderiza painel de indicadores financeiros (presente quando há demonstrações)
+  const empresas = dadosEstruturados && Array.isArray(dadosEstruturados.empresas)
+    ? dadosEstruturados.empresas : [];
+  _pereiraRenderIndicadores(empresas);
 
   result.style.display  = 'block';
   if (btnRefresh) { btnRefresh.style.display = ''; btnRefresh.disabled = false; }

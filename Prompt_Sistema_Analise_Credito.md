@@ -307,10 +307,10 @@ Tom: direto, técnico, assertivo. Prosa estruturada, não listas em cascata. Sem
 
 Estrutura do parecer, nesta ordem:
 
-1. Parecer resumido — conclusão em até cinco parágrafos, com semáforo por contraparte
+1. Parecer resumido — conclusão em até cinco parágrafos; para cada contraparte incluir o semáforo explícito: 🟢 Verde (risco baixo / recomendado), 🟡 Amarelo (atenção / aprovação condicionada), 🔴 Vermelho (restrição / não recomendado)
 2. Escopo, base documental e limitações
 3. Estrutura societária
-4. Análise individual por empresa
+4. Análise individual por empresa — quando houver mais de uma, numerar sub-seções (4.1 Empresa A, 4.2 Empresa B…); cada sub-seção deve conter análise financeira com os indicadores-chave calculados, bureau e pontualidade, aspectos societários relevantes
 5. Especificidades setoriais e de modelo de negócio, quando relevantes
 6. Visão consolidada pro-forma, quando houver mais de uma empresa
 7. Pontos de atenção nas demonstrações auditadas
@@ -349,6 +349,8 @@ Se a aplicação precisar consumir o resultado programaticamente, acrescente est
 
 Após o parecer em prosa, emita um bloco JSON delimitado por ```json contendo exatamente este schema. Use null para dado não disponível — nunca estime dentro do JSON.
 
+Para modalidades Encomenda e Licenciamento, todos os campos de `indicadores` devem ser preenchidos quando houver demonstrações financeiras disponíveis; não deixe zeros genéricos — calcule os valores reais a partir dos documentos.
+
 {
   "data_analise": "AAAA-MM-DD",
   "base_documental": {
@@ -368,21 +370,27 @@ Após o parecer em prosa, emita um bloco JSON delimitado por ```json contendo ex
       "indicadores": {
         "receita_liquida": 0,
         "ebitda": 0,
-        "margem_liquida": 0,
-        "liquidez_corrente": 0,
-        "liquidez_seca": 0,
-        "liquidez_imediata": 0,
+        "margem_bruta": 0.0,
+        "margem_liquida": 0.0,
+        "liquidez_corrente": 0.0,
+        "liquidez_seca": 0.0,
+        "liquidez_imediata": 0.0,
+        "liquidez_geral": 0.0,
         "capital_circulante_liquido": 0,
-        "endividamento_total": 0,
+        "endividamento_total": 0.0,
         "patrimonio_liquido": 0,
         "divida_financeira_bruta": 0,
         "divida_liquida": 0,
-        "divida_liquida_ebitda": 0,
+        "divida_liquida_ebitda": 0.0,
         "divida_liquida_ebitda_ajustada": null,
-        "cobertura_juros": 0,
-        "roe": 0,
+        "cobertura_juros": 0.0,
+        "roe": 0.0,
+        "roa": 0.0,
+        "ncg": 0,
+        "pmr_dias": 0,
+        "pme_dias": 0,
         "ciclo_financeiro_dias": 0,
-        "carteira_vencida_pct": 0
+        "carteira_vencida_pct": 0.0
       },
       "bureau": {
         "score": null,
@@ -394,6 +402,7 @@ Após o parecer em prosa, emita um bloco JSON delimitado por ```json contendo ex
         "tem_protesto": false,
         "tem_acao_judicial": false
       },
+      "semaforo": "verde | amarelo | vermelho",
       "classificacao_interna": "adequada | adequada_com_ressalva | restrita | nao_recomendada"
     }
   ],
