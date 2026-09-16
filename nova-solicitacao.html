@@ -2570,7 +2570,7 @@
           <div class="step-panel" id="step-a-1">
             <div class="card animate-in">
               <div class="card-header">
-                <div><div class="card-title">1. Dados da Operação — Armazém</div><div class="card-sub">Informações da empresa e operação de armazenagem</div></div>
+                <div><div class="card-title" id="step-a1-title">1. Dados da Operação — Armazém</div><div class="card-sub" id="step-a1-sub">Informações da empresa e operação de armazenagem</div></div>
               </div>
               <div class="form-grid form-grid-2">
                 <div class="form-group">
@@ -2604,13 +2604,13 @@
                     <input id="a-valor-mensal" class="input has-prefix" type="text" placeholder="0,00" oninput="maskMoney(this); updateSummary()" required />
                   </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="grp-a-email" style="display:none">
                   <label class="form-label" for="a-email">E-mail de Contato <span class="required">*</span></label>
-                  <input id="a-email" class="input" type="email" placeholder="contato@empresa.com.br" required />
+                  <input id="a-email" class="input" type="email" placeholder="contato@empresa.com.br" />
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="grp-a-telefone" style="display:none">
                   <label class="form-label" for="a-telefone">Telefone de Contato <span class="required">*</span></label>
-                  <input id="a-telefone" class="input" type="tel" placeholder="(00) 00000-0000" oninput="maskTelefone(this)" required />
+                  <input id="a-telefone" class="input" type="tel" placeholder="(00) 00000-0000" oninput="maskTelefone(this)" />
                 </div>
                 <div class="form-group span-2">
                   <label class="form-label" for="a-descricao">Breve Descrição do Negócio <span class="required">*</span></label>
@@ -3342,18 +3342,32 @@
     if (s5comment) s5comment.textContent = tipo === 'licenciamento' ? '3. Comentário do Comercial' : '4. Comentário do Trader / Operações';
     if (s5docs)    s5docs.textContent    = tipo === 'licenciamento' ? '4. Documentos Obrigatórios'  : '5. Documentos Obrigatórios';
 
-    // Armazém: ajusta label e visibilidade conforme subtipo
+    // Armazém: ajusta título, subtítulo, labels e visibilidade conforme subtipo
+    const isLic = tipo === 'licenciamento';
+    const a1title = document.getElementById('step-a1-title');
+    const a1sub   = document.getElementById('step-a1-sub');
+    if (a1title) a1title.textContent = isLic ? '1. Dados da Operação — Licenciamento' : '1. Dados da Operação — Armazém';
+    if (a1sub)   a1sub.textContent   = isLic ? 'Informações da empresa parceira para armazenagem' : 'Informações da empresa e operação de armazenagem';
+
     const aqLabel = document.querySelector('label[for="a-qtd-posicoes"]');
-    if (aqLabel) aqLabel.innerHTML = tipo === 'licenciamento'
+    if (aqLabel) aqLabel.innerHTML = isLic
       ? 'Quantidade de Posições Disponíveis <span class="required">*</span>'
       : 'Quantidade de Posições / Mês <span class="required">*</span>';
-    const valorMensalGrp = document.getElementById('a-valor-mensal')?.closest('.form-group');
+
+    const valorMensalGrp   = document.getElementById('a-valor-mensal')?.closest('.form-group');
     const valorMensalInput = document.getElementById('a-valor-mensal');
     if (valorMensalGrp) {
       const show = tipo === 'armazem';
       valorMensalGrp.style.display = show ? '' : 'none';
       if (valorMensalInput) valorMensalInput.required = show;
     }
+
+    const grpEmail    = document.getElementById('grp-a-email');
+    const grpTelefone = document.getElementById('grp-a-telefone');
+    const inpEmail    = document.getElementById('a-email');
+    const inpTelefone = document.getElementById('a-telefone');
+    if (grpEmail)    { grpEmail.style.display    = isLic ? '' : 'none'; if (inpEmail)    inpEmail.required    = isLic; }
+    if (grpTelefone) { grpTelefone.style.display = isLic ? '' : 'none'; if (inpTelefone) inpTelefone.required = isLic; }
 
     if (tipo === 'trade') { initPagtoExportador(); updatePrazosExposure(); }
     updateDocChecklist();
