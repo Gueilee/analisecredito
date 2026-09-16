@@ -907,6 +907,145 @@
       flex: 1; overflow: auto; padding: 1.8rem 2.5rem 2rem;
     }
     #xls-fs-body .xls-wrap { margin-top: 0; }
+
+    /* ── Licenciamento Checklist ───────────────────────────────────── */
+    .lc-scorecard {
+      background: linear-gradient(135deg, rgba(1,153,96,.14) 0%, rgba(1,225,142,.08) 100%);
+      border: 1.5px solid rgba(1,225,142,.3);
+      border-radius: 14px;
+      padding: 1.4rem 1.6rem 1.2rem;
+      margin-bottom: 1.4rem;
+    }
+    .lc-score-title {
+      font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--brand-neon-green); margin-bottom: .9rem;
+    }
+    .lc-score-main {
+      display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1rem;
+    }
+    .lc-score-num {
+      font-size: 2.2rem; font-weight: 800; color: var(--brand-neon-green);
+      line-height: 1; min-width: 4.5rem;
+    }
+    .lc-score-bar-wrap { flex: 1; }
+    .lc-score-bar-bg {
+      background: rgba(255,255,255,.08); border-radius: 99px; height: 10px; overflow: hidden;
+    }
+    .lc-score-bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, #019960, var(--brand-neon-green));
+      transition: width .4s ease;
+    }
+    .lc-score-label {
+      font-size: .72rem; color: var(--text-muted); margin-top: .4rem;
+    }
+    .lc-score-badge {
+      font-size: .7rem; font-weight: 700; padding: .25rem .7rem; border-radius: 99px;
+      border: 1.5px solid; white-space: nowrap;
+    }
+    .lc-score-badge.excelente { color: #01e18e; border-color: rgba(1,225,142,.5); background: rgba(1,225,142,.12); }
+    .lc-score-badge.bom       { color: #38bdf8; border-color: rgba(56,189,248,.4); background: rgba(56,189,248,.1); }
+    .lc-score-badge.adequado  { color: #fbbf24; border-color: rgba(251,191,36,.4); background: rgba(251,191,36,.1); }
+    .lc-score-badge.insuficiente { color: #f87171; border-color: rgba(248,113,113,.4); background: rgba(248,113,113,.1); }
+    .lc-score-badge.pendente  { color: var(--text-muted); border-color: rgba(255,255,255,.15); background: rgba(255,255,255,.05); }
+    .lc-cats-row {
+      display: flex; gap: .6rem; flex-wrap: wrap;
+    }
+    .lc-cat-pill {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px; padding: .4rem .7rem; min-width: 80px; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .lc-cat-pill:hover { border-color: rgba(1,225,142,.35); background: rgba(1,225,142,.07); }
+    .lc-cat-pill-name { font-size: .6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .lc-cat-pill-score { font-size: .95rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+    .lc-cat-pill-max { font-size: .6rem; color: var(--text-muted); }
+
+    .lc-cat-card {
+      border: 1.5px solid rgba(255,255,255,.1); border-radius: 12px;
+      margin-bottom: .9rem; overflow: hidden;
+      transition: border-color .2s;
+    }
+    .lc-cat-card:hover { border-color: rgba(1,225,142,.25); }
+    .lc-cat-header {
+      display: flex; align-items: center; gap: .8rem;
+      padding: .9rem 1.1rem; cursor: pointer; user-select: none;
+      background: rgba(255,255,255,.03);
+    }
+    .lc-cat-header:hover { background: rgba(1,225,142,.06); }
+    .lc-cat-icon {
+      width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+      background: rgba(1,225,142,.12); display: flex; align-items: center; justify-content: center;
+      color: var(--brand-neon-green); font-size: .95rem;
+    }
+    .lc-cat-info { flex: 1; }
+    .lc-cat-name { font-size: .82rem; font-weight: 600; color: var(--text-primary); }
+    .lc-cat-desc { font-size: .68rem; color: var(--text-muted); margin-top: .1rem; }
+    .lc-cat-peso {
+      font-size: .65rem; font-weight: 700; color: var(--brand-neon-green);
+      background: rgba(1,225,142,.1); border: 1px solid rgba(1,225,142,.25);
+      border-radius: 6px; padding: .2rem .5rem; white-space: nowrap;
+    }
+    .lc-cat-contrib {
+      font-size: .75rem; font-weight: 600; color: var(--text-primary);
+      min-width: 3.5rem; text-align: right;
+    }
+    .lc-chevron {
+      width: 14px; height: 14px; color: var(--text-muted);
+      transition: transform .25s; flex-shrink: 0;
+    }
+    .lc-cat-card.open .lc-chevron { transform: rotate(180deg); }
+    .lc-cat-body {
+      display: none; padding: 1rem 1.1rem 1.2rem; border-top: 1px solid rgba(255,255,255,.07);
+    }
+    .lc-cat-card.open .lc-cat-body { display: block; }
+
+    .lc-table { width: 100%; border-collapse: collapse; font-size: .75rem; margin-bottom: 1rem; }
+    .lc-table th {
+      font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--text-muted); padding: .4rem .6rem; border-bottom: 1px solid rgba(255,255,255,.1);
+      text-align: left;
+    }
+    .lc-table td { padding: .35rem .6rem; border-bottom: 1px solid rgba(255,255,255,.05); vertical-align: middle; }
+    .lc-table tr:last-child td { border-bottom: none; }
+    .lc-table .lc-row-label { color: var(--text-muted); font-size: .72rem; font-weight: 500; white-space: nowrap; }
+    .lc-table .lc-bench { font-size: .62rem; color: var(--text-muted); margin-top: .1rem; }
+    .lc-inp {
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 6px; padding: .3rem .5rem; font-size: .75rem; font-family: inherit;
+      color: var(--text-primary); width: 100%; outline: none; transition: border-color .2s;
+    }
+    .lc-inp:focus { border-color: rgba(1,225,142,.5); }
+    .lc-inp::placeholder { color: rgba(255,255,255,.2); }
+    .lc-section-title {
+      font-size: .67rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
+      color: var(--text-muted); margin: 1rem 0 .5rem; display: flex; align-items: center; gap: .4rem;
+    }
+    .lc-section-title::after {
+      content:''; flex: 1; height: 1px; background: rgba(255,255,255,.08);
+    }
+    .lc-rating-wrap {
+      margin-top: .9rem; padding-top: .9rem; border-top: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+    }
+    .lc-rating-label { font-size: .69rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+    .lc-rating-opts { display: flex; gap: .4rem; flex-wrap: wrap; flex: 1; }
+    .lc-rating-opt {
+      display: none;
+    }
+    .lc-rating-opt + label {
+      display: flex; align-items: center; gap: .35rem; padding: .3rem .7rem; border-radius: 99px;
+      font-size: .69rem; font-weight: 600; cursor: pointer;
+      border: 1.5px solid rgba(255,255,255,.15); color: var(--text-muted);
+      transition: all .2s; user-select: none;
+    }
+    .lc-rating-opt + label:hover { border-color: rgba(255,255,255,.3); color: var(--text-primary); }
+    .lc-rating-opt[value="1.0"]:checked + label { color: #01e18e; border-color: rgba(1,225,142,.6); background: rgba(1,225,142,.12); }
+    .lc-rating-opt[value="0.75"]:checked + label { color: #38bdf8; border-color: rgba(56,189,248,.5); background: rgba(56,189,248,.1); }
+    .lc-rating-opt[value="0.5"]:checked + label  { color: #fbbf24; border-color: rgba(251,191,36,.5); background: rgba(251,191,36,.1); }
+    .lc-rating-opt[value="0.25"]:checked + label { color: #f87171; border-color: rgba(248,113,113,.5); background: rgba(248,113,113,.1); }
+    .lc-contrib-live { font-size: .78rem; font-weight: 700; color: var(--text-primary); margin-left: auto; white-space: nowrap; }
       </style>
 </head>
 <body>
@@ -2465,6 +2604,14 @@
                     <input id="a-valor-mensal" class="input has-prefix" type="text" placeholder="0,00" oninput="maskMoney(this); updateSummary()" required />
                   </div>
                 </div>
+                <div class="form-group">
+                  <label class="form-label" for="a-email">E-mail de Contato <span class="required">*</span></label>
+                  <input id="a-email" class="input" type="email" placeholder="contato@empresa.com.br" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="a-telefone">Telefone de Contato <span class="required">*</span></label>
+                  <input id="a-telefone" class="input" type="tel" placeholder="(00) 00000-0000" oninput="maskTelefone(this)" required />
+                </div>
                 <div class="form-group span-2">
                   <label class="form-label" for="a-descricao">Breve Descrição do Negócio <span class="required">*</span></label>
                   <textarea id="a-descricao" class="textarea" rows="3" placeholder="Descreva brevemente a operação, tipos de produto armazenado, capacidade…" required></textarea>
@@ -2472,6 +2619,502 @@
               </div>
             </div>
           </div>
+
+          <!-- ══ LICENCIAMENTO: AVALIAÇÃO DE CAPACIDADE ══════════ -->
+          <div class="step-panel" id="step-a-lc">
+            <div class="card animate-in">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">2. Avaliação de Capacidade — Licenciamento</div>
+                  <div class="card-sub">Preencha os dados operacionais e financeiros do parceiro armazém para composição do placar de avaliação</div>
+                </div>
+              </div>
+
+              <!-- Scorecard ─────────────────────────────────────── -->
+              <div class="lc-scorecard">
+                <div class="lc-score-title">Placar de Avaliação Vendemmia</div>
+                <div class="lc-score-main">
+                  <div class="lc-score-num" id="lc-total-num">0</div>
+                  <div class="lc-score-bar-wrap">
+                    <div class="lc-score-bar-bg">
+                      <div class="lc-score-bar-fill" id="lc-bar" style="width:0%"></div>
+                    </div>
+                    <div class="lc-score-label">de 100 pontos possíveis</div>
+                  </div>
+                  <span class="lc-score-badge pendente" id="lc-badge">Pendente</span>
+                </div>
+                <div class="lc-cats-row">
+                  <div class="lc-cat-pill" onclick="document.getElementById('lc-cat-1').classList.add('open');document.getElementById('lc-cat-1').scrollIntoView({behavior:'smooth',block:'start'})">
+                    <span class="lc-cat-pill-name">Fin.</span>
+                    <span class="lc-cat-pill-score" id="lc-pill-fin">—</span>
+                    <span class="lc-cat-pill-max">/ 20</span>
+                  </div>
+                  <div class="lc-cat-pill" onclick="document.getElementById('lc-cat-2').classList.add('open');document.getElementById('lc-cat-2').scrollIntoView({behavior:'smooth',block:'start'})">
+                    <span class="lc-cat-pill-name">Endiv.</span>
+                    <span class="lc-cat-pill-score" id="lc-pill-end">—</span>
+                    <span class="lc-cat-pill-max">/ 40</span>
+                  </div>
+                  <div class="lc-cat-pill" onclick="document.getElementById('lc-cat-3').classList.add('open');document.getElementById('lc-cat-3').scrollIntoView({behavior:'smooth',block:'start'})">
+                    <span class="lc-cat-pill-name">Alocação</span>
+                    <span class="lc-cat-pill-score" id="lc-pill-aloc">—</span>
+                    <span class="lc-cat-pill-max">/ 20</span>
+                  </div>
+                  <div class="lc-cat-pill" onclick="document.getElementById('lc-cat-4').classList.add('open');document.getElementById('lc-cat-4').scrollIntoView({behavior:'smooth',block:'start'})">
+                    <span class="lc-cat-pill-name">Ativos</span>
+                    <span class="lc-cat-pill-score" id="lc-pill-ati">—</span>
+                    <span class="lc-cat-pill-max">/ 10</span>
+                  </div>
+                  <div class="lc-cat-pill" onclick="document.getElementById('lc-cat-5').classList.add('open');document.getElementById('lc-cat-5').scrollIntoView({behavior:'smooth',block:'start'})">
+                    <span class="lc-cat-pill-name">Societária</span>
+                    <span class="lc-cat-pill-score" id="lc-pill-soc">—</span>
+                    <span class="lc-cat-pill-max">/ 10</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cat 1 — Análise Financeira ────────────────────── -->
+              <div class="lc-cat-card" id="lc-cat-1">
+                <div class="lc-cat-header" onclick="this.parentElement.classList.toggle('open')">
+                  <div class="lc-cat-icon">📊</div>
+                  <div class="lc-cat-info">
+                    <div class="lc-cat-name">Análise Financeira</div>
+                    <div class="lc-cat-desc">Desempenho econômico dos últimos 3 exercícios</div>
+                  </div>
+                  <span class="lc-cat-peso">Peso 20 pts</span>
+                  <span class="lc-contrib-live" id="lc-contrib-fin">— pts</span>
+                  <svg class="lc-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="lc-cat-body">
+                  <div class="lc-section-title">Demonstração de Resultados</div>
+                  <table class="lc-table">
+                    <thead><tr>
+                      <th style="width:34%">Métrica</th>
+                      <th>Ano N-2 (R$)</th>
+                      <th>Ano N-1 (R$)</th>
+                      <th>Ano N (R$)</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr>
+                        <td class="lc-row-label">Receita Operacional Bruta</td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-rob-n2" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-rob-n1" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-rob-n"  placeholder="0,00" oninput="maskMoney(this)"></td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Receita de Armazenagem</td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-ram-n2" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-ram-n1" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-ram-n"  placeholder="0,00" oninput="maskMoney(this)"></td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">EBITDA</td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-ebt-n2" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-ebt-n1" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-ebt-n"  placeholder="0,00" oninput="maskMoney(this)"></td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Lucro Operacional</td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-lop-n2" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-lop-n1" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-fin-lop-n"  placeholder="0,00" oninput="maskMoney(this)"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="lc-section-title">Indicadores de Endividamento</div>
+                  <table class="lc-table">
+                    <thead><tr>
+                      <th style="width:46%">Indicador</th>
+                      <th style="width:20%">Resultado</th>
+                      <th>Limite Aceitável</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr>
+                        <td class="lc-row-label">Índice de Alavancagem<div class="lc-bench">Passivo Total / PL</div></td>
+                        <td><input class="lc-inp" type="text" id="lc-ind-alav" placeholder="0,00x"></td>
+                        <td style="color:var(--text-muted);font-size:.69rem">≤ 1,5x</td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Endividamento Geral<div class="lc-bench">Passivo Total / Ativo Total</div></td>
+                        <td><input class="lc-inp" type="text" id="lc-ind-endg" placeholder="0%"></td>
+                        <td style="color:var(--text-muted);font-size:.69rem">≤ 60%</td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Endividamento CP<div class="lc-bench">Passivo Circulante / Passivo Total</div></td>
+                        <td><input class="lc-inp" type="text" id="lc-ind-endcp" placeholder="0%"></td>
+                        <td style="color:var(--text-muted);font-size:.69rem">≤ 50%</td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Cobertura de Juros<div class="lc-bench">EBIT / Despesas Financeiras</div></td>
+                        <td><input class="lc-inp" type="text" id="lc-ind-cobj" placeholder="0,00x"></td>
+                        <td style="color:var(--text-muted);font-size:.69rem">≥ 3,0x</td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Dívida Líquida / EBITDA<div class="lc-bench">Dívida Líquida / EBITDA</div></td>
+                        <td><input class="lc-inp" type="text" id="lc-ind-dlebt" placeholder="0,00x"></td>
+                        <td style="color:var(--text-muted);font-size:.69rem">≤ 2,5x</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="lc-rating-wrap">
+                    <span class="lc-rating-label">Classificação:</span>
+                    <div class="lc-rating-opts">
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-fin" id="lc-rat-fin-ex"  value="1.0"  onchange="updateLcScore()">
+                      <label for="lc-rat-fin-ex">✦ Excelente</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-fin" id="lc-rat-fin-bom" value="0.75" onchange="updateLcScore()">
+                      <label for="lc-rat-fin-bom">◉ Bom</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-fin" id="lc-rat-fin-ad"  value="0.5"  onchange="updateLcScore()">
+                      <label for="lc-rat-fin-ad">▲ Adequado</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-fin" id="lc-rat-fin-in"  value="0.25" onchange="updateLcScore()">
+                      <label for="lc-rat-fin-in">✕ Insuficiente</label>
+                    </div>
+                    <span class="lc-contrib-live" id="lc-contrib-fin2">— / 20 pts</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cat 2 — Endividamento ─────────────────────────── -->
+              <div class="lc-cat-card" id="lc-cat-2">
+                <div class="lc-cat-header" onclick="this.parentElement.classList.toggle('open')">
+                  <div class="lc-cat-icon">💳</div>
+                  <div class="lc-cat-info">
+                    <div class="lc-cat-name">Endividamento</div>
+                    <div class="lc-cat-desc">Composição e estrutura das dívidas atuais</div>
+                  </div>
+                  <span class="lc-cat-peso">Peso 40 pts</span>
+                  <span class="lc-contrib-live" id="lc-contrib-end">— pts</span>
+                  <svg class="lc-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="lc-cat-body">
+                  <div class="lc-section-title">Composição das Dívidas</div>
+                  <table class="lc-table">
+                    <thead><tr>
+                      <th style="width:28%">Tipo de Débito</th>
+                      <th>Credor</th>
+                      <th style="width:18%">Saldo (R$)</th>
+                      <th style="width:14%">Prazo (meses)</th>
+                      <th style="width:16%">Taxa / Condição</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr>
+                        <td class="lc-row-label">Empréstimo Bancário</td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-eb-cr" placeholder="Nome do banco"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-eb-sl" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="number" id="lc-deb-eb-pr" placeholder="—" min="0"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-eb-tx" placeholder="CDI+2%"></td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Financiamento</td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-fi-cr" placeholder="Credor"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-fi-sl" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="number" id="lc-deb-fi-pr" placeholder="—" min="0"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-fi-tx" placeholder="—"></td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Leasing / Arrendamento</td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-le-cr" placeholder="Arrendante"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-le-sl" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="number" id="lc-deb-le-pr" placeholder="—" min="0"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-le-tx" placeholder="—"></td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Fornecedores</td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-fo-cr" placeholder="—"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-fo-sl" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="number" id="lc-deb-fo-pr" placeholder="—" min="0"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-fo-tx" placeholder="—"></td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Impostos / Encargos</td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-im-cr" placeholder="Receita / FGTS…"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-im-sl" placeholder="0,00" oninput="maskMoney(this)"></td>
+                        <td><input class="lc-inp" type="number" id="lc-deb-im-pr" placeholder="—" min="0"></td>
+                        <td><input class="lc-inp" type="text" id="lc-deb-im-tx" placeholder="—"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div style="font-size:.71rem;color:var(--text-muted);margin-bottom:.5rem">Caso exista dívida não listada acima, descreva abaixo:</div>
+                  <textarea class="lc-inp" id="lc-deb-outros" rows="2" placeholder="Outras obrigações financeiras relevantes…" style="resize:vertical"></textarea>
+
+                  <div class="lc-rating-wrap">
+                    <span class="lc-rating-label">Classificação:</span>
+                    <div class="lc-rating-opts">
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-end" id="lc-rat-end-ex"  value="1.0"  onchange="updateLcScore()">
+                      <label for="lc-rat-end-ex">✦ Excelente</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-end" id="lc-rat-end-bom" value="0.75" onchange="updateLcScore()">
+                      <label for="lc-rat-end-bom">◉ Bom</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-end" id="lc-rat-end-ad"  value="0.5"  onchange="updateLcScore()">
+                      <label for="lc-rat-end-ad">▲ Adequado</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-end" id="lc-rat-end-in"  value="0.25" onchange="updateLcScore()">
+                      <label for="lc-rat-end-in">✕ Insuficiente</label>
+                    </div>
+                    <span class="lc-contrib-live" id="lc-contrib-end2">— / 40 pts</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cat 3 — Alocação Armazém ──────────────────────── -->
+              <div class="lc-cat-card" id="lc-cat-3">
+                <div class="lc-cat-header" onclick="this.parentElement.classList.toggle('open')">
+                  <div class="lc-cat-icon">🏭</div>
+                  <div class="lc-cat-info">
+                    <div class="lc-cat-name">Alocação Armazém</div>
+                    <div class="lc-cat-desc">Capacidade instalada e ocupação atual da estrutura</div>
+                  </div>
+                  <span class="lc-cat-peso">Peso 20 pts</span>
+                  <span class="lc-contrib-live" id="lc-contrib-aloc">— pts</span>
+                  <svg class="lc-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="lc-cat-body">
+                  <table class="lc-table">
+                    <thead><tr>
+                      <th style="width:30%">Métrica Operacional</th>
+                      <th>Capacidade Instalada</th>
+                      <th>Ocupação Atual</th>
+                      <th style="width:14%">% Ocup.</th>
+                      <th style="width:18%">Benchmark</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr>
+                        <td class="lc-row-label">Espaço Total</td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-esp-cap" placeholder="m²"></td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-esp-ocu" placeholder="m²"></td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-esp-pct" placeholder="%"></td>
+                        <td style="color:var(--text-muted);font-size:.68rem">≥ 70%</td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Linhas de Armazenagem</td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-lin-cap" placeholder="unid."></td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-lin-ocu" placeholder="unid."></td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-lin-pct" placeholder="%"></td>
+                        <td style="color:var(--text-muted);font-size:.68rem">≥ 70%</td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Docas de Movimentação</td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-doc-cap" placeholder="unid."></td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-doc-ocu" placeholder="unid."></td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-doc-pct" placeholder="%"></td>
+                        <td style="color:var(--text-muted);font-size:.68rem">≥ 60%</td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Throughput Mensal</td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-thr-cap" placeholder="toneladas"></td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-thr-ocu" placeholder="toneladas"></td>
+                        <td><input class="lc-inp" type="text" id="lc-aloc-thr-pct" placeholder="%"></td>
+                        <td style="color:var(--text-muted);font-size:.68rem">Crescente</td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Dias de Estoque Médio</td>
+                        <td colspan="2"><input class="lc-inp" type="text" id="lc-aloc-est-dias" placeholder="dias"></td>
+                        <td colspan="2" style="color:var(--text-muted);font-size:.68rem">Benchmark: ≤ 45 dias</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="lc-rating-wrap">
+                    <span class="lc-rating-label">Classificação:</span>
+                    <div class="lc-rating-opts">
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-aloc" id="lc-rat-aloc-ex"  value="1.0"  onchange="updateLcScore()">
+                      <label for="lc-rat-aloc-ex">✦ Excelente</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-aloc" id="lc-rat-aloc-bom" value="0.75" onchange="updateLcScore()">
+                      <label for="lc-rat-aloc-bom">◉ Bom</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-aloc" id="lc-rat-aloc-ad"  value="0.5"  onchange="updateLcScore()">
+                      <label for="lc-rat-aloc-ad">▲ Adequado</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-aloc" id="lc-rat-aloc-in"  value="0.25" onchange="updateLcScore()">
+                      <label for="lc-rat-aloc-in">✕ Insuficiente</label>
+                    </div>
+                    <span class="lc-contrib-live" id="lc-contrib-aloc2">— / 20 pts</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cat 4 — Avaliação de Ativos ───────────────────── -->
+              <div class="lc-cat-card" id="lc-cat-4">
+                <div class="lc-cat-header" onclick="this.parentElement.classList.toggle('open')">
+                  <div class="lc-cat-icon">⚙️</div>
+                  <div class="lc-cat-info">
+                    <div class="lc-cat-name">Avaliação de Ativos</div>
+                    <div class="lc-cat-desc">Equipamentos, sistemas e infraestrutura disponíveis</div>
+                  </div>
+                  <span class="lc-cat-peso">Peso 10 pts</span>
+                  <span class="lc-contrib-live" id="lc-contrib-ati">— pts</span>
+                  <svg class="lc-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="lc-cat-body">
+                  <table class="lc-table">
+                    <thead><tr>
+                      <th style="width:32%">Tipo de Ativo</th>
+                      <th style="width:14%">Qtd.</th>
+                      <th>Condição</th>
+                      <th style="width:16%">Idade Média</th>
+                      <th style="width:16%">Status</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr>
+                        <td class="lc-row-label">Empilhadeiras</td>
+                        <td><input class="lc-inp" type="number" id="lc-ati-emp-qt" placeholder="0" min="0"></td>
+                        <td>
+                          <select class="lc-inp" id="lc-ati-emp-cd" style="cursor:pointer">
+                            <option value="">Selecione</option>
+                            <option>Ótimo</option><option>Bom</option><option>Regular</option><option>Ruim</option>
+                          </select>
+                        </td>
+                        <td><input class="lc-inp" type="text" id="lc-ati-emp-id" placeholder="anos"></td>
+                        <td>
+                          <select class="lc-inp" id="lc-ati-emp-st" style="cursor:pointer">
+                            <option value="">—</option>
+                            <option>Próprio</option><option>Leasing</option><option>Alugado</option>
+                          </select>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Máquinas Movimentação</td>
+                        <td><input class="lc-inp" type="number" id="lc-ati-maq-qt" placeholder="0" min="0"></td>
+                        <td>
+                          <select class="lc-inp" id="lc-ati-maq-cd" style="cursor:pointer">
+                            <option value="">Selecione</option>
+                            <option>Ótimo</option><option>Bom</option><option>Regular</option><option>Ruim</option>
+                          </select>
+                        </td>
+                        <td><input class="lc-inp" type="text" id="lc-ati-maq-id" placeholder="anos"></td>
+                        <td>
+                          <select class="lc-inp" id="lc-ati-maq-st" style="cursor:pointer">
+                            <option value="">—</option>
+                            <option>Próprio</option><option>Leasing</option><option>Alugado</option>
+                          </select>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Sistema TMS / WMS</td>
+                        <td><input class="lc-inp" type="text" id="lc-ati-wms-qt" placeholder="Nome do sistema"></td>
+                        <td>
+                          <select class="lc-inp" id="lc-ati-wms-cd" style="cursor:pointer">
+                            <option value="">Selecione</option>
+                            <option>Ótimo</option><option>Bom</option><option>Regular</option><option>Ruim</option>
+                          </select>
+                        </td>
+                        <td><input class="lc-inp" type="text" id="lc-ati-wms-id" placeholder="anos"></td>
+                        <td>
+                          <select class="lc-inp" id="lc-ati-wms-st" style="cursor:pointer">
+                            <option value="">—</option>
+                            <option>Próprio</option><option>SaaS</option><option>Licença</option>
+                          </select>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="lc-row-label">Infraestrutura de TI</td>
+                        <td><input class="lc-inp" type="text" id="lc-ati-ti-qt" placeholder="descrição"></td>
+                        <td>
+                          <select class="lc-inp" id="lc-ati-ti-cd" style="cursor:pointer">
+                            <option value="">Selecione</option>
+                            <option>Ótimo</option><option>Bom</option><option>Regular</option><option>Ruim</option>
+                          </select>
+                        </td>
+                        <td colspan="2"><input class="lc-inp" type="text" id="lc-ati-ti-id" placeholder="obs."></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="lc-rating-wrap">
+                    <span class="lc-rating-label">Classificação:</span>
+                    <div class="lc-rating-opts">
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-ati" id="lc-rat-ati-ex"  value="1.0"  onchange="updateLcScore()">
+                      <label for="lc-rat-ati-ex">✦ Excelente</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-ati" id="lc-rat-ati-bom" value="0.75" onchange="updateLcScore()">
+                      <label for="lc-rat-ati-bom">◉ Bom</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-ati" id="lc-rat-ati-ad"  value="0.5"  onchange="updateLcScore()">
+                      <label for="lc-rat-ati-ad">▲ Adequado</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-ati" id="lc-rat-ati-in"  value="0.25" onchange="updateLcScore()">
+                      <label for="lc-rat-ati-in">✕ Insuficiente</label>
+                    </div>
+                    <span class="lc-contrib-live" id="lc-contrib-ati2">— / 10 pts</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cat 5 — Avaliação Societária ─────────────────── -->
+              <div class="lc-cat-card" id="lc-cat-5">
+                <div class="lc-cat-header" onclick="this.parentElement.classList.toggle('open')">
+                  <div class="lc-cat-icon">👤</div>
+                  <div class="lc-cat-info">
+                    <div class="lc-cat-name">Avaliação Societária</div>
+                    <div class="lc-cat-desc">Perfil dos sócios e histórico no setor logístico</div>
+                  </div>
+                  <span class="lc-cat-peso">Peso 10 pts</span>
+                  <span class="lc-contrib-live" id="lc-contrib-soc">— pts</span>
+                  <svg class="lc-chevron" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div class="lc-cat-body">
+                  <div class="lc-section-title">Quadro Societário</div>
+                  <table class="lc-table">
+                    <thead><tr>
+                      <th>Sócio / Acionista</th>
+                      <th style="width:16%">Participação (%)</th>
+                      <th style="width:22%">CPF / CNPJ</th>
+                      <th style="width:22%">Profissão / Ocupação</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr>
+                        <td><input class="lc-inp" type="text" id="lc-soc-1-nome" placeholder="Nome completo"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-1-part" placeholder="0%"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-1-doc" placeholder="000.000.000-00" oninput="maskCPFCNPJ(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-1-prof" placeholder="Empresário"></td>
+                      </tr>
+                      <tr>
+                        <td><input class="lc-inp" type="text" id="lc-soc-2-nome" placeholder="Nome completo"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-2-part" placeholder="0%"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-2-doc" placeholder="000.000.000-00" oninput="maskCPFCNPJ(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-2-prof" placeholder="Empresário"></td>
+                      </tr>
+                      <tr>
+                        <td><input class="lc-inp" type="text" id="lc-soc-3-nome" placeholder="Nome completo"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-3-part" placeholder="0%"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-3-doc" placeholder="000.000.000-00" oninput="maskCPFCNPJ(this)"></td>
+                        <td><input class="lc-inp" type="text" id="lc-soc-3-prof" placeholder="—"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="lc-section-title">Perfil do Sócio Principal</div>
+                  <div class="form-grid form-grid-2" style="gap:.7rem;margin-bottom:.8rem">
+                    <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label" style="font-size:.68rem">Formação Acadêmica</label>
+                      <input class="lc-inp" type="text" id="lc-soc-formacao" placeholder="Ex: Administração, Logística…">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                      <label class="form-label" style="font-size:.68rem">Anos de Experiência em Logística</label>
+                      <input class="lc-inp" type="number" id="lc-soc-exp-log" placeholder="0" min="0">
+                    </div>
+                    <div class="form-group span-2" style="margin-bottom:0">
+                      <label class="form-label" style="font-size:.68rem">Empresas Anteriores no Setor</label>
+                      <textarea class="lc-inp" id="lc-soc-emp-ant" rows="2" placeholder="Liste empresas e cargos anteriores no setor logístico…" style="resize:vertical"></textarea>
+                    </div>
+                    <div class="form-group span-2" style="margin-bottom:0">
+                      <label class="form-label" style="font-size:.68rem">Histórico de Inadimplência / Processos</label>
+                      <textarea class="lc-inp" id="lc-soc-hist-inad" rows="2" placeholder="Registros de processos, restrições ou histórico de crédito relevantes…" style="resize:vertical"></textarea>
+                    </div>
+                  </div>
+
+                  <div class="lc-rating-wrap">
+                    <span class="lc-rating-label">Classificação:</span>
+                    <div class="lc-rating-opts">
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-soc" id="lc-rat-soc-ex"  value="1.0"  onchange="updateLcScore()">
+                      <label for="lc-rat-soc-ex">✦ Excelente</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-soc" id="lc-rat-soc-bom" value="0.75" onchange="updateLcScore()">
+                      <label for="lc-rat-soc-bom">◉ Bom</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-soc" id="lc-rat-soc-ad"  value="0.5"  onchange="updateLcScore()">
+                      <label for="lc-rat-soc-ad">▲ Adequado</label>
+                      <input class="lc-rating-opt" type="radio" name="lc-rat-soc" id="lc-rat-soc-in"  value="0.25" onchange="updateLcScore()">
+                      <label for="lc-rat-soc-in">✕ Insuficiente</label>
+                    </div>
+                    <span class="lc-contrib-live" id="lc-contrib-soc2">— / 10 pts</span>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /card -->
+          </div><!-- /step-a-lc -->
 
           <!-- ══ ARMAZÉM STEP 2 ══════════════════════════════════ -->
           <div class="step-panel" id="step-a-2">
@@ -2647,7 +3290,7 @@
     'trade-simples':{ label:'Trade',                    cls:'trade',      steps:['Dados da Operação','Documentos'], panels:['step-1','step-5'] },
     transporte:     { label:'Transporte',               cls:'transporte', steps:['Dados da Operação','Comentário & Documentos'],                                                   prefix:'step-t-' },
     armazem:        { label:'Armazém VDM',              cls:'armazem',    steps:['Dados da Operação','Comentário & Documentos'],                                                   prefix:'step-a-' },
-    licenciamento:  { label:'Armazém · Licenciamento',  cls:'armazem',    steps:['Dados da Operação','Documentos'], panels:['step-a-1','step-5'] },
+    licenciamento:  { label:'Armazém · Licenciamento',  cls:'armazem',    steps:['Dados da Operação','Avaliação de Capacidade','Comentário & Documentos'], panels:['step-a-1','step-a-lc','step-5'] },
   };
 
   let tipoAnalise = null;
@@ -2696,8 +3339,8 @@
     // Ajusta títulos do step-5 conforme o tipo (Licenciamento usa numeração e label de Armazém)
     const s5comment = document.getElementById('step5-comment-title');
     const s5docs    = document.getElementById('step5-docs-title');
-    if (s5comment) s5comment.textContent = tipo === 'licenciamento' ? '2. Comentário do Comercial' : '4. Comentário do Trader / Operações';
-    if (s5docs)    s5docs.textContent    = tipo === 'licenciamento' ? '3. Documentos Obrigatórios'  : '5. Documentos Obrigatórios';
+    if (s5comment) s5comment.textContent = tipo === 'licenciamento' ? '3. Comentário do Comercial' : '4. Comentário do Trader / Operações';
+    if (s5docs)    s5docs.textContent    = tipo === 'licenciamento' ? '4. Documentos Obrigatórios'  : '5. Documentos Obrigatórios';
 
     // Armazém: ajusta label e visibilidade conforme subtipo
     const aqLabel = document.querySelector('label[for="a-qtd-posicoes"]');
@@ -4065,8 +4708,10 @@
       tipoAnalise: 'licenciamento', segmento: 'LICENCIAMENTO',
       dataSolicitacao: v('a-data-sol'), empresa: v('a-empresa'), cnpj: v('a-cnpj'),
       fundacao: v('a-fundacao'), ramo: v('a-ramo'), qtdPosicoes: v('a-qtd-posicoes'),
+      email: v('a-email'), telefone: v('a-telefone'),
       descricao: v('a-descricao'),
       comentario: v('comentario'), documentos: storedDocNames,
+      licChecklist: _collectLcChecklist(),
     };
 
     if (tipoAnalise === 'armazem') return {
@@ -4674,6 +5319,115 @@
     if (lblEl) lblEl.textContent = count > 0 ? '1 / 1 anexados' : '0 / 1 anexados';
   }
 
+  /* ── Licenciamento: Score ──────────────────────────────── */
+  const _LC_CATS = [
+    { name:'fin',  peso:20, pillId:'lc-pill-fin',  contribId:'lc-contrib-fin',  contrib2Id:'lc-contrib-fin2'  },
+    { name:'end',  peso:40, pillId:'lc-pill-end',  contribId:'lc-contrib-end',  contrib2Id:'lc-contrib-end2'  },
+    { name:'aloc', peso:20, pillId:'lc-pill-aloc', contribId:'lc-contrib-aloc', contrib2Id:'lc-contrib-aloc2' },
+    { name:'ati',  peso:10, pillId:'lc-pill-ati',  contribId:'lc-contrib-ati',  contrib2Id:'lc-contrib-ati2'  },
+    { name:'soc',  peso:10, pillId:'lc-pill-soc',  contribId:'lc-contrib-soc',  contrib2Id:'lc-contrib-soc2'  },
+  ];
+
+  function updateLcScore() {
+    let total = 0;
+    for (const cat of _LC_CATS) {
+      const sel = document.querySelector(`input[name="lc-rat-${cat.name}"]:checked`);
+      const rating = sel ? parseFloat(sel.value) : null;
+      const pts = rating !== null ? Math.round(cat.peso * rating * 10) / 10 : null;
+      const ptsStr = pts !== null ? pts.toFixed(1) : '—';
+      const el1 = document.getElementById(cat.pillId);
+      const el2 = document.getElementById(cat.contribId);
+      const el3 = document.getElementById(cat.contrib2Id);
+      if (el1) el1.textContent = ptsStr;
+      if (el2) el2.textContent = ptsStr + ' pts';
+      if (el3) el3.textContent = (pts !== null ? ptsStr : '—') + ' / ' + cat.peso + ' pts';
+      if (pts !== null) total += pts;
+    }
+    const rated = _LC_CATS.filter(c => document.querySelector(`input[name="lc-rat-${c.name}"]:checked`)).length;
+    const numEl  = document.getElementById('lc-total-num');
+    const barEl  = document.getElementById('lc-bar');
+    const badgeEl = document.getElementById('lc-badge');
+    if (numEl) numEl.textContent = rated > 0 ? total.toFixed(1) : '0';
+    if (barEl) barEl.style.width = rated > 0 ? Math.min(total, 100) + '%' : '0%';
+    if (badgeEl) {
+      if (rated === 0) { badgeEl.className = 'lc-score-badge pendente'; badgeEl.textContent = 'Pendente'; }
+      else if (total >= 80) { badgeEl.className = 'lc-score-badge excelente'; badgeEl.textContent = 'Excelente'; }
+      else if (total >= 65) { badgeEl.className = 'lc-score-badge bom';       badgeEl.textContent = 'Bom'; }
+      else if (total >= 45) { badgeEl.className = 'lc-score-badge adequado';  badgeEl.textContent = 'Adequado'; }
+      else                   { badgeEl.className = 'lc-score-badge insuficiente'; badgeEl.textContent = 'Insuficiente'; }
+    }
+  }
+
+  function _gv(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+  function _collectLcChecklist() {
+    const rat = (name) => { const s = document.querySelector(`input[name="lc-rat-${name}"]:checked`); return s ? parseFloat(s.value) : null; };
+    const score = (name, peso) => { const r = rat(name); return r !== null ? Math.round(peso * r * 10) / 10 : null; };
+    return {
+      pontuacaoTotal: (() => {
+        let t = 0; let rated = 0;
+        for (const c of _LC_CATS) { const s = score(c.name, c.peso); if (s !== null) { t += s; rated++; } }
+        return rated > 0 ? Math.round(t * 10) / 10 : null;
+      })(),
+      financeira: {
+        avaliacao: rat('fin'), nota: score('fin', 20),
+        receitas: {
+          robN2: _gv('lc-fin-rob-n2'), robN1: _gv('lc-fin-rob-n1'), robN: _gv('lc-fin-rob-n'),
+          ramN2: _gv('lc-fin-ram-n2'), ramN1: _gv('lc-fin-ram-n1'), ramN: _gv('lc-fin-ram-n'),
+          ebtN2: _gv('lc-fin-ebt-n2'), ebtN1: _gv('lc-fin-ebt-n1'), ebtN: _gv('lc-fin-ebt-n'),
+          lopN2: _gv('lc-fin-lop-n2'), lopN1: _gv('lc-fin-lop-n1'), lopN: _gv('lc-fin-lop-n'),
+        },
+        indicadores: {
+          alavancagem: _gv('lc-ind-alav'), endividamentoGeral: _gv('lc-ind-endg'),
+          endividamentoCP: _gv('lc-ind-endcp'), coberturaJuros: _gv('lc-ind-cobj'),
+          dividaLiquidaEbitda: _gv('lc-ind-dlebt'),
+        },
+      },
+      endividamento: {
+        avaliacao: rat('end'), nota: score('end', 40),
+        dividas: [
+          { tipo:'Empréstimo Bancário', credor:_gv('lc-deb-eb-cr'), saldo:_gv('lc-deb-eb-sl'), prazo:_gv('lc-deb-eb-pr'), taxa:_gv('lc-deb-eb-tx') },
+          { tipo:'Financiamento',       credor:_gv('lc-deb-fi-cr'), saldo:_gv('lc-deb-fi-sl'), prazo:_gv('lc-deb-fi-pr'), taxa:_gv('lc-deb-fi-tx') },
+          { tipo:'Leasing/Arrendamento',credor:_gv('lc-deb-le-cr'), saldo:_gv('lc-deb-le-sl'), prazo:_gv('lc-deb-le-pr'), taxa:_gv('lc-deb-le-tx') },
+          { tipo:'Fornecedores',         credor:_gv('lc-deb-fo-cr'), saldo:_gv('lc-deb-fo-sl'), prazo:_gv('lc-deb-fo-pr'), taxa:_gv('lc-deb-fo-tx') },
+          { tipo:'Impostos/Encargos',    credor:_gv('lc-deb-im-cr'), saldo:_gv('lc-deb-im-sl'), prazo:_gv('lc-deb-im-pr'), taxa:_gv('lc-deb-im-tx') },
+        ].filter(d => d.credor || d.saldo),
+        outros: _gv('lc-deb-outros'),
+      },
+      alocacaoArmazem: {
+        avaliacao: rat('aloc'), nota: score('aloc', 20),
+        metricas: {
+          espacoTotalCap: _gv('lc-aloc-esp-cap'), espacoTotalOcu: _gv('lc-aloc-esp-ocu'), espacoPct: _gv('lc-aloc-esp-pct'),
+          linhasCap: _gv('lc-aloc-lin-cap'), linhasOcu: _gv('lc-aloc-lin-ocu'), linhasPct: _gv('lc-aloc-lin-pct'),
+          docasCap: _gv('lc-aloc-doc-cap'), docasOcu: _gv('lc-aloc-doc-ocu'), docasPct: _gv('lc-aloc-doc-pct'),
+          throughputCap: _gv('lc-aloc-thr-cap'), throughputOcu: _gv('lc-aloc-thr-ocu'), throughputPct: _gv('lc-aloc-thr-pct'),
+          diasEstoque: _gv('lc-aloc-est-dias'),
+        },
+      },
+      avaliacaoAtivos: {
+        avaliacao: rat('ati'), nota: score('ati', 10),
+        ativos: {
+          empilhadeiras:  { qtd:_gv('lc-ati-emp-qt'), condicao:_gv('lc-ati-emp-cd'), idade:_gv('lc-ati-emp-id'), status:_gv('lc-ati-emp-st') },
+          maqMovimentacao:{ qtd:_gv('lc-ati-maq-qt'), condicao:_gv('lc-ati-maq-cd'), idade:_gv('lc-ati-maq-id'), status:_gv('lc-ati-maq-st') },
+          sistemaWMS:     { qtd:_gv('lc-ati-wms-qt'), condicao:_gv('lc-ati-wms-cd'), idade:_gv('lc-ati-wms-id'), status:_gv('lc-ati-wms-st') },
+          infraTI:        { qtd:_gv('lc-ati-ti-qt'),  condicao:_gv('lc-ati-ti-cd'),  obs:_gv('lc-ati-ti-id') },
+        },
+      },
+      avaliacaoSocietaria: {
+        avaliacao: rat('soc'), nota: score('soc', 10),
+        socios: [
+          { nome:_gv('lc-soc-1-nome'), participacao:_gv('lc-soc-1-part'), documento:_gv('lc-soc-1-doc'), profissao:_gv('lc-soc-1-prof') },
+          { nome:_gv('lc-soc-2-nome'), participacao:_gv('lc-soc-2-part'), documento:_gv('lc-soc-2-doc'), profissao:_gv('lc-soc-2-prof') },
+          { nome:_gv('lc-soc-3-nome'), participacao:_gv('lc-soc-3-part'), documento:_gv('lc-soc-3-doc'), profissao:_gv('lc-soc-3-prof') },
+        ].filter(s => s.nome),
+        perfilPrincipal: {
+          formacao: _gv('lc-soc-formacao'), anosExpLogistica: _gv('lc-soc-exp-log'),
+          empresasAnteriores: _gv('lc-soc-emp-ant'), historicoInadimplencia: _gv('lc-soc-hist-inad'),
+        },
+      },
+    };
+  }
+
   /* ── Máscaras ────────────────────────────────────────── */
   function maskCNPJ(el) {
     let v = el.value.replace(/\D/g,'').slice(0,14);
@@ -4688,6 +5442,27 @@
     let v = el.value.replace(/\D/g,'');
     if (!v) { el.value = ''; return; }
     v = (parseInt(v,10)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    el.value = v;
+  }
+
+  function maskTelefone(el) {
+    let v = el.value.replace(/\D/g,'').slice(0,11);
+    if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    else if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d*)/, '($1) $2-$3');
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d*)/, '($1) $2');
+    else if (v.length > 0) v = v.replace(/^(\d*)/, '($1');
+    el.value = v;
+  }
+
+  function maskCPFCNPJ(el) {
+    let v = el.value.replace(/\D/g,'');
+    if (v.length <= 11) {
+      v = v.slice(0,11);
+      v = v.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3}\.\d{3})(\d)/,'$1.$2').replace(/^(\d{3}\.\d{3}\.\d{3})(\d)/,'$1-$2');
+    } else {
+      v = v.slice(0,14);
+      v = v.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2}\.\d{3})(\d)/,'$1.$2').replace(/^(\d{2}\.\d{3}\.\d{3})(\d)/,'$1/$2').replace(/^(\d{2}\.\d{3}\.\d{3}\/\d{4})(\d)/,'$1-$2');
+    }
     el.value = v;
   }
 
