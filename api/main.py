@@ -4882,11 +4882,27 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
             "system": system_prompt,
             "messages": [{"role": "user", "content": content_blocks}],
         }
-        async with httpx.AsyncClient(timeout=420.0) as hc:
-            resp = await hc.post("https://api.anthropic.com/v1/messages", headers=hdrs, json=payload)
-        if resp.status_code != 200:
-            raise RuntimeError(f"Anthropic {resp.status_code}: {resp.text}")
-        parecer = resp.json()["content"][0]["text"]
+        parecer: str = ""
+        _anthropic_err: str = ""
+        try:
+            async with httpx.AsyncClient(timeout=420.0) as hc:
+                resp = await hc.post("https://api.anthropic.com/v1/messages", headers=hdrs, json=payload)
+            if resp.status_code != 200:
+                _anthropic_err = f"Anthropic {resp.status_code}: {resp.text}"
+                raise RuntimeError(_anthropic_err)
+            parecer = resp.json()["content"][0]["text"]
+        except Exception as _ant_exc:
+            # Fallback para Gemini se Anthropic falhar (créditos esgotados, modelo indisponível, etc.)
+            _gemini_key = _load_key()
+            if not _gemini_key:
+                raise RuntimeError(_anthropic_err or str(_ant_exc))
+            # Monta prompt único combinando sistema + conteúdo do usuário
+            _user_text = "\n\n".join(
+                b.get("text", "") for b in content_blocks if b.get("type") == "text"
+            )
+            _combined = f"{system_prompt}\n\n---\n\n{_user_text}"
+            parecer = await asyncio.to_thread(_gemini_generate, _gemini_key, _combined)
+            _model = _load_gemini_model()
 
         # 5. Extrai JSON estruturado
         analise_json = _extract_json(parecer)
