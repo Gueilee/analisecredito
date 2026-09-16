@@ -4817,17 +4817,21 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
 
             is_pdf = "pdf" in mime or nome.lower().endswith(".pdf")
             if is_pdf:
-                # PDFs entram nativamente como document blocks (Sonnet suporta sem beta header)
-                content_blocks.append({
-                    "type": "document",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "application/pdf",
-                        "data": row["content"],  # já em base64
-                    },
-                    "title": nome,
-                    "context": f"Este documento é o {label} do cliente.",
-                })
+                try:
+                    structured = _pdf_to_structured(raw_bytes, nome)
+                    lines: list[str] = []
+                    for sec in structured.get("secoes", []):
+                        if sec["tipo"] == "texto":
+                            lines.append(sec["conteudo"])
+                        elif sec["tipo"] == "tabela":
+                            for lr in sec.get("linhas", []):
+                                lines.append(" | ".join(str(c) for c in lr))
+                    texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
+                    if len(texto_doc) > 20000:
+                        texto_doc = texto_doc[:20000] + "\n[... truncado]"
+                    content_blocks.append({"type": "text", "text": texto_doc})
+                except Exception as exc:
+                    content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
             elif ext in (".xlsx", ".xls"):
                 try:
                     structured = _xlsx_to_structured(raw_bytes, nome)
@@ -4842,24 +4846,6 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
                     content_blocks.append({"type": "text", "text": texto_doc})
                 except Exception as exc:
                     content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
-            else:
-                # Fallback: extração de texto via pdfplumber
-                try:
-                    structured = _pdf_to_structured(raw_bytes, nome)
-                    lines = []
-                    for sec in structured.get("secoes", []):
-                        if sec["tipo"] == "texto":
-                            lines.append(sec["conteudo"])
-                        elif sec["tipo"] == "tabela":
-                            for lr in sec.get("linhas", []):
-                                lines.append(" | ".join(str(c) for c in lr))
-                    texto_doc = "\n".join(lines) if lines else "(sem texto extraído)"
-                    if len(texto_doc) > 15000:
-                        texto_doc = texto_doc[:15000] + "\n[... truncado]"
-                    content_blocks.append({"type": "text", "text": texto_doc})
-                except Exception as exc:
-                    content_blocks.append({"type": "text", "text": f"(erro ao extrair {nome}: {exc})"})
-
         if not doc_rows:
             content_blocks.append({"type": "text", "text": (
                 "\n\n=== ANÁLISE SEM DOCUMENTOS FINANCEIROS ===\n"
