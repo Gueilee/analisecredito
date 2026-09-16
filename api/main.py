@@ -4853,8 +4853,8 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
                 "nos dados da Receita Federal e IDwall fornecidos acima."
             )})
 
-        # 4. Substitui variáveis do template de metodologia e chama Claude Sonnet
-        _model = "claude-sonnet-4-6"
+        # 4. Substitui variáveis do template de metodologia e chama Claude
+        _model = "claude-haiku-4-5-20251001"
         system_prompt = _PEREIRA_METHODOLOGY
         _vars = {
             "{{MODALIDADE}}":        modalidade,
