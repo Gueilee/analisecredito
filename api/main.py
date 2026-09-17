@@ -5043,8 +5043,47 @@ async def pereira_analise_get(sol_id: str, current_user=Depends(_get_current_use
     if not analise:
         return {"ok": False, "status": "processing"}
     if analise.get("error") and not analise.get("parecer"):
-        return {"ok": False, "status": "error", "error": analise["error"]}
+        return {
+            "ok": False,
+            "status": "error",
+            "error": analise["error"],
+            "error_raw": analise.get("error_raw", ""),
+            "analisado_at": analise.get("analisado_at"),
+        }
     return {"ok": True, "status": "done", **analise}
+
+
+@app.get("/api/pereira/test-key")
+async def pereira_test_key():
+    """Testa a chave Anthropic com chamada mínima real — sem autenticação, apenas para debug."""
+    import httpx
+    key = _load_anthropic_key()
+    if not key:
+        return {"ok": False, "error": "ANTHROPIC_API_KEY não configurada", "key_length": 0}
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 10,
+                    "messages": [{"role": "user", "content": "Responda apenas: OK"}],
+                },
+            )
+        return {
+            "ok": resp.status_code == 200,
+            "status_code": resp.status_code,
+            "key_prefix": key[:8] + "…",
+            "key_length": len(key),
+            "response_raw": resp.text[:800],
+        }
+    except Exception as exc:
+        return {"ok": False, "error": str(exc), "key_prefix": key[:8] + "…", "key_length": len(key)}
 
 
 # Serve os arquivos HTML/JS/CSS estáticos na raiz
