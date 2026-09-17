@@ -1279,7 +1279,7 @@ def _load_key() -> str:
 def _load_gemini_model() -> str:
     """Retorna o nome do modelo Gemini — configurável via GEMINI_MODEL no .env."""
     load_dotenv(dotenv_path=_ENV_FILE, override=True)
-    return os.environ.get("GEMINI_MODEL", "gemini-1.5-flash").strip().strip('"').strip("'") or "gemini-1.5-flash"
+    return os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip().strip('"').strip("'") or "gemini-2.5-flash"
 
 
 def _load_anthropic_key() -> str:
@@ -1549,13 +1549,12 @@ Retorne APENAS o JSON válido, sem markdown, sem texto extra."""
 
 
 _GEMINI_FALLBACK_MODELS = [
-    # Tentados em ordem se o modelo configurado falhar por NOT_FOUND
-    "gemini-2.0-flash-exp",
-    "gemini-2.5-flash-preview-05-20",
-    "gemini-2.5-flash-lite-preview-06-17",
+    # Modelos estáveis — tentados em ordem se o modelo configurado falhar
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash-8b",
     "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-1.0-pro",
+    "gemini-1.5-flash-8b",
 ]
 
 
@@ -4442,11 +4441,21 @@ async def health():
     gemini_key = _load_key()
     gemini_ok  = bool(gemini_key) and gemini_key not in ("sua-chave-aqui", "")
     gemini_info: dict = {
-        "configured": gemini_ok,
-        "length":     len(gemini_key),
-        "prefix":     (gemini_key[:6] + "…") if len(gemini_key) >= 6 else "(vazio)",
+        "configured":  gemini_ok,
+        "length":      len(gemini_key),
+        "prefix":      (gemini_key[:6] + "…") if len(gemini_key) >= 6 else "(vazio)",
         "looks_valid": (gemini_key.startswith("AIzaSy") or gemini_key.startswith("AQ.")) if gemini_key else False,
         "model":       _load_gemini_model(),
+    }
+
+    # Diagnóstico da chave Anthropic
+    anthropic_key = _load_anthropic_key()
+    anthropic_info: dict = {
+        "configured":  bool(anthropic_key),
+        "length":      len(anthropic_key),
+        "prefix":      (anthropic_key[:8] + "…") if len(anthropic_key) >= 8 else "(vazio)",
+        "looks_valid": anthropic_key.startswith("sk-ant-") if anthropic_key else False,
+        "model":       "claude-haiku-4-5-20251001",
     }
 
     return {
@@ -4456,6 +4465,7 @@ async def health():
         "pg_db":        _PG_DB   or None,
         "pg_pass_set":  bool(_PG_PASS),
         "gemini":       gemini_info,
+        "anthropic":    anthropic_info,
         **pg_detail,
     }
 
@@ -4863,15 +4873,21 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
             parecer = resp.json()["content"][0]["text"]
         except Exception as _ant_exc:
             # Fallback para Gemini se Anthropic falhar (créditos esgotados, modelo indisponível, etc.)
+            _ant_msg = _anthropic_err or str(_ant_exc)
             _gemini_key = _load_key()
             if not _gemini_key:
-                raise RuntimeError(_anthropic_err or str(_ant_exc))
+                raise RuntimeError(f"Anthropic falhou ({_ant_msg}) e GEMINI_API_KEY não configurada.")
             # Monta prompt único combinando sistema + conteúdo do usuário
             _user_text = "\n\n".join(
                 b.get("text", "") for b in content_blocks if b.get("type") == "text"
             )
             _combined = f"{system_prompt}\n\n---\n\n{_user_text}"
-            parecer = await asyncio.to_thread(_gemini_generate, _gemini_key, _combined)
+            try:
+                parecer = await asyncio.to_thread(_gemini_generate, _gemini_key, _combined)
+            except Exception as _gem_exc:
+                raise RuntimeError(
+                    f"Anthropic: {_ant_msg} | Gemini: {_gem_exc}"
+                ) from _gem_exc
             _model = _load_gemini_model()
 
         # 5. Extrai JSON estruturado
