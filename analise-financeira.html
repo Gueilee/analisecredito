@@ -2318,7 +2318,7 @@
         ...statusUpdate,
         analise:          data,
         analise_at:       agora,
-        analise_modelo:   data.modelo_ia || 'claude-sonnet-4-6',
+        analise_modelo:   data.modelo_ia || 'claude-haiku-4-5-20251001',
         rf_consultada_at: agora,
       });
       sol = DB.solicitacoes.getById(sol.id);
@@ -2347,7 +2347,7 @@
           dados_solicitacao:     sol,
           receita_federal:       data.cnpj_data || {},
           analise_ia:            data.analysis || {},
-          modelo_ia:             data.modelo_ia || 'claude-sonnet-4-6',
+          modelo_ia:             data.modelo_ia || 'claude-haiku-4-5-20251001',
           solicitacao_criada_at: sol.createdAt || sol.dataSolicitacao || '',
           rf_consultada_at:      agora,
           analise_ia_at:         agora,

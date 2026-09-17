@@ -1634,7 +1634,7 @@ class HistoricoSaveRequest(BaseModel):
     dados_solicitacao: Optional[Dict[str, Any]] = None
     receita_federal: Optional[Dict[str, Any]] = None
     analise_ia: Optional[Dict[str, Any]] = None
-    modelo_ia: Optional[str] = "claude-sonnet-4-6"
+    modelo_ia: Optional[str] = "claude-haiku-4-5-20251001"
     # Timestamps das etapas do processo
     solicitacao_criada_at: Optional[str] = None
     rf_consultada_at: Optional[str] = None
@@ -1667,7 +1667,7 @@ async def salvar_historico(entry: HistoricoSaveRequest, current_user=Depends(_ge
         "dados_solicitacao": entry.dados_solicitacao or {},
         "receita_federal": entry.receita_federal or {},
         "analise_ia": entry.analise_ia or {},
-        "modelo_ia": entry.modelo_ia or "claude-sonnet-4-6",
+        "modelo_ia": entry.modelo_ia or "claude-haiku-4-5-20251001",
         "decisao_analista": None,
         "created_by": created_by,
         "timestamps": {
@@ -3029,42 +3029,26 @@ def _anthropic_scanner(
         text = _scanner_word_to_text(content)
         messages = [{"role": "user", "content": f"{text[:28000]}\n\n{_SCANNER_PROMPT}"}]
 
-    _MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
-    last_err: Exception = RuntimeError("Nenhum modelo disponível.")
-
-    for model in _MODELS:
-        try:
-            hdrs = {
-                "x-api-key": anthropic_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            }
-            resp = httpx.post(
-                "https://api.anthropic.com/v1/messages",
-                headers=hdrs,
-                json={"model": model, "max_tokens": 8192, "messages": messages},
-                timeout=180.0,
-            )
-            if resp.status_code == 200:
-                raw = resp.json()["content"][0]["text"]
-                parsed = _extract_json(raw)
-                if parsed and "mapeamento" in parsed:
-                    parsed["_model"] = model
-                    return parsed
-                last_err = RuntimeError(f"Resposta incompleta do modelo {model}")
-                continue
-            elif resp.status_code in (400, 404):
-                last_err = RuntimeError(f"Modelo {model} retornou {resp.status_code}: {resp.text[:200]}")
-                continue
-            else:
-                raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:300]}")
-        except RuntimeError:
-            raise
-        except Exception as exc:
-            last_err = exc
-            continue
-
-    raise last_err
+    _MODEL = "claude-haiku-4-5-20251001"
+    hdrs = {
+        "x-api-key": anthropic_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    resp = httpx.post(
+        "https://api.anthropic.com/v1/messages",
+        headers=hdrs,
+        json={"model": _MODEL, "max_tokens": 8192, "messages": messages},
+        timeout=180.0,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:300]}")
+    raw = resp.json()["content"][0]["text"]
+    parsed = _extract_json(raw)
+    if not parsed or "mapeamento" not in parsed:
+        raise RuntimeError("Scanner: resposta sem mapeamento válido")
+    parsed["_model"] = _MODEL
+    return parsed
 
 
 @app.post("/api/scanner/contabil")
@@ -3159,36 +3143,22 @@ def _anthropic_scanner_multi(file_list: list[tuple[bytes, str]], anthropic_key: 
     else:
         raise RuntimeError("Nenhum conteúdo extraído dos arquivos.")
 
-    _MODELS = ["claude-haiku-4-5-20251001", "claude-sonnet-4-6"]
-    last_err: Exception = RuntimeError("Nenhum modelo disponível.")
-    for model in _MODELS:
-        try:
-            hdrs = {"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
-            resp = httpx.post(
-                "https://api.anthropic.com/v1/messages",
-                headers=hdrs,
-                json={"model": model, "max_tokens": 8192, "messages": messages},
-                timeout=180.0,
-            )
-            if resp.status_code == 200:
-                raw = resp.json()["content"][0]["text"]
-                parsed = _extract_json(raw)
-                if parsed and "mapeamento" in parsed:
-                    parsed["_model"] = model
-                    return parsed
-                last_err = RuntimeError(f"Resposta incompleta do modelo {model}")
-                continue
-            elif resp.status_code in (400, 404):
-                last_err = RuntimeError(f"Modelo {model} retornou {resp.status_code}: {resp.text[:200]}")
-                continue
-            else:
-                raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:300]}")
-        except RuntimeError:
-            raise
-        except Exception as exc:
-            last_err = exc
-            continue
-    raise last_err
+    _MODEL = "claude-haiku-4-5-20251001"
+    hdrs = {"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+    resp = httpx.post(
+        "https://api.anthropic.com/v1/messages",
+        headers=hdrs,
+        json={"model": _MODEL, "max_tokens": 8192, "messages": messages},
+        timeout=180.0,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Anthropic HTTP {resp.status_code}: {resp.text[:300]}")
+    raw = resp.json()["content"][0]["text"]
+    parsed = _extract_json(raw)
+    if not parsed or "mapeamento" not in parsed:
+        raise RuntimeError("Scanner-multi: resposta sem mapeamento válido")
+    parsed["_model"] = _MODEL
+    return parsed
 
 
 @app.post("/api/scanner/contabil/{sol_id}")
