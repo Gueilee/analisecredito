@@ -5138,7 +5138,6 @@ async function runPereira() {
       hint.innerHTML = `<div style="color:var(--red);font-size:.78rem;padding:.6rem .8rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);line-height:1.6;white-space:pre-wrap;"><strong>Erro na análise:</strong>\n${_eMsg}</div>`;
     }
     _pereiraSetStatus('Erro na análise', 'rgba(239,68,68,.9)');
-    showToast('Erro PEREIRA: ' + _eMsg.slice(0, 120), 'error');
     throw e;
   } finally {
     if (btnRefresh) btnRefresh.disabled = false;
@@ -5206,8 +5205,32 @@ function _renderPereiraAnalise(data) {
   function _tryShow() {
     const fresh = DB.solicitacoes.getById(solId);
     if (fresh) sol = fresh;
-    if (!sol || !sol.pereira_analise || !sol.pereira_analise.parecer) return false;
+    if (!sol || !sol.pereira_analise) return false;
+
     const mainCard = document.getElementById('pereira-main-card');
+
+    // Caso de erro salvo: sem parecer mas com mensagem de erro
+    if (!sol.pereira_analise.parecer) {
+      const _savedErr = sol.pereira_analise.error;
+      if (!_savedErr) return false;
+      if (mainCard) mainCard.style.display = 'block';
+      const hint = document.getElementById('pereira-hint');
+      if (hint) {
+        hint.style.display = 'block';
+        hint.innerHTML = `<div style="color:var(--red);font-size:.78rem;padding:.6rem .8rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);line-height:1.6;white-space:pre-wrap;"><strong>Erro na análise:</strong>\n${_savedErr}</div>`;
+      }
+      _pereiraSetStatus('Erro na análise', 'rgba(239,68,68,.9)');
+      if (typeof _faSetStep === 'function') {
+        const _sl = _savedErr.includes('Acesso negado') ? 'Acesso negado — ver detalhes'
+                  : _savedErr.includes('saldo') || _savedErr.includes('crédito') ? 'Sem saldo na conta — ver detalhes'
+                  : _savedErr.includes('Gemini') || _savedErr.includes('indisponível') ? 'Serviço indisponível — ver detalhes'
+                  : _savedErr.includes('excedido') || _savedErr.includes('timeout') ? 'Tempo excedido — tente novamente'
+                  : 'Erro na análise — ver detalhes';
+        _faSetStep('pereira', 'error', _sl);
+      }
+      return false;
+    }
+
     if (mainCard) mainCard.style.display = 'block';
     const sideLink = document.getElementById('pereira-sidebar-link');
     if (sideLink) sideLink.style.display = '';
@@ -5288,7 +5311,7 @@ async function runPereiraCompleto() {
                        : _errMsg.includes('excedido') || _errMsg.includes('timeout') ? 'Tempo excedido — tente novamente'
                        : 'Erro na análise — ver detalhes';
       _faSetStep('pereira', 'error', _stepLabel);
-      if (typeof showToast === 'function') showToast('Erro PEREIRA: ' + _errMsg.split('\n')[0], 'error');
+      if (typeof showToast === 'function') showToast('Erro PEREIRA: ' + _stepLabel, 'error');
     }
 
     /* Mostra card de decisão agora que o PEREIRA terminou */
