@@ -1282,6 +1282,55 @@ def _load_gemini_model() -> str:
     return os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip().strip('"').strip("'") or "gemini-2.5-flash"
 
 
+def _friendly_error(raw: str) -> str:
+    """Converte erros técnicos de API em mensagens claras para o usuário final."""
+    s = raw.lower()
+
+    # ── Anthropic ──────────────────────────────────────────────────────────────
+    if "anthropic" in s or "sk-ant" in s:
+        if any(x in s for x in ("credit", "balance", "billing", "payment")):
+            return "Sem saldo na conta Anthropic. Acesse console.anthropic.com → Billing e adicione créditos."
+        if any(x in s for x in ("invalid x-api-key", "invalid api key", "authentication_error", "unauthorized")):
+            return "Chave Anthropic inválida ou expirada. Verifique a variável ANTHROPIC_API_KEY no servidor."
+        if any(x in s for x in ("rate_limit", "too many requests", "429")):
+            return "Limite de requisições da Anthropic atingido. Aguarde alguns minutos e tente novamente."
+        if "overloaded" in s:
+            return "Serviço Anthropic sobrecarregado no momento. Tente novamente em instantes."
+        if "invalid_request_error" in s:
+            if "this organization" in s:
+                return (
+                    "Acesso negado pela Anthropic. Possíveis causas: "
+                    "① chave API errada no servidor, "
+                    "② créditos adicionados em outra conta, "
+                    "③ modelo bloqueado para este plano. "
+                    "Verifique em console.anthropic.com."
+                )
+            if "model" in s:
+                return "Modelo de IA não disponível nesta conta Anthropic. Contate o suporte técnico."
+            return "Requisição inválida para a Anthropic. Verifique as configurações do servidor."
+
+    # ── Gemini ─────────────────────────────────────────────────────────────────
+    if any(x in s for x in ("gemini", "clienterror", "generativelanguage")):
+        if any(x in s for x in ("não encontrado", "not found", "não encontrad")):
+            return "Modelo Gemini indisponível no servidor. Atualize GEMINI_MODEL no arquivo .env."
+        if any(x in s for x in ("resource_exhausted", "quota", "cota")):
+            return "Cota do Gemini esgotada. Aguarde o reset diário ou verifique os limites da conta Google."
+        if any(x in s for x in ("permission_denied", "api key not valid", "api_key_invalid")):
+            return "Chave Gemini inválida. Verifique a variável GEMINI_API_KEY no servidor."
+        if any(x in s for x in ("rate", "429")):
+            return "Limite de requisições Gemini atingido. Aguarde alguns minutos."
+        return "Serviço Gemini indisponível. Tente novamente ou contate o suporte."
+
+    # ── Rede / timeout ─────────────────────────────────────────────────────────
+    if any(x in s for x in ("timeout", "timed out", "time out")):
+        return "Tempo de análise excedido. Reduza o número de documentos ou tente novamente."
+    if any(x in s for x in ("connection", "network", "connect")):
+        return "Falha de conexão com o serviço de IA. Verifique a conectividade do servidor."
+
+    # ── Genérico ───────────────────────────────────────────────────────────────
+    return "Erro na análise. Tente novamente. Se o problema persistir, contate o suporte técnico."
+
+
 def _load_anthropic_key() -> str:
     """Carrega e limpa a chave Anthropic do .env."""
     load_dotenv(dotenv_path=_ENV_FILE, override=True)
@@ -4920,9 +4969,11 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
 
     except Exception as exc:
         # Salva marcador de erro no banco para o frontend parar de fazer polling
+        _raw_err = str(exc)
         error_result = {
             "parecer": None,
-            "error": str(exc),
+            "error": _friendly_error(_raw_err),
+            "error_raw": _raw_err[:600],
             "analisado_at": datetime.utcnow().isoformat(),
             "modelo": "claude-haiku-4-5-20251001",
             "documentos_analisados": [],
