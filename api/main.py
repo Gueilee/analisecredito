@@ -1299,11 +1299,10 @@ def _friendly_error(raw: str) -> str:
         if "invalid_request_error" in s:
             if "this organization" in s:
                 return (
-                    "Acesso negado pela Anthropic. Possíveis causas: "
-                    "① chave API errada no servidor, "
-                    "② créditos adicionados em outra conta, "
-                    "③ modelo bloqueado para este plano. "
-                    "Verifique em console.anthropic.com."
+                    "Acesso negado para Consulta, possíveis causas:\n"
+                    "① chave API errada no servidor;\n"
+                    "② créditos adicionados em outra conta;\n"
+                    "③ modelo bloqueado para este plano."
                 )
             if "model" in s:
                 return "Modelo de IA não disponível nesta conta Anthropic. Contate o suporte técnico."
