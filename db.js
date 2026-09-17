@@ -32,7 +32,22 @@ const DB = (() => {
   };
 
   const _apiBase = () => window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
-  const _fetch   = (path, opts = {}) => fetch(_apiBase() + path, { credentials: 'include', ...opts });
+
+  const _SESSION_MAX_MS = 8 * 60 * 60 * 1000; // 8 horas — igual ao SESSION_HOURS do backend
+
+  function _handleUnauth() {
+    if (window.location.pathname.includes('login')) return;
+    localStorage.removeItem(KEYS.SESSION);
+    window.location.href = 'login.html';
+  }
+
+  const _fetch = async (path, opts = {}) => {
+    const resp = await fetch(_apiBase() + path, { credentials: 'include', ...opts });
+    if (resp.status === 401 && !path.includes('/auth/login') && !path.includes('/auth/logout')) {
+      _handleUnauth();
+    }
+    return resp;
+  };
 
   const _trackDeleted = (id) => {
     const arr = read(KEYS.DELETED_IDS) || [];
@@ -70,8 +85,13 @@ const DB = (() => {
     },
     getSession()  { return read(KEYS.SESSION); },
     requireAuth() {
-      if (!read(KEYS.SESSION)) { window.location.href = 'login.html'; return null; }
-      return read(KEYS.SESSION);
+      const session = read(KEYS.SESSION);
+      if (!session) { _handleUnauth(); return null; }
+      // Invalida localmente se a sessão passou do limite de 8h (cookie já expirou no servidor)
+      if (session.loginAt && (Date.now() - new Date(session.loginAt).getTime()) > _SESSION_MAX_MS) {
+        _handleUnauth(); return null;
+      }
+      return session;
     },
   };
 
@@ -117,6 +137,7 @@ const DB = (() => {
           if (typeof App !== 'undefined' && App.refreshNav) App.refreshNav();
         } else if (r.status === 401) {
           this._cache = [];
+          _handleUnauth();
         }
       } catch {
         if (!this._cache) {
