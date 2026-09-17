@@ -4906,7 +4906,7 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
         }
         payload: dict = {
             "model": _model,
-            "max_tokens": 8000,
+            "max_tokens": 8192,
             "system": system_prompt,
             "messages": [{"role": "user", "content": content_blocks}],
         }
