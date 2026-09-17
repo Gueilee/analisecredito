@@ -5135,7 +5135,7 @@ async function runPereira() {
     if (loading) loading.style.display = 'none';
     if (hint) {
       hint.style.display = 'block';
-      hint.innerHTML = `<div style="color:var(--red);font-size:.78rem;padding:.6rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);"><strong>Erro na análise:</strong> ${_eMsg}</div>`;
+      hint.innerHTML = `<div style="color:var(--red);font-size:.78rem;padding:.6rem .8rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);line-height:1.6;white-space:pre-wrap;"><strong>Erro na análise:</strong>\n${_eMsg}</div>`;
     }
     _pereiraSetStatus('Erro na análise', 'rgba(239,68,68,.9)');
     showToast('Erro PEREIRA: ' + _eMsg.slice(0, 120), 'error');
@@ -5282,8 +5282,13 @@ async function runPereiraCompleto() {
       if (_pCard) _pCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (pereiraErr) {
       const _errMsg = pereiraErr?.message || 'Erro desconhecido';
-      _faSetStep('pereira', 'error', 'Erro: ' + _errMsg.slice(0, 80));
-      if (typeof showToast === 'function') showToast('Erro PEREIRA: ' + _errMsg.slice(0, 100), 'error');
+      const _stepLabel = _errMsg.includes('Acesso negado') ? 'Acesso negado — ver detalhes'
+                       : _errMsg.includes('saldo') || _errMsg.includes('crédito') ? 'Sem saldo na conta — ver detalhes'
+                       : _errMsg.includes('Gemini') || _errMsg.includes('indisponível') ? 'Serviço indisponível — ver detalhes'
+                       : _errMsg.includes('excedido') || _errMsg.includes('timeout') ? 'Tempo excedido — tente novamente'
+                       : 'Erro na análise — ver detalhes';
+      _faSetStep('pereira', 'error', _stepLabel);
+      if (typeof showToast === 'function') showToast('Erro PEREIRA: ' + _errMsg.split('\n')[0], 'error');
     }
 
     /* Mostra card de decisão agora que o PEREIRA terminou */
