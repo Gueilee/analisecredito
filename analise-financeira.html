@@ -4347,43 +4347,61 @@ function _pereiraRenderIndicadores(empresas) {
   if (!empresas || !empresas.length) { wrap.style.display = 'none'; return; }
 
   const SPECS = [
-    { key: 'mb',       lbl: 'Margem Bruta',  map: i => i.margem_bruta,       fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
-    { key: 'ml',       lbl: 'Margem Líq.',   map: i => i.margem_liquida,     fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
-    { key: 'liq_seca', lbl: 'Liq. Seca',     map: i => i.liquidez_seca,      fmt: v => v.toFixed(2).replace('.',',')+'×' },
-    { key: 'liq_geral',lbl: 'Liq. Geral',    map: i => i.liquidez_geral,     fmt: v => v.toFixed(2).replace('.',',')+'×' },
-    { key: 'roe',      lbl: 'ROE',           map: i => i.roe,                fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
-    { key: 'roa',      lbl: 'ROA',           map: i => i.roa,                fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
-    { key: 'eg',       lbl: 'Endividamento', map: i => i.endividamento_total,fmt: v => (v*100).toFixed(1).replace('.',',')+'%' },
-    { key: 'ncg',      lbl: 'NCG',           map: i => i.ncg,                fmt: v => 'R$ '+Math.round(v).toLocaleString('pt-BR') },
-    { key: 'pmr',      lbl: 'PMR (dias)',    map: i => i.pmr_dias,           fmt: v => Math.round(v)+' d' },
-    { key: 'pme',      lbl: 'PME (dias)',    map: i => i.pme_dias,           fmt: v => Math.round(v)+' d' },
+    { key: 'mb',       lbl: 'Margem Bruta',  map: i => i.margem_bruta,        fmt: v => (v*100).toFixed(1)+'%' },
+    { key: 'ml',       lbl: 'Margem Líquida',map: i => i.margem_liquida,      fmt: v => (v*100).toFixed(1)+'%' },
+    { key: 'liq_seca', lbl: 'Liquidez Seca', map: i => i.liquidez_seca,       fmt: v => v.toFixed(2)+'×' },
+    { key: 'liq_geral',lbl: 'Liquidez Geral',map: i => i.liquidez_geral,      fmt: v => v.toFixed(2)+'×' },
+    { key: 'roe',      lbl: 'ROE',           map: i => i.roe,                 fmt: v => (v*100).toFixed(1)+'%' },
+    { key: 'roa',      lbl: 'ROA',           map: i => i.roa,                 fmt: v => (v*100).toFixed(1)+'%' },
+    { key: 'eg',       lbl: 'Endividamento', map: i => i.endividamento_total, fmt: v => (v*100).toFixed(1)+'%' },
+    { key: 'ncg',      lbl: 'NCG',           map: i => i.ncg,                 fmt: v => 'R$ '+Math.round(v).toLocaleString('pt-BR') },
+    { key: 'pmr',      lbl: 'PMR (dias)',    map: i => i.pmr_dias,            fmt: v => Math.round(v)+' d' },
+    { key: 'pme',      lbl: 'PME (dias)',    map: i => i.pme_dias,            fmt: v => Math.round(v)+' d' },
   ];
 
-  const blocks = empresas.map((emp, idx) => {
-    const indics = emp.indicadores || {};
-    const hasData = SPECS.some(s => { const v = s.map(indics); return v !== null && v !== undefined; });
-    if (!hasData) return '';
-    const cells = SPECS.map(s => {
-      const v   = s.map(indics);
-      const sem = _ctblSemaforo(s.key, v);
-      const fmtd = (v !== null && v !== undefined) ? s.fmt(v) : '—';
-      return `<div class="ctbl-indic-cell">
-        <div class="ctbl-indic-lbl">${s.lbl}</div>
-        <div class="ctbl-indic-vals"><span class="ctbl-indic-cur">${fmtd}</span></div>
-        <span class="ctbl-sem ${sem}">${_SEM_LABEL[sem]||'—'}</span>
-      </div>`;
-    }).join('');
-    const nome = emp.razao_social || `Empresa ${idx + 1}`;
-    return `<div style="margin-bottom:1.1rem;">
-      <div style="font-size:.77rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.55rem;">${nome}</div>
-      <div class="ctbl-indic-grid">${cells}</div>
+  // Ordena por exercicio_base/periodo/ano (mais antigo primeiro) para que [-1]=atual, [-2]=anterior
+  const sorted = [...empresas].sort((a, b) => {
+    const ya = parseInt(a.exercicio_base || a.periodo || a.ano || '0', 10);
+    const yb = parseInt(b.exercicio_base || b.periodo || b.ano || '0', 10);
+    return ya - yb;
+  });
+
+  const empAtual = sorted[sorted.length - 1] || {};
+  const empAnt   = sorted.length >= 2 ? sorted[sorted.length - 2] : null;
+  const iA  = empAtual.indicadores || {};
+  const iP  = empAnt ? (empAnt.indicadores || {}) : null;
+
+  const hasAny = SPECS.some(s => { const v = s.map(iA); return v !== null && v !== undefined; });
+  if (!hasAny) { wrap.style.display = 'none'; return; }
+
+  const cells = SPECS.map(s => {
+    const vA   = s.map(iA);
+    const vP   = iP ? s.map(iP) : null;
+    const sem  = _ctblSemaforo(s.key, vA);
+    const fmtA = (vA !== null && vA !== undefined) ? s.fmt(vA) : '—';
+    const prev = (vP !== null && vP !== undefined)
+      ? `<span class="ctbl-indic-prev">← ${s.fmt(vP)}</span>` : '';
+    return `<div class="ctbl-indic-cell">
+      <div class="ctbl-indic-lbl">${s.lbl}</div>
+      <div class="ctbl-indic-vals"><span class="ctbl-indic-cur">${fmtA}</span>${prev}</div>
+      <span class="ctbl-sem ${sem}">${_SEM_LABEL[sem] || '—'}</span>
     </div>`;
   }).join('');
 
-  if (!blocks.trim()) { wrap.style.display = 'none'; return; }
+  // Legenda de período
+  const periodoAtual = empAtual.exercicio_base || empAtual.periodo || empAtual.ano || '';
+  const periodoAnt   = empAnt ? (empAnt.exercicio_base || empAnt.periodo || empAnt.ano || '') : '';
+  const legendaHtml  = (periodoAtual || periodoAnt)
+    ? `<div style="font-size:.68rem;color:var(--text-faint);margin-bottom:.65rem;">
+        <span style="font-weight:700;color:var(--text-secondary);">${periodoAtual || 'Atual'}</span>
+        ${periodoAnt ? `<span style="margin:0 .3rem;opacity:.5;">←</span><span>${periodoAnt}</span>` : ''}
+       </div>`
+    : '';
+
   wrap.innerHTML = `<div style="margin:.9rem 0;padding:.85rem 1rem 1rem;border:1px solid var(--border);border-radius:8px;background:var(--surface-alt);">
-    <div style="font-size:.72rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.09em;margin-bottom:.85rem;">Indicadores Financeiros</div>
-    ${blocks}
+    <div style="font-size:.72rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.09em;margin-bottom:.3rem;">Indicadores</div>
+    ${legendaHtml}
+    <div class="ctbl-indic-grid">${cells}</div>
   </div>`;
   wrap.style.display = 'block';
 }

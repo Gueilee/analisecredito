@@ -349,9 +349,18 @@ Se a aplicação precisar consumir o resultado programaticamente, acrescente est
 
 Após o parecer em prosa, emita um bloco JSON delimitado por ```json contendo exatamente este schema. Use null para dado não disponível — nunca estime dentro do JSON.
 
-Para modalidades Encomenda e Licenciamento, todos os campos de `indicadores` devem ser preenchidos quando houver demonstrações financeiras disponíveis; não deixe zeros genéricos — calcule os valores reais a partir dos documentos.
+**Regra universal para `indicadores`:** sempre que houver demonstrações financeiras disponíveis (BP, DRE, balanço), preencha todos os campos numéricos de `indicadores` com os valores reais calculados a partir dos documentos. Não deixe zeros genéricos nem null quando o dado pode ser calculado. Inclua uma entrada em `empresas` por exercício disponível (ex.: 2024 e 2025 como entradas separadas) para permitir comparação de períodos.
+
+**Campos obrigatórios no topo do JSON:** inclua sempre `score` (inteiro 0–100), `classificacao` (string: "AAA", "AA", "A", "BB", "B", "CC", "C" ou "D"), `recomendacao` (string: "aprovar", "negar" ou "revisar"), `resumo_executivo` (string de 2–4 frases), `pontos_positivos` (array de strings), `pontos_atencao` (array de strings) e `alertas_criticos` (array de strings, vazio se não houver).
 
 {
+  "score": 0,
+  "classificacao": "AA",
+  "recomendacao": "aprovar | negar | revisar",
+  "resumo_executivo": "",
+  "pontos_positivos": [],
+  "pontos_atencao": [],
+  "alertas_criticos": [],
   "data_analise": "AAAA-MM-DD",
   "base_documental": {
     "completude": "alta | media | baixa",
