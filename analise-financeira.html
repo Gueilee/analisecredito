@@ -1099,7 +1099,7 @@
               </div>
               <div class="fa-step" id="fa-step-pereira">
                 <span class="fa-step-dot"></span>
-                <span class="fa-step-label">Parecer PEREIRA</span>
+                <span class="fa-step-label">Parecer NEMO</span>
                 <span class="fa-step-status" id="fa-status-pereira">Aguardando</span>
               </div>
             </div>
@@ -1565,11 +1565,11 @@
           <div class="card animate-in" id="pereira-main-card" style="display:none;">
             <div class="pereira-main-header">
               <div class="pereira-main-header-left">
-                <img src="PEREIRA3.png" alt="PEREIRA" class="pereira-main-avatar-sm"
-                     onerror="this.style.display='none'">
+                <img src="nemo.png" alt="NEMO" class="pereira-main-avatar-sm"
+                     
                 <div>
-                  <div class="pereira-main-title">Parecer Documental de Crédito</div>
-                  <div class="pereira-main-subtitle">Análise realizada por PEREIRA — IA de Crédito Vendemmia</div>
+                  <div class="pereira-main-title">Parecer NEMO — Análise de Crédito</div>
+                  <div class="pereira-main-subtitle">Análise realizada por NEMO — IA de Crédito Vendemmia</div>
                 </div>
               </div>
               <button class="btn-pereira-refresh" id="btn-pereira-refresh" onclick="runPereiraCompleto()" style="display:none;" disabled>
@@ -1584,7 +1584,7 @@
             <!-- Loading -->
             <div id="pereira-loading" class="pereira-loading" style="display:none;">
               <div class="pereira-spinner"></div>
-              <div style="font-size:.85rem;color:var(--text-secondary);font-weight:600;">PEREIRA analisando documentos…</div>
+              <div style="font-size:.85rem;color:var(--text-secondary);font-weight:600;">NEMO analisando documentos…</div>
               <div style="font-size:.78rem;color:var(--text-faint);margin-top:.2rem;">Isso pode levar até 90 segundos dependendo do volume de documentos.</div>
             </div>
 
@@ -1619,12 +1619,12 @@
             <div class="pereira-hero-section" style="padding:.5rem 0 1rem;">
               <div class="pereira-avatar-wrap">
                 <div class="pereira-glow-orb"></div>
-                <img src="PEREIRA3.png" alt="PEREIRA" class="pereira-avatar-img"
+                <img src="nemo.png" alt="NEMO" class="pereira-avatar-img"
                      onerror="this.style.display='none';this.nextSibling.style.display='flex'">
-                <div style="display:none;width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#4c1d95,#7c3aed);align-items:center;justify-content:center;font-size:3rem;position:relative;z-index:1;">🤖</div>
+                <div style="display:none;width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#4c1d95,#7c3aed);align-items:center;justify-content:center;font-size:3rem;position:relative;z-index:1;">🐠</div>
               </div>
               <div>
-                <div class="pereira-hero-name">PEREIRA</div>
+                <div class="pereira-hero-name">NEMO</div>
                 <div class="pereira-hero-status" id="pereira-status-badge">
                   <svg viewBox="0 0 10 10" width="8" height="8" fill="rgba(139,92,246,.7)"><circle cx="5" cy="5" r="5"/></svg>
                   Aguardando análise
@@ -1633,7 +1633,7 @@
             </div>
             <div style="text-align:center;padding-top:.3rem;border-top:1px solid rgba(124,58,237,.12);">
               <p style="font-size:.72rem;color:var(--text-faint);margin:.65rem 0 .75rem;line-height:1.5;">
-                IA analisa documentos, dados da RF e IDwall para gerar um parecer documental de crédito.
+                NEMO analisa documentos, dados da RF e IDwall para gerar um parecer documental de crédito.
               </p>
               <a id="pereira-sidebar-link" href="#pereira-main-card" style="display:none;font-size:.73rem;color:rgba(167,139,250,.8);text-decoration:none;align-items:center;gap:.3rem;" onclick="const c=document.getElementById('pereira-main-card');if(c){c.style.display='block';setTimeout(()=>c.scrollIntoView({behavior:'smooth',block:'start'}),50);}return false;">
                 <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1852,7 +1852,7 @@
           <div class="fa-steps" id="full-analysis-steps" style="display:none;">
             <div class="fa-step" id="fa-step-idwall"><span class="fa-step-dot"></span><span class="fa-step-label">IDwall BGC</span><span class="fa-step-status" id="fa-status-idwall">Aguardando</span></div>
             <div class="fa-step" id="fa-step-rf"><span class="fa-step-dot"></span><span class="fa-step-label">Receita Federal</span><span class="fa-step-status" id="fa-status-rf">Aguardando</span></div>
-            <div class="fa-step" id="fa-step-pereira"><span class="fa-step-dot"></span><span class="fa-step-label">Parecer PEREIRA</span><span class="fa-step-status" id="fa-status-pereira">Aguardando</span></div>
+            <div class="fa-step" id="fa-step-pereira"><span class="fa-step-dot"></span><span class="fa-step-label">Parecer NEMO</span><span class="fa-step-status" id="fa-status-pereira">Aguardando</span></div>
           </div>
           <div style="display:none;">
             <div class="bureau-icon wait" id="idwall-icon"></div>
@@ -4134,7 +4134,7 @@ let _runningFromPereiraAt = null;
             if (_hasPereira) {
               btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Atualizar Parecer';
             } else {
-              btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Gerar Parecer PEREIRA';
+              btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Gerar Parecer NEMO';
             }
           }
           // Se apenas idwall_pending: mantém estilo PEREIRA original, só habilita
@@ -5129,7 +5129,7 @@ async function runPereira() {
     if (fired.ok && fired.parecer) {
       _renderPereiraAnalise(fired);
       _pereiraSetStatus('Parecer concluído', 'rgba(1,225,142,.9)');
-      showToast('Parecer PEREIRA gerado com sucesso.', 'success');
+      showToast('Parecer NEMO gerado com sucesso.', 'success');
       return;
     }
 
@@ -5140,11 +5140,11 @@ async function runPereira() {
       const pr = await fetch(`${API_URL}/api/pereira/analise/${sol.id}`, { credentials: 'include' });
       if (!pr.ok) continue;
       const pd = await pr.json();
-      if (pd.status === 'error') throw new Error(pd.error || 'Erro na análise PEREIRA');
+      if (pd.status === 'error') throw new Error(pd.error || 'Erro na análise NEMO');
       if (pd.ok && pd.parecer) {
         _renderPereiraAnalise(pd);
         _pereiraSetStatus('Parecer concluído', 'rgba(1,225,142,.9)');
-        showToast('Parecer PEREIRA gerado com sucesso.', 'success');
+        showToast('Parecer NEMO gerado com sucesso.', 'success');
         return;
       }
       // ainda "processing" — continua polling
@@ -5357,14 +5357,14 @@ async function runPereiraCompleto() {
   }
 
   if (_runningFromPereira) {
-    if (typeof showToast === 'function') showToast('Análise em andamento — aguarde o PEREIRA concluir…', 'warning');
+    if (typeof showToast === 'function') showToast('Análise em andamento — aguarde o NEMO concluir…', 'warning');
     return;
   }
 
   const btn = document.getElementById('btn-run');
   _runningFromPereira = true;
   _runningFromPereiraAt = Date.now();
-  if (typeof showToast === 'function') showToast('PEREIRA iniciando análise…', 'info');
+  if (typeof showToast === 'function') showToast('NEMO iniciando análise…', 'info');
 
   try {
     if (btn) {
@@ -5391,7 +5391,7 @@ async function runPereiraCompleto() {
     _pereiraSetStatus('Analisando documentos…', 'rgba(245,158,11,.9)');
 
     if (btn) {
-      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> PEREIRA analisando…`;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" class="spin" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> NEMO analisando…`;
     }
 
     try {
@@ -5407,7 +5407,7 @@ async function runPereiraCompleto() {
                        : _errMsg.includes('excedido') || _errMsg.includes('timeout') ? 'Tempo excedido — tente novamente'
                        : 'Erro na análise — ver detalhes';
       _faSetStep('pereira', 'error', _stepLabel);
-      if (typeof showToast === 'function') showToast('Erro PEREIRA: ' + _stepLabel, 'error');
+      if (typeof showToast === 'function') showToast('Erro NEMO: ' + _stepLabel, 'error');
     }
 
     /* Mostra card de decisão agora que o PEREIRA terminou */

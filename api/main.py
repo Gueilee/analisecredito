@@ -5013,7 +5013,7 @@ async def pereira_analisar(
     if not anthropic_key:
         raise HTTPException(503, "ANTHROPIC_API_KEY não configurada no servidor.")
     background_tasks.add_task(_pereira_bg_task, sol_id, anthropic_key)
-    return {"status": "processing", "message": "Análise PEREIRA iniciada — verifique o resultado em instantes."}
+    return {"status": "processing", "message": "Análise NEMO iniciada — verifique o resultado em instantes."}
 
 
 @app.get("/api/pereira/analise/{sol_id}")
