@@ -1065,13 +1065,16 @@
 
             <!-- Cabeçalho + botão principal -->
             <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.9rem;">
-              <div>
-                <div class="card-title" style="margin-bottom:.25rem;">Análise de Crédito</div>
-                <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall · Documentos · Contábil · IA &mdash; tudo em um clique</div>
+              <div style="display:flex;align-items:center;gap:.75rem;">
+                <img src="nemo.png" alt="NEMO" style="width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(124,58,237,.45));">
+                <div>
+                  <div class="card-title" style="margin-bottom:.25rem;">Análise de Crédito</div>
+                  <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall · Documentos · Contábil · IA &mdash; tudo em um clique</div>
+                </div>
               </div>
               <button id="btn-run" class="btn-full-analysis pereira-btn" onclick="runPereiraCompleto()">
                 <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                Parecer do Pereira
+                Gerar Parecer NEMO
               </button>
             </div>
 
@@ -1840,13 +1843,16 @@
       if (_facEl) {
         _facEl.innerHTML = `
           <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.9rem;">
-            <div>
-              <div class="card-title" style="margin-bottom:.25rem;">Análise de Crédito</div>
-              <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall BGC · Receita Federal · Quadro Societário</div>
+            <div style="display:flex;align-items:center;gap:.75rem;">
+              <img src="nemo.png" alt="NEMO" style="width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(124,58,237,.45));">
+              <div>
+                <div class="card-title" style="margin-bottom:.25rem;">Análise de Crédito</div>
+                <div style="font-size:.73rem;color:var(--text-faint);line-height:1.5;">IDwall BGC · Receita Federal · Quadro Societário</div>
+              </div>
             </div>
             <button id="btn-run" class="btn-full-analysis pereira-btn" onclick="runPereiraCompleto()">
               <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Parecer do Pereira
+              Gerar Parecer NEMO
             </button>
           </div>
           <div class="fa-steps" id="full-analysis-steps" style="display:none;">
