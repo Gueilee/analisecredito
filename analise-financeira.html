@@ -1591,6 +1591,8 @@
             <!-- Resultado -->
             <div id="pereira-result" style="display:none;">
               <div class="pereira-meta-bar" id="pereira-meta"></div>
+              <!-- Score / classificação / recomendação (populado por _renderPereiraAnalise) -->
+              <div id="pereira-recomendacao" style="display:none;"></div>
               <div id="pereira-indicadores" style="display:none;"></div>
               <div class="pereira-parecer-wrap" id="pereira-parecer-body"></div>
             </div>
@@ -5183,10 +5185,83 @@ function _renderPereiraAnalise(data) {
   const parecer = (data.parecer || '').replace(/```json[\s\S]*?```\s*$/i, '').trim();
   body.innerHTML = _mdToHtml(parecer);
 
+  // ── Card de recomendação (score / classificação / pontos) ──────────────────
+  const recWrap = document.getElementById('pereira-recomendacao');
+  if (recWrap && dadosEstruturados) {
+    const ds  = dadosEstruturados;
+    const score = Math.max(0, Math.min(100, ds.score || 0));
+    const cls   = (ds.classificacao || 'D').toLowerCase().replace(/\+/g, 'p');
+    const rec   = (ds.recomendacao  || 'revisar').toLowerCase();
+    const recMap = {
+      aprovar: { icon: '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>', label: 'Recomendação: APROVAR' },
+      negar:   { icon: '<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>', label: 'Recomendação: NEGAR' },
+      revisar: { icon: '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>', label: 'Recomendação: REVISAR' },
+    };
+    const rm   = recMap[rec] || recMap.revisar;
+    const pSVG = `<svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const wSVG = `<svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    const empt = `<div style="font-size:.75rem;color:var(--text-faint);font-style:italic;">Nenhum identificado</div>`;
+    const mkPts = (arr, c, ico) => (arr && arr.length)
+      ? arr.map(p => `<div class="point-item"><div class="point-dot ${c}">${ico}</div><span>${p}</span></div>`).join('')
+      : empt;
+    const alertas = ds.alertas_criticos || [];
+    const dashoff = (251 * (1 - score / 100)).toFixed(1);
+
+    recWrap.innerHTML = `
+      <div style="border-bottom:1px solid rgba(124,58,237,.12);margin-bottom:1rem;padding-bottom:1.1rem;">
+        <div class="score-section" style="padding:.3rem 0 .8rem;">
+          <div class="gauge-wrap">
+            <svg width="90" height="90" viewBox="0 0 90 90">
+              <circle cx="45" cy="45" r="40" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/>
+              <circle cx="45" cy="45" r="40" fill="none" stroke="url(#pGrad)" stroke-width="9"
+                stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="${dashoff}"
+                transform="rotate(-90 45 45)"/>
+              <defs><linearGradient id="pGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#01e18e"/>
+              </linearGradient></defs>
+              <text x="45" y="50" text-anchor="middle" fill="currentColor" font-size="20" font-weight="700">${score || '—'}</text>
+            </svg>
+          </div>
+          <div class="score-meta">
+            <div style="display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;">
+              ${ds.classificacao ? `<span class="class-badge ${cls}">${ds.classificacao}</span>` : ''}
+              <span class="rec-pill ${rec}">
+                <svg viewBox="0 0 24 24" fill="none" width="15" height="15">${rm.icon}</svg>
+                ${rm.label}
+              </span>
+            </div>
+            ${ds.resumo_executivo ? `<div class="score-resumo">${ds.resumo_executivo}</div>` : ''}
+          </div>
+        </div>
+        ${alertas.length ? alertas.map(a => `<div class="alert-strip"><svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="currentColor" stroke-width="1.7"/><line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>${a}</span></div>`).join('') : ''}
+        ${(ds.pontos_positivos?.length || ds.pontos_atencao?.length) ? `
+          <div class="points-grid" style="margin-top:.9rem;">
+            <div>
+              <div class="sec-label">Pontos Positivos</div>
+              <div class="points-col">${mkPts(ds.pontos_positivos,'pos',pSVG)}</div>
+            </div>
+            <div>
+              <div class="sec-label">Pontos de Atenção</div>
+              <div class="points-col">${mkPts(ds.pontos_atencao,'att',wSVG)}</div>
+            </div>
+          </div>` : ''}
+      </div>`;
+    recWrap.style.display = 'block';
+  }
+
   // Renderiza painel de indicadores financeiros (presente quando há demonstrações)
   const empresas = dadosEstruturados && Array.isArray(dadosEstruturados.empresas)
     ? dadosEstruturados.empresas : [];
   _pereiraRenderIndicadores(empresas);
+
+  // Oculta ai-card (análise Gemini anterior) — PEREIRA substitui
+  const _aiCard = document.getElementById('ai-card');
+  if (_aiCard) _aiCard.style.display = 'none';
+  // Limpa analise Gemini do cache local para não aparecer em reloads
+  if (sol && sol.id && sol.analise) {
+    DB.solicitacoes.update(sol.id, { analise: null, analise_at: null });
+    sol = DB.solicitacoes.getById(sol.id) || sol;
+  }
 
   result.style.display  = 'block';
   if (btnRefresh) { btnRefresh.style.display = ''; btnRefresh.disabled = false; }
@@ -5237,6 +5312,9 @@ function _renderPereiraAnalise(data) {
     _renderPereiraAnalise(sol.pereira_analise);
     _pereiraSetStatus('Parecer disponível', 'rgba(1,225,142,.9)');
     if (typeof _faSetStep === 'function') _faSetStep('pereira', 'done', 'Parecer gerado');
+    // Oculta ai-card (análise anterior) no bootstrap — PEREIRA é a fonte autoritativa
+    const _bsAiCard = document.getElementById('ai-card');
+    if (_bsAiCard) _bsAiCard.style.display = 'none';
     return true;
   }
   // Tenta imediatamente com cache local e sempre tenta novamente após sync com a API,
