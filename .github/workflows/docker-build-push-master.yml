@@ -58,17 +58,37 @@ jobs:
 
       - name: Recriar container no Portainer
         run: |
-          TOKEN=$(curl -k -s -X POST "https://191.233.21.33:9000/api/auth" \
+          set -e
+
+          echo "==> Autenticando no Portainer..."
+          AUTH_RESPONSE=$(curl -k -sf -X POST "https://191.233.21.33:9000/api/auth" \
             -H "Content-Type: application/json" \
-            -d '{"Username":"${{ vars.PORTAINER_USER_PROD }}","Password":"${{ secrets.PORTAINER_PASS_PROD }}"}' \
-            | grep -o '"jwt":"[^\"]*"' | cut -d':' -f2 | sed 's/["}]//g')
-          CONTAINER_ID=$(curl -k -s -X GET "https://191.233.21.33:9000/api/endpoints/3/docker/v1.41/containers/json?all=true&filters=%7B%22name%22%3A%5B%22vedemmia-analise-credito%22%5D%7D" \
-            -H "Authorization: Bearer $TOKEN" \
-            | grep -o '"Id":"[^"]*"' | head -n1 | cut -d':' -f2 | sed 's/"//g')
-          curl -k -X POST "https://191.233.21.33:9000/api/docker/3/containers/$CONTAINER_ID/recreate" \
+            -d '{"Username":"${{ vars.PORTAINER_USER_PROD }}","Password":"${{ secrets.PORTAINER_PASS_PROD }}"}')
+          TOKEN=$(echo "$AUTH_RESPONSE" | grep -o '"jwt":"[^\"]*"' | cut -d':' -f2 | sed 's/["}]//g')
+          if [ -z "$TOKEN" ]; then
+            echo "ERRO: token Portainer vazio. Resposta auth: $AUTH_RESPONSE"
+            exit 1
+          fi
+          echo "==> Token obtido com sucesso."
+
+          echo "==> Buscando container ID..."
+          CONTAINER_RESPONSE=$(curl -k -sf -X GET \
+            "https://191.233.21.33:9000/api/endpoints/3/docker/v1.41/containers/json?all=true&filters=%7B%22name%22%3A%5B%22vedemmia-analise-credito%22%5D%7D" \
+            -H "Authorization: Bearer $TOKEN")
+          CONTAINER_ID=$(echo "$CONTAINER_RESPONSE" | grep -o '"Id":"[^"]*"' | head -n1 | cut -d':' -f2 | sed 's/"//g')
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "ERRO: container 'vedemmia-analise-credito' não encontrado. Resposta: $CONTAINER_RESPONSE"
+            exit 1
+          fi
+          echo "==> Container encontrado: ${CONTAINER_ID:0:12}..."
+
+          echo "==> Recriando container com nova imagem..."
+          RECREATE_RESPONSE=$(curl -k -sf -X POST \
+            "https://191.233.21.33:9000/api/docker/3/containers/$CONTAINER_ID/recreate" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"PullImage":true}'
+            -d '{"PullImage":true}')
+          echo "==> Recreate concluído: $RECREATE_RESPONSE"
 
       - name: Remover imagens Docker não utilizadas
         run: |
