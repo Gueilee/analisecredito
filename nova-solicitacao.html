@@ -3184,11 +3184,30 @@
             </div>
             <div class="card animate-in">
               <div class="card-header">
-                <div><div class="card-title">Documento Obrigatório</div><div class="card-sub">Apenas o Contrato Social é necessário para Armazém</div></div>
-                <div id="a-docs-progress-label" style="font-size:.78rem;color:var(--text-muted);">0 / 1 anexados</div>
+                <div><div class="card-title">Documentos Obrigatórios</div><div class="card-sub">Todos os 4 documentos são necessários para envio ao time financeiro</div></div>
+                <div id="a-docs-progress-label" style="font-size:.78rem;color:var(--text-muted);">0 / 4 anexados</div>
               </div>
               <div class="progress-bar mb-md"><div class="progress-fill" id="a-docs-progress-bar" style="width:0%"></div></div>
               <div class="doc-upload-grid">
+
+                <!-- Balanços -->
+                <div class="doc-upload-item">
+                  <div class="doc-upload-header">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    <div class="doc-upload-title"><div class="doc-upload-name">Últimos 2 Balanços Patrimoniais</div><div class="doc-upload-desc">Balanços dos dois últimos exercícios encerrados</div></div>
+                    <span class="doc-required-badge">Obrigatório</span>
+                  </div>
+                  <div class="doc-upload-body">
+                    <div class="doc-drop-zone" onclick="triggerUpload('upload-a-balanco')" ondrop="handleDropCustom(event,'a-balanco')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)">
+                      <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                      <div class="doc-drop-text"><p>Arraste o arquivo ou <span>clique para selecionar</span></p><small>PDF, XLSX ou DOCX · Máx. 20MB por arquivo</small></div>
+                    </div>
+                    <input type="file" id="upload-a-balanco" accept=".pdf,.xlsx,.docx,.xls,.doc" multiple style="display:none" onchange="handleFileInputCustom(this,'a-balanco')" />
+                    <div class="doc-files-list" id="files-a-balanco"></div>
+                  </div>
+                </div>
+
+                <!-- Contrato Social -->
                 <div class="doc-upload-item">
                   <div class="doc-upload-header">
                     <svg viewBox="0 0 24 24" fill="none"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -3204,6 +3223,41 @@
                     <div class="doc-files-list" id="files-a-contrato"></div>
                   </div>
                 </div>
+
+                <!-- DRE / DFC -->
+                <div class="doc-upload-item">
+                  <div class="doc-upload-header">
+                    <svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="6" y1="20" x2="6" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                    <div class="doc-upload-title"><div class="doc-upload-name">DRE / DFC</div><div class="doc-upload-desc">Demonstração de Resultado do Exercício e Demonstrativo de Fluxo de Caixa</div></div>
+                    <span class="doc-required-badge">Obrigatório</span>
+                  </div>
+                  <div class="doc-upload-body">
+                    <div class="doc-drop-zone" onclick="triggerUpload('upload-a-dre')" ondrop="handleDropCustom(event,'a-dre')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)">
+                      <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                      <div class="doc-drop-text"><p>Arraste o arquivo ou <span>clique para selecionar</span></p><small>PDF, XLSX ou XLS · Máx. 20MB</small></div>
+                    </div>
+                    <input type="file" id="upload-a-dre" accept=".pdf,.xlsx,.xls,.docx" style="display:none" onchange="handleFileInputCustom(this,'a-dre')" />
+                    <div class="doc-files-list" id="files-a-dre"></div>
+                  </div>
+                </div>
+
+                <!-- Estudo Tributário -->
+                <div class="doc-upload-item">
+                  <div class="doc-upload-header">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="10 9 9 9 8 9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div class="doc-upload-title"><div class="doc-upload-name">Estudo Tributário</div><div class="doc-upload-desc">Estudo tributário elaborado para esta operação</div></div>
+                    <span class="doc-required-badge">Obrigatório</span>
+                  </div>
+                  <div class="doc-upload-body">
+                    <div class="doc-drop-zone" onclick="triggerUpload('upload-a-fat')" ondrop="handleDropCustom(event,'a-fat')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)">
+                      <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                      <div class="doc-drop-text"><p>Arraste o arquivo ou <span>clique para selecionar</span></p><small>PDF, XLSX ou DOCX · Máx. 20MB</small></div>
+                    </div>
+                    <input type="file" id="upload-a-fat" accept=".pdf,.xlsx,.docx,.xls,.doc" style="display:none" onchange="handleFileInputCustom(this,'a-fat')" />
+                    <div class="doc-files-list" id="files-a-fat"></div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -3621,8 +3675,8 @@
 
   /* ── Estado ───────────────────────────────────────────── */
   const uploadedDocs   = { balanco: false, contrato: false, dre: false, fat: false };
-  const storedDocNames  = { balanco: [], contrato: [], dre: [], fat: [], 't-contrato': [], 'a-contrato': [] };
-  const storedDocFiles  = { balanco: [], contrato: [], dre: [], fat: [], 't-contrato': [], 'a-contrato': [] };
+  const storedDocNames  = { balanco: [], contrato: [], dre: [], fat: [], 't-contrato': [], 'a-balanco': [], 'a-contrato': [], 'a-dre': [], 'a-fat': [] };
+  const storedDocFiles  = { balanco: [], contrato: [], dre: [], fat: [], 't-contrato': [], 'a-balanco': [], 'a-contrato': [], 'a-dre': [], 'a-fat': [] };
 
   /* navegação já definida acima */
 
@@ -5220,7 +5274,7 @@
       Object.entries(d.documentos).forEach(([key, names]) => {
         if (!names || names.length === 0) return;
         storedDocNames[key] = [...names];
-        const isCustomKey = key === 't-contrato' || key === 'a-contrato';
+        const isCustomKey = key === 't-contrato' || key.startsWith('a-');
         const confirmedSet = new Set(serverDocs[key] || []);
         const listEl = document.getElementById(`files-${key}`);
         let anyConfirmed = false;
@@ -5248,7 +5302,8 @@
 
         if (isCustomKey) {
           updateCustomDocsProgress(key);
-          document.getElementById('chk-contrato')?.classList.add('done');
+          const chkId = _A_CHK_MAP[key] || 'chk-contrato';
+          document.getElementById(chkId)?.classList.add('done');
         } else {
           // uploadedDocs reflete presença de arquivo (para a barra de progresso);
           // o badge já distingue se está confirmado no servidor ou pendente.
@@ -5312,15 +5367,24 @@
 
   /* ── Checklist de documentos no aside ───────────────── */
   function updateDocChecklist() {
-    const isSimplified = tipoAnalise === 'transporte' || tipoAnalise === 'armazem' || tipoAnalise === 'trade-simples';
+    const isTransporteOrSimples = tipoAnalise === 'transporte' || tipoAnalise === 'trade-simples';
+    const isArmazem = tipoAnalise === 'armazem';
     ['chk-balanco', 'chk-dre', 'chk-fat'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.style.display = isSimplified ? 'none' : '';
+      if (!el) return;
+      el.style.display = isTransporteOrSimples ? 'none' : '';
+      if (isArmazem) {
+        const keyMap = { 'chk-balanco': 'a-balanco', 'chk-dre': 'a-dre', 'chk-fat': 'a-fat' };
+        el.classList.toggle('done', storedDocNames[keyMap[id]]?.length > 0);
+      }
     });
     const chkContrato = document.getElementById('chk-contrato');
-    if (chkContrato && isSimplified) {
-      const key = tipoAnalise === 'transporte' ? 't-contrato' : 'a-contrato';
-      chkContrato.classList.toggle('done', storedDocNames[key].length > 0);
+    if (chkContrato) {
+      if (isTransporteOrSimples) {
+        chkContrato.classList.toggle('done', storedDocNames['t-contrato'].length > 0);
+      } else if (isArmazem) {
+        chkContrato.classList.toggle('done', storedDocNames['a-contrato'].length > 0);
+      }
     }
   }
 
@@ -5402,11 +5466,15 @@
   }
   function handleFileInputCustom(input, key) { addFilesCustom(Array.from(input.files), key); }
 
+  const _A_DOC_KEYS = ['a-balanco', 'a-contrato', 'a-dre', 'a-fat'];
+  const _A_CHK_MAP  = { 'a-balanco': 'chk-balanco', 'a-contrato': 'chk-contrato', 'a-dre': 'chk-dre', 'a-fat': 'chk-fat' };
+
   function addFilesCustom(files, key) {
     const listEl = document.getElementById(`files-${key}`);
     files.forEach(f => {
       const size = f.size < 1024*1024 ? (f.size/1024).toFixed(0) + ' KB' : (f.size/1024/1024).toFixed(1) + ' MB';
       storedDocNames[key].push(f.name);
+      storedDocFiles[key].push(f);
       const item = document.createElement('div');
       item.className = 'file-item';
       item.innerHTML = `
@@ -5419,27 +5487,37 @@
       listEl.appendChild(item);
     });
     if (files.length > 0) {
+      const chkId = _A_CHK_MAP[key] || 'chk-contrato';
+      document.getElementById(chkId)?.classList.add('done');
       updateCustomDocsProgress(key);
-      document.getElementById('chk-contrato')?.classList.add('done');
     }
   }
 
   function removeFileCustom(btn, key, name) {
     btn.closest('.file-item').remove();
     storedDocNames[key] = storedDocNames[key].filter(n => n !== name);
+    storedDocFiles[key] = storedDocFiles[key].filter(f => f.name !== name);
     if (document.getElementById(`files-${key}`).children.length === 0) {
-      document.getElementById('chk-contrato')?.classList.remove('done');
+      const chkId = _A_CHK_MAP[key] || 'chk-contrato';
+      document.getElementById(chkId)?.classList.remove('done');
     }
     updateCustomDocsProgress(key);
   }
 
   function updateCustomDocsProgress(key) {
     const prefix = key.startsWith('a-') ? 'a-' : 't-';
-    const count  = storedDocNames[key].length;
     const barEl  = document.getElementById(`${prefix}docs-progress-bar`);
     const lblEl  = document.getElementById(`${prefix}docs-progress-label`);
-    if (barEl) barEl.style.width = count > 0 ? '100%' : '0%';
-    if (lblEl) lblEl.textContent = count > 0 ? '1 / 1 anexados' : '0 / 1 anexados';
+    if (prefix === 'a-') {
+      const done  = _A_DOC_KEYS.filter(k => storedDocNames[k].length > 0).length;
+      const total = _A_DOC_KEYS.length;
+      if (barEl) barEl.style.width = (done / total * 100) + '%';
+      if (lblEl) lblEl.textContent = `${done} / ${total} anexados`;
+    } else {
+      const count = storedDocNames[key].length;
+      if (barEl) barEl.style.width = count > 0 ? '100%' : '0%';
+      if (lblEl) lblEl.textContent = count > 0 ? '1 / 1 anexados' : '0 / 1 anexados';
+    }
   }
 
   /* ── Licenciamento: Score ──────────────────────────────── */
