@@ -1769,10 +1769,76 @@
                           Remover
                         </button>
                       </div>
-                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+                      <!-- corpo gerado via _expCardBodyHTML('0') mas inlined para SSR -->
+                      <div style="display:grid;grid-template-columns:210px 1fr;gap:.65rem">
                         <div class="form-group" style="margin:0">
-                          <label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Nome / País <span class="required">*</span></label>
-                          <input id="exportador" class="input exp-nome" type="text" placeholder="Nome do exportador e país de origem" required />
+                          <label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">País <span class="required">*</span></label>
+                          <select id="pais-exportador" class="select exp-pais" onchange="onPaisExpChange('0')">
+                            <option value="">Selecione o país</option>
+                            <option value="🇨🇳 China">🇨🇳 China</option>
+                            <option value="🇺🇸 Estados Unidos">🇺🇸 Estados Unidos</option>
+                            <option value="🇩🇪 Alemanha">🇩🇪 Alemanha</option>
+                            <option value="🇦🇷 Argentina">🇦🇷 Argentina</option>
+                            <option value="🇮🇹 Itália">🇮🇹 Itália</option>
+                            <option value="🇯🇵 Japão">🇯🇵 Japão</option>
+                            <option value="🇰🇷 Coreia do Sul">🇰🇷 Coreia do Sul</option>
+                            <option value="🇮🇳 Índia">🇮🇳 Índia</option>
+                            <option value="🇫🇷 França">🇫🇷 França</option>
+                            <option value="🇬🇧 Reino Unido">🇬🇧 Reino Unido</option>
+                            <option value="🇳🇱 Países Baixos">🇳🇱 Países Baixos</option>
+                            <option value="🇪🇸 Espanha">🇪🇸 Espanha</option>
+                            <option value="🇧🇪 Bélgica">🇧🇪 Bélgica</option>
+                            <option value="🇵🇹 Portugal">🇵🇹 Portugal</option>
+                            <option value="🇨🇭 Suíça">🇨🇭 Suíça</option>
+                            <option value="🇹🇼 Taiwan">🇹🇼 Taiwan</option>
+                            <option value="🇹🇷 Turquia">🇹🇷 Turquia</option>
+                            <option value="🇲🇾 Malásia">🇲🇾 Malásia</option>
+                            <option value="🇻🇳 Vietnã">🇻🇳 Vietnã</option>
+                            <option value="🇹🇭 Tailândia">🇹🇭 Tailândia</option>
+                            <option value="🇮🇩 Indonésia">🇮🇩 Indonésia</option>
+                            <option value="🇵🇭 Filipinas">🇵🇭 Filipinas</option>
+                            <option value="🇵🇰 Paquistão">🇵🇰 Paquistão</option>
+                            <option value="🇧🇩 Bangladesh">🇧🇩 Bangladesh</option>
+                            <option value="🇲🇽 México">🇲🇽 México</option>
+                            <option value="🇨🇴 Colômbia">🇨🇴 Colômbia</option>
+                            <option value="🇵🇪 Peru">🇵🇪 Peru</option>
+                            <option value="🇨🇱 Chile">🇨🇱 Chile</option>
+                            <option value="🇺🇾 Uruguai">🇺🇾 Uruguai</option>
+                            <option value="🇵🇾 Paraguai">🇵🇾 Paraguai</option>
+                            <option value="🇨🇦 Canadá">🇨🇦 Canadá</option>
+                            <option value="🇦🇺 Austrália">🇦🇺 Austrália</option>
+                            <option value="🇿🇦 África do Sul">🇿🇦 África do Sul</option>
+                            <option value="🇦🇪 Emirados Árabes">🇦🇪 Emirados Árabes</option>
+                            <option value="🇸🇦 Arábia Saudita">🇸🇦 Arábia Saudita</option>
+                            <option value="🇮🇱 Israel">🇮🇱 Israel</option>
+                            <option value="🇵🇱 Polônia">🇵🇱 Polônia</option>
+                            <option value="🇸🇪 Suécia">🇸🇪 Suécia</option>
+                            <option value="🇦🇹 Áustria">🇦🇹 Áustria</option>
+                            <option value="🇨🇿 República Tcheca">🇨🇿 República Tcheca</option>
+                            <option value="🇷🇴 Romênia">🇷🇴 Romênia</option>
+                            <option value="outro">🌍 Outro país...</option>
+                          </select>
+                          <input id="pais-exportador-outro" class="input" type="text"
+                                 placeholder="Nome do país" style="display:none;margin-top:.35rem;font-size:.82rem" autocomplete="off" />
+                        </div>
+                        <div class="form-group" style="margin:0">
+                          <label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Nome do Exportador <span class="required">*</span></label>
+                          <input id="exportador" class="input exp-nome" type="text" placeholder="Razão social / nome comercial" required />
+                        </div>
+                      </div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-top:.65rem">
+                        <div class="form-group" style="margin:0">
+                          <label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Valor da Operação</label>
+                          <div style="display:flex;gap:.4rem">
+                            <select id="valor-exportador-moeda" class="select" style="width:76px;flex-shrink:0">
+                              <option>USD</option><option>EUR</option><option>CNY</option>
+                              <option>JPY</option><option>GBP</option><option>KRW</option>
+                              <option>CHF</option><option>AUD</option><option>CAD</option>
+                              <option>INR</option><option>MXN</option><option>ARS</option>
+                              <option>BRL</option>
+                            </select>
+                            <input id="valor-exportador" class="input" type="text" placeholder="0,00" autocomplete="off" />
+                          </div>
                         </div>
                         <div class="form-group" style="margin:0">
                           <label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Banco e Canal Bancário</label>
@@ -3853,6 +3919,147 @@
       <option value="outro">Outro...</option>`;
   }
 
+  /* ── País / Moeda selects (exportador) ─────────────────── */
+  function _paisExpSelectHTML() {
+    return `<option value="">Selecione o país</option>
+      <option value="🇨🇳 China">🇨🇳 China</option>
+      <option value="🇺🇸 Estados Unidos">🇺🇸 Estados Unidos</option>
+      <option value="🇩🇪 Alemanha">🇩🇪 Alemanha</option>
+      <option value="🇦🇷 Argentina">🇦🇷 Argentina</option>
+      <option value="🇮🇹 Itália">🇮🇹 Itália</option>
+      <option value="🇯🇵 Japão">🇯🇵 Japão</option>
+      <option value="🇰🇷 Coreia do Sul">🇰🇷 Coreia do Sul</option>
+      <option value="🇮🇳 Índia">🇮🇳 Índia</option>
+      <option value="🇫🇷 França">🇫🇷 França</option>
+      <option value="🇬🇧 Reino Unido">🇬🇧 Reino Unido</option>
+      <option value="🇳🇱 Países Baixos">🇳🇱 Países Baixos</option>
+      <option value="🇪🇸 Espanha">🇪🇸 Espanha</option>
+      <option value="🇧🇪 Bélgica">🇧🇪 Bélgica</option>
+      <option value="🇵🇹 Portugal">🇵🇹 Portugal</option>
+      <option value="🇨🇭 Suíça">🇨🇭 Suíça</option>
+      <option value="🇹🇼 Taiwan">🇹🇼 Taiwan</option>
+      <option value="🇹🇷 Turquia">🇹🇷 Turquia</option>
+      <option value="🇲🇾 Malásia">🇲🇾 Malásia</option>
+      <option value="🇻🇳 Vietnã">🇻🇳 Vietnã</option>
+      <option value="🇹🇭 Tailândia">🇹🇭 Tailândia</option>
+      <option value="🇮🇩 Indonésia">🇮🇩 Indonésia</option>
+      <option value="🇵🇭 Filipinas">🇵🇭 Filipinas</option>
+      <option value="🇵🇰 Paquistão">🇵🇰 Paquistão</option>
+      <option value="🇧🇩 Bangladesh">🇧🇩 Bangladesh</option>
+      <option value="🇲🇽 México">🇲🇽 México</option>
+      <option value="🇨🇴 Colômbia">🇨🇴 Colômbia</option>
+      <option value="🇵🇪 Peru">🇵🇪 Peru</option>
+      <option value="🇨🇱 Chile">🇨🇱 Chile</option>
+      <option value="🇺🇾 Uruguai">🇺🇾 Uruguai</option>
+      <option value="🇵🇾 Paraguai">🇵🇾 Paraguai</option>
+      <option value="🇨🇦 Canadá">🇨🇦 Canadá</option>
+      <option value="🇦🇺 Austrália">🇦🇺 Austrália</option>
+      <option value="🇿🇦 África do Sul">🇿🇦 África do Sul</option>
+      <option value="🇦🇪 Emirados Árabes">🇦🇪 Emirados Árabes</option>
+      <option value="🇸🇦 Arábia Saudita">🇸🇦 Arábia Saudita</option>
+      <option value="🇮🇱 Israel">🇮🇱 Israel</option>
+      <option value="🇵🇱 Polônia">🇵🇱 Polônia</option>
+      <option value="🇸🇪 Suécia">🇸🇪 Suécia</option>
+      <option value="🇦🇹 Áustria">🇦🇹 Áustria</option>
+      <option value="🇨🇿 República Tcheca">🇨🇿 República Tcheca</option>
+      <option value="🇷🇴 Romênia">🇷🇴 Romênia</option>
+      <option value="outro">🌍 Outro país...</option>`;
+  }
+
+  function _moedaExpSelectHTML() {
+    return `<option value="USD">USD</option>
+      <option value="EUR">EUR</option>
+      <option value="CNY">CNY</option>
+      <option value="JPY">JPY</option>
+      <option value="GBP">GBP</option>
+      <option value="KRW">KRW</option>
+      <option value="CHF">CHF</option>
+      <option value="AUD">AUD</option>
+      <option value="CAD">CAD</option>
+      <option value="INR">INR</option>
+      <option value="MXN">MXN</option>
+      <option value="ARS">ARS</option>
+      <option value="BRL">BRL</option>`;
+  }
+
+  function _expCardBodyHTML(cardId) {
+    const isLeg = String(cardId) === '0';
+    const pfx   = isLeg ? '' : '-' + cardId;
+    return (
+      '<div style="display:grid;grid-template-columns:210px 1fr;gap:.65rem">' +
+        '<div class="form-group" style="margin:0">' +
+          '<label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">País <span class="required">*</span></label>' +
+          '<select id="pais-exportador' + pfx + '" class="select exp-pais" onchange="onPaisExpChange(\'' + cardId + '\')">' +
+            _paisExpSelectHTML() +
+          '</select>' +
+          '<input id="pais-exportador' + pfx + '-outro" class="input" type="text"' +
+            ' placeholder="Nome do país" style="display:none;margin-top:.35rem;font-size:.82rem" autocomplete="off" />' +
+        '</div>' +
+        '<div class="form-group" style="margin:0">' +
+          '<label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Nome do Exportador <span class="required">*</span></label>' +
+          '<input id="exportador' + pfx + '" class="input exp-nome" type="text" placeholder="Razão social / nome comercial"' + (isLeg ? ' required' : '') + ' />' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-top:.65rem">' +
+        '<div class="form-group" style="margin:0">' +
+          '<label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Valor da Operação</label>' +
+          '<div style="display:flex;gap:.4rem">' +
+            '<select id="valor-exportador-moeda' + pfx + '" class="select" style="width:76px;flex-shrink:0">' +
+              _moedaExpSelectHTML() +
+            '</select>' +
+            '<input id="valor-exportador' + pfx + '" class="input" type="text" placeholder="0,00" autocomplete="off" />' +
+          '</div>' +
+        '</div>' +
+        '<div class="form-group" style="margin:0">' +
+          '<label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Banco e Canal Bancário</label>' +
+          '<input id="banco-exportador' + pfx + '" class="input exp-banco" type="text" placeholder="Ex: Bank of China — Canal Swift" />' +
+        '</div>' +
+      '</div>' +
+      '<div class="form-group" style="margin:.55rem 0 0">' +
+        '<label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Forma de Pagto. ao Exportador <span class="required">*</span></label>' +
+        '<div id="pagto-exp-list' + pfx + '" style="display:flex;flex-direction:column;gap:.45rem"></div>' +
+        '<button type="button" class="pagto-add-btn"' +
+          ' onclick="' + (isLeg ? 'addPagtoParcel()' : 'addPagtoParcelToCard(' + cardId + ')') + '" style="margin-top:.3rem">' +
+          '<svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' +
+          ' Adicionar condição de pagamento</button>' +
+        '<div id="pagto-exp-hint' + pfx + '" class="form-hint" style="min-height:1.1rem;margin-top:.4rem;"></div>' +
+        '<input type="hidden" id="pagto-exportador' + pfx + '" />' +
+      '</div>'
+    );
+  }
+
+  function onPaisExpChange(cardId) {
+    const isLeg = String(cardId) === '0';
+    const pfx   = isLeg ? '' : '-' + cardId;
+    const sel   = document.getElementById('pais-exportador' + pfx);
+    const outro = document.getElementById('pais-exportador' + pfx + '-outro');
+    if (sel && outro) outro.style.display = sel.value === 'outro' ? '' : 'none';
+  }
+
+  function _getExpPais(cardId) {
+    const isLeg = String(cardId) === '0';
+    const pfx   = isLeg ? '' : '-' + cardId;
+    const sel   = document.getElementById('pais-exportador' + pfx);
+    const outro = document.getElementById('pais-exportador' + pfx + '-outro');
+    if (!sel) return '';
+    return sel.value === 'outro' ? (outro?.value || '').trim() : sel.value;
+  }
+
+  function _setExpPais(cardId, val) {
+    const isLeg = String(cardId) === '0';
+    const pfx   = isLeg ? '' : '-' + cardId;
+    const sel   = document.getElementById('pais-exportador' + pfx);
+    const outro = document.getElementById('pais-exportador' + pfx + '-outro');
+    if (!sel) return;
+    const knownOpt = val && Array.from(sel.options).some(o => o.value === val);
+    if (knownOpt) {
+      sel.value = val;
+    } else if (val) {
+      sel.value = 'outro';
+      if (outro) { outro.style.display = ''; outro.value = val; }
+    }
+  }
+
   function addPagtoParcel(data) {
     const list = document.getElementById('pagto-exp-list');
     if (!list) return;
@@ -3987,28 +4194,13 @@
           '<svg viewBox="0 0 24 24" fill="none" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
           ' Remover</button>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">' +
-        '<div class="form-group" style="margin:0">' +
-          '<label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Nome / País <span class="required">*</span></label>' +
-          '<input id="exportador-' + cardId + '" class="input exp-nome" type="text" placeholder="Nome do exportador e país de origem" />' +
-        '</div>' +
-        '<div class="form-group" style="margin:0">' +
-          '<label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Banco e Canal Bancário</label>' +
-          '<input id="banco-exportador-' + cardId + '" class="input exp-banco" type="text" placeholder="Ex: Bank of China — Canal Swift" />' +
-        '</div>' +
-      '</div>' +
-      '<div class="form-group" style="margin:.55rem 0 0">' +
-        '<label class="form-label" style="font-size:.72rem;margin-bottom:.25rem">Forma de Pagto. ao Exportador <span class="required">*</span></label>' +
-        '<div id="pagto-exp-list-' + cardId + '" style="display:flex;flex-direction:column;gap:.45rem"></div>' +
-        '<button type="button" class="pagto-add-btn" onclick="addPagtoParcelToCard(' + cardId + ')" style="margin-top:.3rem">' +
-          '<svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' +
-          ' Adicionar condição de pagamento</button>' +
-        '<div id="pagto-exp-hint-' + cardId + '" class="form-hint" style="min-height:1.1rem;margin-top:.4rem;"></div>' +
-        '<input type="hidden" id="pagto-exportador-' + cardId + '" />' +
-      '</div>';
+      _expCardBodyHTML(cardId);
     list.appendChild(card);
-    if (data?.nome) { const el = document.getElementById('exportador-' + cardId); if (el) el.value = data.nome; }
+    if (data?.pais) _setExpPais(cardId, data.pais);
+    if (data?.nome)  { const el = document.getElementById('exportador-' + cardId); if (el) el.value = data.nome; }
     if (data?.banco) { const el = document.getElementById('banco-exportador-' + cardId); if (el) el.value = data.banco; }
+    if (data?.valorMoeda) { const el = document.getElementById('valor-exportador-moeda-' + cardId); if (el) el.value = data.valorMoeda; }
+    if (data?.valor) { const el = document.getElementById('valor-exportador-' + cardId); if (el) el.value = data.valor; }
     if (data?.pagtoExportadorParcelas?.length)
       data.pagtoExportadorParcelas.forEach(p => addPagtoParcelToCard(cardId, p));
     else
@@ -4139,11 +4331,15 @@
   function getExportadores() {
     return Array.from(document.querySelectorAll('#exportadores-list .exp-card')).map(card => {
       const cid = card.dataset.cardId;
-      const isLegacy = cid === '0';
-      const nome  = document.getElementById(isLegacy ? 'exportador' : 'exportador-' + cid)?.value || '';
-      const banco = document.getElementById(isLegacy ? 'banco-exportador' : 'banco-exportador-' + cid)?.value || '';
-      const parcelas = getPagtoParcelasFromCard(isLegacy ? 0 : Number(cid));
-      return { nome, banco, pagtoExportadorParcelas: parcelas,
+      const n   = Number(cid);
+      const pais      = _getExpPais(n);
+      const nome      = document.getElementById(n === 0 ? 'exportador' : 'exportador-' + cid)?.value || '';
+      const banco     = document.getElementById(n === 0 ? 'banco-exportador' : 'banco-exportador-' + cid)?.value || '';
+      const valorMoeda = document.getElementById(n === 0 ? 'valor-exportador-moeda' : 'valor-exportador-moeda-' + cid)?.value || 'USD';
+      const valor     = document.getElementById(n === 0 ? 'valor-exportador' : 'valor-exportador-' + cid)?.value || '';
+      const parcelas  = getPagtoParcelasFromCard(n);
+      return { pais, nome, banco, valorMoeda, valor,
+               pagtoExportadorParcelas: parcelas,
                pagtoExportador: parcelas.map(p => p.pct + '% ' + p.label).join(' · ') };
     });
   }
@@ -5432,8 +5628,11 @@
         document.querySelectorAll('#exportadores-list .exp-card:not(#exp-card-0)').forEach(c => c.remove());
         _expCnt = 0;
         const _e0 = d.exportadores[0] || {};
+        if (_e0.pais) _setExpPais(0, _e0.pais);
         set('exportador', _e0.nome ?? d.exportador ?? '');
         set('banco-exportador', _e0.banco ?? d.bancoExportador ?? '');
+        if (_e0.valorMoeda) { const _vm = document.getElementById('valor-exportador-moeda'); if (_vm) _vm.value = _e0.valorMoeda; }
+        if (_e0.valor) set('valor-exportador', _e0.valor);
         restorePagtoExportador(_e0.pagtoExportadorParcelas?.length ? _e0.pagtoExportadorParcelas : d.pagtoExportadorParcelas);
         for (let _ei = 1; _ei < d.exportadores.length; _ei++) addExportadorCard(d.exportadores[_ei]);
         updateExpRemoveButtons(); updateExpCardNumbers();
