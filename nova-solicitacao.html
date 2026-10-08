@@ -2510,6 +2510,13 @@
                   <label class="form-label" for="t-qtd-fretes">Quantidade de Fretes / Mês <span class="required">*</span></label>
                   <input id="t-qtd-fretes" class="input" type="number" min="1" placeholder="Ex: 10" required />
                 </div>
+                <div class="form-group">
+                  <label class="form-label" for="t-valor-mensal">Valor Estimado Mensal <span class="required">*</span></label>
+                  <div class="input-wrap">
+                    <span class="input-prefix">R$</span>
+                    <input id="t-valor-mensal" class="input has-prefix" type="text" placeholder="0,00" oninput="maskMoney(this); updateSummary()" required />
+                  </div>
+                </div>
                 <div class="form-group span-2">
                   <label class="form-label" for="t-descricao">Breve Descrição do Negócio <span class="required">*</span></label>
                   <textarea id="t-descricao" class="textarea" rows="3" placeholder="Descreva brevemente a operação, principais rotas, clientes atendidos…" required></textarea>
@@ -4714,6 +4721,7 @@
       tipoAnalise: 'transporte', segmento: 'TRANSPORTE',
       dataSolicitacao: v('t-data-sol'), empresa: v('t-empresa'), cnpj: v('t-cnpj'),
       fundacao: v('t-fundacao'), ramo: v('t-ramo'), qtdFretes: v('t-qtd-fretes'),
+      valorMensal: v('t-valor-mensal'),
       descricao: v('t-descricao'), tipoFrete: r('tipo-frete'),
       comentario: v('t-comentario'), documentos: storedDocNames,
     };
@@ -4918,7 +4926,8 @@
     if (tipo === 'transporte') {
       set('t-data-sol', d.dataSolicitacao); set('t-empresa', d.empresa); set('t-cnpj', d.cnpj);
       set('t-fundacao', d.fundacao); set('t-ramo', d.ramo);
-      set('t-qtd-fretes', d.qtdFretes); set('t-descricao', d.descricao);
+      set('t-qtd-fretes', d.qtdFretes); set('t-valor-mensal', d.valorMensal);
+      set('t-descricao', d.descricao);
       chk('tipo-frete', d.tipoFrete);
       set('t-comentario', d.comentario);
     } else if (tipo === 'armazem') {
