@@ -822,7 +822,7 @@
         .filter(Boolean).join(', ');
 
     document.getElementById('grid-comercial').innerHTML = [
-      infoItem('Volume Potencial do Cliente',       `<span class="info-value money">${moedaPotencial !== 'BRL' ? moedaPotencial + ' ' : ''}${v(d.volPotencial)}</span>`),
+      infoItem('Volume Anual do Cliente',       `<span class="info-value money">${moedaPotencial !== 'BRL' ? moedaPotencial + ' ' : ''}${v(d.volPotencial)}</span>`),
       infoItem('Volume Estimado 6 Meses',           `<span class="info-value money">${moeda6M !== 'BRL' ? moeda6M + ' ' : ''}${v(d.vol6Meses)}</span>`),
       infoItem('Volume a Faturar / Mês',            `<span class="info-value money">${moedaMes !== 'BRL' ? moedaMes + ' ' : ''}${v(d.volMes)}</span>`),
       infoVal('Qtd. Embarques / Mês',               qtdEmbarques),
