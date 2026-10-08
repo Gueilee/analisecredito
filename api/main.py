@@ -5025,6 +5025,27 @@ async def pereira_analisar(
     anthropic_key = _load_anthropic_key()
     if not anthropic_key:
         raise HTTPException(503, "ANTHROPIC_API_KEY não configurada no servidor.")
+
+    # Limpa resultado anterior para que o polling mostre "processing" (não erro antigo)
+    if sol_id.startswith("ca_"):
+        try:
+            _ca_id = int(sol_id[3:])
+            await _turso_exec(
+                "UPDATE ac_clientes_ativos SET pereira_analise = NULL WHERE id = ?",
+                [_ca_id],
+            )
+        except Exception:
+            pass
+    else:
+        rows = await _turso_query("SELECT data FROM ac_solicitacoes WHERE id=?", [sol_id])
+        if rows:
+            _d = json.loads(rows[0]["data"] or "{}")
+            _d.pop("pereira_analise", None)
+            await _turso_exec(
+                "UPDATE ac_solicitacoes SET data = ? WHERE id = ?",
+                [json.dumps(_d, ensure_ascii=False), sol_id],
+            )
+
     background_tasks.add_task(_pereira_bg_task, sol_id, anthropic_key)
     return {"status": "processing", "message": "Análise ORION iniciada — verifique o resultado em instantes."}
 
