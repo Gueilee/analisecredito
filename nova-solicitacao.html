@@ -1846,14 +1846,14 @@
                       <tr>
                         <th class="xls-th-label"></th>
                         <th class="xls-th-ciclo">CICLO</th>
-                        <th>PEDIDO</th>
-                        <th>PRONT.</th>
-                        <th>BL</th>
-                        <th>TRANSP.</th>
-                        <th>DESEMB.</th>
-                        <th>PG.<br>EXP.</th>
-                        <th>FATUR.</th>
-                        <th>RECEB.<br>VDM</th>
+                        <th data-stage="pedido">PEDIDO</th>
+                        <th data-stage="pront">PRONT.</th>
+                        <th data-stage="bl">BL</th>
+                        <th data-stage="transit">TRANSP.</th>
+                        <th data-stage="desemb">DESEMB.</th>
+                        <th data-stage="pagexp">PG.<br>EXP.</th>
+                        <th data-stage="fat">FATUR.</th>
+                        <th data-stage="recvdm">RECEB.<br>VDM</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3832,14 +3832,25 @@
       return isNaN(n) ? null : Math.max(0, n);
     };
 
-    const stageSeq = [
-      ['pront',   parseStage('prazo-prep-embarque')],
-      ['bl',      parseStage('prazo-embarque')],
-      ['transit', parseStage('prazo-transit')],
-      ['desemb',  parseStage('prazo-desembaraco')],
-      ['fat',     parseStage('prazo-faturamento')],
-      ['recvdm',  parseStage('prazo-pagto-vendemmia')],
-    ];
+    // Mapeia stage key → id do input de prazo
+    const STAGE_INPUT = {
+      pront:   'prazo-prep-embarque',
+      bl:      'prazo-embarque',
+      transit: 'prazo-transit',
+      desemb:  'prazo-desembaraco',
+      fat:     'prazo-faturamento',
+      recvdm:  'prazo-pagto-vendemmia',
+    };
+
+    // Lê a ordem VISUAL atual dos th[data-stage] — respeita drag-and-drop
+    const _ths = Array.from(document.querySelectorAll('.xls-table thead th[data-stage]'));
+    const visualSeqAll = _ths.map(th => th.dataset.stage); // inclui pedido e pagexp
+
+    // Sequência cumulativa de tempo: exclui pedido (sempre Dia 0) e pagexp (absoluto)
+    const stageSeq = visualSeqAll
+      .filter(k => k !== 'pedido' && k !== 'pagexp')
+      .map(k => [k, parseStage(STAGE_INPUT[k])]);
+
     const pexpVal = parseStage('prazo-pagto-exportador'); // absoluto, independente
 
     // Acumula sequencialmente — para quando encontra null
@@ -3933,10 +3944,10 @@
       recvdm:  -fobSt['recvdm']  - diSt['recvdm']  + recSt['recvdm'],
     };
 
-    // Cumulative (running sum) — fórmula do modelo Excel (8 colunas em ordem, incluindo pagexp)
+    // Cumulative (running sum) — segue a ORDEM VISUAL das colunas (respeita drag-and-drop)
     // PAGEXP inclui o pagamento do FOB restante ao exportador (saída de caixa); deve entrar na
     // sequência para que FATURAMENTO e RECEBIMENTO VDM reflitam o saldo correto.
-    const SEQ_STAGES = ['pedido','pront','bl','transit','desemb','pagexp','fat','recvdm'];
+    const SEQ_STAGES = visualSeqAll.length === 8 ? visualSeqAll : ['pedido','pront','bl','transit','desemb','pagexp','fat','recvdm'];
     let running = 0;
     const fluxo = {}, expo = {};
     let expoAcc = -volVal; // começa com -faturamento total (exposição máxima inicial)
@@ -5614,6 +5625,7 @@
       if (dragSrcIdx !== -1 && dragSrcIdx !== toIdx && dragSrcIdx > 1) {
         moveColumn(dragSrcIdx, toIdx);
         setDraggable(); // re-aplica draggable após reordenação
+        if (typeof xlsUpdate === 'function') xlsUpdate(); // recalcula com nova ordem visual
       }
       dragSrcIdx = -1;
     });
