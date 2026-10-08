@@ -1587,6 +1587,7 @@
                         <span style="color:var(--text-muted);font-size:.82rem;white-space:nowrap">sobre</span>
                         <select id="rent-base" class="select" style="width:215px;flex-shrink:0"
                                 onchange="onRentBaseChange()">
+                          <option value="icms-saida">Base ICMS Saída</option>
                           <option value="CIF">Valor CIF da mercadoria</option>
                           <option value="FOB">Valor FOB da mercadoria</option>
                           <option value="frete">Valor do frete</option>
@@ -4943,6 +4944,7 @@
 
   /* ── Parser: Rentabilidade Estimada ─────────────────── */
   const RENT_BASE_LABEL = {
+    'icms-saida': 'Base ICMS Saída',
     CIF:     'Valor CIF',
     FOB:     'Valor FOB',
     frete:   'Valor do frete',
