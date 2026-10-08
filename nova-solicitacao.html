@@ -4817,6 +4817,8 @@
       consignatario:    v('consignatario'),
       limiteExportador:       parseLimiteExportador().texto || v('limite-exportador'),
       limiteExportadorParsed: parseLimiteExportador(),
+      limiteDesp:             document.getElementById('sim-desp')?.value || '',
+      limiteImp:              document.getElementById('sim-imp')?.value  || '',
       prazoInvoiceData:    document.getElementById('prazo-invoice-data')?.value || '',
       prazoPrepEmbarque:   parseInt(document.getElementById('prazo-prep-embarque')?.value)    || 10,
       prazoEmbarque:       parseInt(document.getElementById('prazo-embarque')?.value)          || 10,

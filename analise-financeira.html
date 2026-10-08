@@ -2019,8 +2019,12 @@
     }
 
     // Trade — todos os campos
-    const expTotal = ['limiteExportador','limiteDesp','limiteImp']
-      .reduce((s, k) => s + (parseFloat((sol[k]||'0').replace(/\./g,'').replace(',','.')) || 0), 0);
+    // Fallback: limiteDesp/limiteImp podem não ter sido salvos em solicitudes antigas —
+    // nesse caso usa simDesp/simImp (mesmo valor, coletado da simulação XLS)
+    const _limiteDesp = sol.limiteDesp || sol.simDesp || '';
+    const _limiteImp  = sol.limiteImp  || sol.simImp  || '';
+    const _parseM = v => parseFloat((v||'0').replace(/\./g,'').replace(',','.')) || 0;
+    const expTotal = _parseM(sol.limiteExportador) + _parseM(_limiteDesp) + _parseM(_limiteImp);
 
     const _fmtDescontos = () => {
       if (sol.descontos && sol.descontos.length) {
@@ -2041,8 +2045,8 @@
       iv('Origens', sol.origens),
       iv('Desconto Comercial', _fmtDescontos()),
       iv('Limite Exportador', fm(sol.limiteExportador), 'money'),
-      iv('Limite Despesas', fm(sol.limiteDesp), 'money'),
-      iv('Limite Impostos', fm(sol.limiteImp), 'money'),
+      iv('Limite Despesas', fm(_limiteDesp), 'money'),
+      iv('Limite Impostos', fm(_limiteImp), 'money'),
       iv('Exposição Total', expTotal > 0 ? DB.utils.fmtMoney(expTotal.toFixed(2).replace('.',',')) : '—', 'money'),
       iv('Volume/mês', sol.volMes ? sol.volMes + ' ' + (sol.volMesMoeda||'') : '—'),
       iv('Potencial', sol.volPotencial ? sol.volPotencial + ' ' + (sol.volPotencialMoeda||'') : '—'),
