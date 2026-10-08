@@ -248,16 +248,22 @@
       color: rgba(168,134,228,.75) !important;
     }
 
-    /* ── Labels (coluna esquerda) ─────────────────────── */
+    /* ── Labels (coluna esquerda) — sticky como Excel ── */
+    .xls-table thead th:first-child {
+      position: sticky; left: 0; z-index: 3;
+      background: linear-gradient(175deg, #140f2d 0%, #1b163a 100%);
+      box-shadow: 3px 0 8px -2px rgba(0,0,0,.6);
+    }
     .xls-table tbody .xls-td-label {
-      position: relative;
+      position: sticky; left: 0; z-index: 1;
       padding: .5rem .5rem .5rem .78rem;
       font-size: .63rem; font-weight: 700; text-transform: uppercase;
       letter-spacing: .35px; white-space: nowrap;
       overflow: hidden; text-overflow: ellipsis;
       border-bottom: 1px solid rgba(140,105,220,.07);
       border-right: 1px solid rgba(140,105,220,.14);
-      background: rgba(255,255,255,.025);
+      background: #13102a;
+      box-shadow: 3px 0 8px -2px rgba(0,0,0,.5);
       color: var(--text-secondary); vertical-align: middle;
     }
     /* Barra lateral colorida por tipo */
@@ -347,6 +353,10 @@
     .xls-table tbody tr:not(.xls-row-spacer):hover .xls-td-edit,
     .xls-table tbody tr:not(.xls-row-spacer):hover .xls-td-calc {
       background: rgba(140,105,220,.055) !important;
+    }
+    /* Hover sobre coluna sticky mantém contraste legível */
+    .xls-table tbody tr:not(.xls-row-spacer):hover .xls-td-label {
+      background: #1c1740 !important;
     }
 
     /* ── Linhas calculadas — FLUXO CAIXA ─────────────────── */
@@ -3813,38 +3823,50 @@
     };
     const setText = (id, v) => { const el = gi(id); if (el) el.textContent = v; };
 
-    // 1. Prazos
-    const prep  = Math.max(0, parseInt(gi('prazo-prep-embarque')?.value)  || 10);
-    const emb   = Math.max(0, parseInt(gi('prazo-embarque')?.value)        || 10);
-    const trns  = Math.max(0, parseInt(gi('prazo-transit')?.value)         || 30);
-    const desm  = Math.max(0, parseInt(gi('prazo-desembaraco')?.value)     || 2);
-    const fat   = Math.max(0, parseInt(gi('prazo-faturamento')?.value)     || 3);
-    const recv  = Math.max(0, parseInt(gi('prazo-pagto-vendemmia')?.value) || 60);
-    const pexp  = Math.max(0, parseInt(gi('prazo-pagto-exportador')?.value)|| 83);
-    const totalDias = prep + emb + trns + desm + fat + recv; // pagexp é absoluto, fora da seq.
+    // 1. Prazos — null quando campo vazio (processo parado nessa etapa)
+    const parseStage = id => {
+      const el = gi(id); if (!el) return null;
+      const v = (el.value ?? '').trim();
+      if (v === '') return null;
+      const n = parseInt(v, 10);
+      return isNaN(n) ? null : Math.max(0, n);
+    };
 
-    // Cumulative — pagexp ABSOLUTO a partir do PEDIDO (Excel: H14=C14+H11)
-    // fat e recvdm seguem DESEMBARAÇO (Excel: I14=G14+I11, J14=I14+J11)
-    const cum = { pront:  prep,
-                  bl:     prep+emb,
-                  transit:prep+emb+trns,
-                  desemb: prep+emb+trns+desm,
-                  pagexp: pexp,                       // absoluto
-                  fat:    prep+emb+trns+desm+fat,     // segue desemb
-                  recvdm: totalDias };
+    const stageSeq = [
+      ['pront',   parseStage('prazo-prep-embarque')],
+      ['bl',      parseStage('prazo-embarque')],
+      ['transit', parseStage('prazo-transit')],
+      ['desemb',  parseStage('prazo-desembaraco')],
+      ['fat',     parseStage('prazo-faturamento')],
+      ['recvdm',  parseStage('prazo-pagto-vendemmia')],
+    ];
+    const pexpVal = parseStage('prazo-pagto-exportador'); // absoluto, independente
+
+    // Acumula sequencialmente — para quando encontra null
+    let cumRun = 0, chainStopped = false;
+    const cum = {};
+    for (const [key, val] of stageSeq) {
+      if (chainStopped || val === null) { chainStopped = true; cum[key] = null; }
+      else { cumRun += val; cum[key] = cumRun; }
+    }
+    cum.pagexp = pexpVal; // absoluto — exibe só se preenchido
+    const totalDias = cum.recvdm; // null se cadeia incompleta
+
+    // helpers de exibição
+    const showCum  = (id, v) => setText(id, v === null ? '—' : String(v));
 
     // Update TEMP. A PARTIR DO PED. row total
-    setText('xls-tempo-ciclo', totalDias + ' dias');
+    setText('xls-tempo-ciclo', totalDias !== null ? totalDias + ' dias' : '—');
 
     // Update TEMPO ACUMULADO row
-    setText('xls-cum-ciclo',   totalDias + ' dias');
-    setText('xls-cum-pront',   cum.pront);
-    setText('xls-cum-bl',      cum.bl);
-    setText('xls-cum-transit', cum.transit);
-    setText('xls-cum-desemb',  cum.desemb);
-    setText('xls-cum-pagexp',  cum.pagexp);
-    setText('xls-cum-fat',     cum.fat);
-    setText('xls-cum-recvdm',  cum.recvdm);
+    setText('xls-cum-ciclo',   totalDias !== null ? totalDias + ' dias' : '—');
+    showCum('xls-cum-pront',   cum.pront);
+    showCum('xls-cum-bl',      cum.bl);
+    showCum('xls-cum-transit', cum.transit);
+    showCum('xls-cum-desemb',  cum.desemb);
+    showCum('xls-cum-pagexp',  cum.pagexp);
+    showCum('xls-cum-fat',     cum.fat);
+    showCum('xls-cum-recvdm',  cum.recvdm);
 
     // 2. Datas
     const invoiceStr = gi('prazo-invoice-data')?.value || '';
@@ -3853,14 +3875,15 @@
     if (invoiceStr) {
       const _p = invoiceStr.split('-');
       const d0 = new Date(+_p[0], +_p[1]-1, +_p[2]);
-      setText('xls-data-ciclo',   fmtD(addD(d0, totalDias)));
-      setText('xls-data-pront',   fmtD(addD(d0, cum.pront)));
-      setText('xls-data-bl',      fmtD(addD(d0, cum.bl)));
-      setText('xls-data-transit', fmtD(addD(d0, cum.transit)));
-      setText('xls-data-desemb',  fmtD(addD(d0, cum.desemb)));
-      setText('xls-data-pagexp',  fmtD(addD(d0, cum.pagexp)));
-      setText('xls-data-fat',     fmtD(addD(d0, cum.fat)));
-      setText('xls-data-recvdm',  fmtD(addD(d0, cum.recvdm)));
+      setText('xls-data-ciclo',   totalDias !== null ? fmtD(addD(d0, totalDias)) : '—');
+      const showDate = (id, v) => setText(id, v !== null ? fmtD(addD(d0, v)) : '—');
+      showDate('xls-data-pront',   cum.pront);
+      showDate('xls-data-bl',      cum.bl);
+      showDate('xls-data-transit', cum.transit);
+      showDate('xls-data-desemb',  cum.desemb);
+      showDate('xls-data-pagexp',  cum.pagexp);
+      showDate('xls-data-fat',     cum.fat);
+      showDate('xls-data-recvdm',  cum.recvdm);
     } else {
       ['ciclo','pront','bl','transit','desemb','pagexp','fat','recvdm'].forEach(k => setText('xls-data-'+k, '—'));
     }
