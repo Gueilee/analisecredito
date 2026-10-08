@@ -793,8 +793,8 @@ function applyFilters() {
   }
   if (term) {
     results = results.filter(c =>
-      c.empresa.toLowerCase().includes(term) ||
-      c.cnpj.replace(/\D/g,'').includes(term.replace(/\D/g,''))
+      (c.empresa || '').toLowerCase().includes(term) ||
+      (c.cnpj || '').replace(/\D/g,'').includes(term.replace(/\D/g,''))
     );
   }
 

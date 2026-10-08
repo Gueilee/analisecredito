@@ -634,6 +634,10 @@
     }
     empty.style.display = 'none';
 
+    const _sessRole = (DB.auth.getSession() || {}).role || '';
+    const _hideRowActions = _sessRole.includes('Operações') &&
+      !['Financeiro','Administrador','Admin','Diretor'].some(r => _sessRole.includes(r));
+
     tbody.innerHTML = filtered.map(s => {
       const initials = s.empresa.split(' ').filter(w => w.length > 2).slice(0,2).map(w => w[0].toUpperCase()).join('') || s.empresa.slice(0,2).toUpperCase();
       return `
@@ -658,7 +662,7 @@
           <span class="badge ${DB.utils.statusBadge[s.status] || 'pendente'}">${DB.utils.statusLabel[s.status] || s.status}</span>
         </td>
         <td>
-          <div class="row-actions">
+          ${_hideRowActions ? '' : `<div class="row-actions">
             <a href="consultar.html?id=${s.id}" class="btn btn-ghost btn-sm" title="Consultar" style="color:var(--purple-light);">
               <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
             </a>
@@ -669,7 +673,7 @@
               onclick="openDeleteModal('${s.id}','${s.empresa.replace(/'/g,"\\'")}')">
               <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
             </button>
-          </div>
+          </div>`}
         </td>
       </tr>`;
     }).join('');

@@ -66,11 +66,15 @@ const App = (() => {
   function _isAdmin(session) {
     return session && _ADMIN_ROLES.some(r => (session.role || '').includes(r));
   }
+  function _isOnlyOperacoes(session) {
+    return session && (session.role || '').includes('Operações') && !_canDecide(session);
+  }
 
   /* ── HTML do sidebar completo ─────────────────────────── */
   function buildSidebar(page, session, c) {
     const showDecisionItems = _canDecide(session);
     const showAdminItems    = _isAdmin(session);
+    const operacoesOnly     = _isOnlyOperacoes(session);
     return `
       <div class="sidebar-logo">
         <a href="index.html" title="Ir para o Dashboard" style="display:block;line-height:0;">
@@ -89,11 +93,11 @@ const App = (() => {
       <nav class="sidebar-nav">
         <span class="nav-section-label">Principal</span>
         ${navItem(ICO.dashboard,    'Dashboard',    'index.html',            page === 'dashboard')}
-        ${navItem(ICO.solicitacoes, 'Solicitações', 'solicitacoes.html',     page === 'solicitacoes')}
+        ${!operacoesOnly ? navItem(ICO.solicitacoes, 'Solicitações', 'solicitacoes.html',     page === 'solicitacoes') : ''}
         ${navItem(ICO.nova,         'Nova Análise', 'nova-solicitacao.html', page === 'nova')}
 
-        <span class="nav-section-label">Análise</span>
-        ${navItem(ICO.emAnalise, 'Em Análise',       'solicitacoes.html?status=em_analise', page === 'em_analise')}
+        ${!operacoesOnly ? `<span class="nav-section-label">Análise</span>` : ''}
+        ${!operacoesOnly ? navItem(ICO.emAnalise, 'Em Análise',       'solicitacoes.html?status=em_analise', page === 'em_analise') : ''}
         ${showDecisionItems ? navItem(ICO.comite,    'Comitê de Crédito', 'comite-credito.html',              page === 'comite')   : ''}
         ${showDecisionItems ? navItem(ICO.aprovadas, 'Aprovadas',         'solicitacoes.html?status=aprovado', page === 'aprovado') : ''}
         ${showDecisionItems ? navItem(ICO.negadas,   'Negadas',           'solicitacoes.html?status=negado',   page === 'negado')   : ''}
