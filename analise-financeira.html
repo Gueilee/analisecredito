@@ -1085,20 +1085,10 @@
                 <span class="fa-step-label">IDwall BGC</span>
                 <span class="fa-step-status" id="fa-status-idwall">Aguardando</span>
               </div>
-              <div class="fa-step" id="fa-step-docs">
+              <div class="fa-step" id="fa-step-rf">
                 <span class="fa-step-dot"></span>
-                <span class="fa-step-label">Documentos Financeiros</span>
-                <span class="fa-step-status" id="fa-status-docs">Aguardando</span>
-              </div>
-              <div class="fa-step" id="fa-step-contabil">
-                <span class="fa-step-dot"></span>
-                <span class="fa-step-label">Análise Contábil</span>
-                <span class="fa-step-status" id="fa-status-contabil">Aguardando</span>
-              </div>
-              <div class="fa-step" id="fa-step-ia">
-                <span class="fa-step-dot"></span>
-                <span class="fa-step-label">Análise com IA</span>
-                <span class="fa-step-status" id="fa-status-ia">Aguardando</span>
+                <span class="fa-step-label">Receita Federal</span>
+                <span class="fa-step-status" id="fa-status-rf">Aguardando</span>
               </div>
               <div class="fa-step" id="fa-step-pereira">
                 <span class="fa-step-dot"></span>
@@ -3649,7 +3639,7 @@ async function runFullAnalysis() {
     setTimeout(() => {
       if (!btn.disabled) {
         btn.className = 'btn-full-analysis pereira-btn';
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer do Pereira`;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Gerar Parecer ORION`;
       }
     }, 6000);
   }
@@ -5389,14 +5379,10 @@ async function runPereiraCompleto() {
     if (stepsEl) stepsEl.style.display = '';
     _pereiraSetStatus('Consultando RF e IDwall…', 'rgba(245,158,11,.9)');
 
-    /* Passo 1: RF + IDwall */
+    /* Passo 1: RF + IDwall — fluxo unificado ORION */
     try {
-      if (window._modoSimplificado) {
-        await runSimplifiedAnalysis();
-      } else {
-        await runFullAnalysis();
-      }
-    } catch (_) { /* falha não fatal — continua para PEREIRA */ }
+      await runSimplifiedAnalysis();
+    } catch (_) { /* falha não fatal — continua para ORION */ }
 
     /* Passo 2: PEREIRA documental */
     _faSetStep('pereira', 'loading', 'Gerando parecer…');
@@ -5440,7 +5426,7 @@ async function runPereiraCompleto() {
       setTimeout(() => {
         if (!btn.disabled) {
           btn.className = 'btn-full-analysis pereira-btn';
-          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Parecer do Pereira`;
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Gerar Parecer ORION`;
         }
       }, 8000);
     }
