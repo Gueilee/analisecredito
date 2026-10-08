@@ -4308,7 +4308,12 @@ async def update_cliente_ativo(
 ):
     body       = await request.json()
     limite     = body.get("limite_aprovado")
-    validade   = body.get("validade")  # "YYYY-MM-DD" ou None
+    _val_raw   = body.get("validade")  # "YYYY-MM-DD" ou None
+    try:
+        from datetime import date as _date
+        validade = _date.fromisoformat(_val_raw) if _val_raw else None
+    except (ValueError, TypeError):
+        validade = None
     atualizado = datetime.utcnow().isoformat()
     rows = await _turso_query(
         "SELECT id FROM ac_clientes_ativos WHERE id=?",
