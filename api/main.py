@@ -4139,7 +4139,7 @@ async def ca_analise_update(ca_id: int, request: Request, current_user=Depends(_
         if vd is not None:
             try:
                 nova_val = date.today() + timedelta(days=int(vd))
-                _add("validade", nova_val.isoformat())
+                _add("validade", nova_val)          # date object — asyncpg rejeita string
             except (ValueError, TypeError):
                 pass
     if "parecerTecnico" in body:
@@ -4147,7 +4147,15 @@ async def ca_analise_update(ca_id: int, request: Request, current_user=Depends(_
     if "decisaoAnalista" in body:
         _add("decisao_analista", body["decisaoAnalista"] or None)
     if "decisao_at" in body:
-        _add("decisao_at", body["decisao_at"] or None)
+        _da = body["decisao_at"]
+        if _da:
+            try:
+                _da_dt = datetime.fromisoformat(_da.replace("Z", "+00:00"))
+                _add("decisao_at", _da_dt)          # datetime object — asyncpg rejeita string
+            except (ValueError, AttributeError):
+                _add("decisao_at", None)
+        else:
+            _add("decisao_at", None)
     if "pereira_analise" in body:
         _add("pereira_analise", body["pereira_analise"])  # dict → codec JSONB serializa
 
