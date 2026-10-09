@@ -5100,6 +5100,25 @@ function _pereiraSetStatus(text, color) {
   badge.innerHTML = `<svg viewBox="0 0 10 10" width="8" height="8" fill="${color || 'rgba(139,92,246,.7)'}"><circle cx="5" cy="5" r="5"/></svg> ${text}`;
 }
 
+function _buildOrionErrorHTML(msg, raw) {
+  const isBilling = /saldo|crédito|billing|credit|balance/i.test(msg);
+  const testKeyUrl = (window.API_URL || '') + '/api/pereira/test-key';
+  const rawBlock = raw
+    ? `<details style="margin-top:.6rem">
+        <summary style="cursor:pointer;font-size:.71rem;opacity:.55;user-select:none">▶ Ver detalhes técnicos</summary>
+        <pre style="font-size:.68rem;opacity:.5;white-space:pre-wrap;margin:.3rem 0 0;max-height:120px;overflow-y:auto">${raw.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+       </details>`
+    : '';
+  const keyBtn = isBilling
+    ? `<br><a href="${testKeyUrl}" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:.25rem;margin-top:.5rem;font-size:.71rem;color:#60a5fa;text-decoration:none;opacity:.8">
+           <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+           Verificar chave ativa no servidor →
+         </a>`
+    : '';
+  return `<div style="color:var(--red);font-size:.78rem;padding:.6rem .8rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);line-height:1.6;white-space:pre-wrap"><strong>Erro na análise:</strong>\n${msg}${keyBtn}${rawBlock}</div>`;
+}
+
 async function runPereira() {
   if (!sol || !sol.id) {
     showToast('Solicitação não identificada — recarregue a página.', 'warning');
@@ -5142,7 +5161,10 @@ async function runPereira() {
       const pr = await fetch(`${API_URL}/api/pereira/analise/${sol.id}`, { credentials: 'include' });
       if (!pr.ok) continue;
       const pd = await pr.json();
-      if (pd.status === 'error') throw new Error(pd.error || 'Erro na análise ORION');
+      if (pd.status === 'error') {
+        const _pe = Object.assign(new Error(pd.error || 'Erro na análise ORION'), { _rawDetail: pd.error_raw || '' });
+        throw _pe;
+      }
       if (pd.ok && pd.parecer) {
         _renderPereiraAnalise(pd);
         _pereiraSetStatus('Parecer concluído', 'rgba(1,225,142,.9)');
@@ -5154,10 +5176,11 @@ async function runPereira() {
     throw new Error('Tempo limite excedido (5 min) — tente novamente');
   } catch (e) {
     const _eMsg = e.message || 'Erro desconhecido';
+    const _eRaw = e._rawDetail || '';
     if (loading) loading.style.display = 'none';
     if (hint) {
       hint.style.display = 'block';
-      hint.innerHTML = `<div style="color:var(--red);font-size:.78rem;padding:.6rem .8rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);line-height:1.6;white-space:pre-wrap;"><strong>Erro na análise:</strong>\n${_eMsg}</div>`;
+      hint.innerHTML = _buildOrionErrorHTML(_eMsg, _eRaw);
     }
     _pereiraSetStatus('Erro na análise', 'rgba(239,68,68,.9)');
     throw e;
@@ -5307,12 +5330,13 @@ function _renderPereiraAnalise(data) {
     // Caso de erro salvo: sem parecer mas com mensagem de erro
     if (!sol.pereira_analise.parecer) {
       const _savedErr = sol.pereira_analise.error;
+      const _savedRaw = sol.pereira_analise.error_raw || '';
       if (!_savedErr) return false;
       if (mainCard) mainCard.style.display = 'block';
       const hint = document.getElementById('pereira-hint');
       if (hint) {
         hint.style.display = 'block';
-        hint.innerHTML = `<div style="color:var(--red);font-size:.78rem;padding:.6rem .8rem;background:rgba(239,68,68,.07);border-radius:6px;border:1px solid rgba(239,68,68,.2);line-height:1.6;white-space:pre-wrap;"><strong>Erro na análise:</strong>\n${_savedErr}</div>`;
+        hint.innerHTML = _buildOrionErrorHTML(_savedErr, _savedRaw);
       }
       _pereiraSetStatus('Erro na análise', 'rgba(239,68,68,.9)');
       if (typeof _faSetStep === 'function') {

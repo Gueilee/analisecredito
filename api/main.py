@@ -1289,7 +1289,10 @@ def _friendly_error(raw: str) -> str:
     # ── Anthropic ──────────────────────────────────────────────────────────────
     if "anthropic" in s or "sk-ant" in s:
         if any(x in s for x in ("credit", "balance", "billing", "payment")):
-            return "Sem saldo na conta Anthropic. Acesse console.anthropic.com → Billing e adicione créditos."
+            import re as _re
+            _m = _re.search(r"anthropic (\d+):", s)
+            _code = f" (HTTP {_m.group(1)})" if _m else ""
+            return f"Sem saldo na conta Anthropic{_code}. Acesse console.anthropic.com → Billing e adicione créditos."
         if any(x in s for x in ("invalid x-api-key", "invalid api key", "authentication_error", "unauthorized")):
             return "Chave Anthropic inválida ou expirada. Verifique a variável ANTHROPIC_API_KEY no servidor."
         if any(x in s for x in ("rate_limit", "too many requests", "429")):
@@ -4982,10 +4985,17 @@ async def _pereira_bg_task(sol_id: str, anthropic_key: str) -> None:
     except Exception as exc:
         # Salva marcador de erro no banco para o frontend parar de fazer polling
         _raw_err = str(exc)
+        _key_hint = ""
+        try:
+            _k = _load_anthropic_key()
+            if _k:
+                _key_hint = f"\n[chave em uso: {_k[:8]}…{_k[-4:]} ({len(_k)} chars)]"
+        except Exception:
+            pass
         error_result = {
             "parecer": None,
             "error": _friendly_error(_raw_err),
-            "error_raw": _raw_err[:600],
+            "error_raw": _raw_err[:800] + _key_hint,
             "analisado_at": datetime.utcnow().isoformat(),
             "modelo": "claude-haiku-4-5-20251001",
             "documentos_analisados": [],
