@@ -1021,6 +1021,10 @@
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Voltar
         </a>
+        <a href="#" id="btn-editar-parecer" onclick="editarParecer();return false;" class="btn btn-sm" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.35);">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Editar Parecer
+        </a>
         <a href="#" id="btn-editar-sol" class="btn btn-ghost btn-sm" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Editar Solicitação
@@ -1811,11 +1815,15 @@
     const _isSimplificado = _isCaClientBoot || _isTransporte || _isArmazemVDM;
     window._modoSimplificado = _isSimplificado;
 
-    // Botão Editar Solicitação (depois de _isCaClientBoot estar definido)
+    // Botões de edição (depois de _isCaClientBoot estar definido)
     const _btnEdit = document.getElementById('btn-editar-sol');
     if (_btnEdit && !_isCaClientBoot) {
       _btnEdit.href = 'nova-solicitacao.html?id=' + sol.id;
       _btnEdit.style.display = '';
+    }
+    const _btnEditParecer = document.getElementById('btn-editar-parecer');
+    if (_btnEditParecer && !_isCaClientBoot && ['aprovado','negado'].includes(sol.status)) {
+      _btnEditParecer.style.display = '';
     }
 
     // Botão Exposição: para todas as modalidades Trade completas
@@ -2864,6 +2872,85 @@
     card.style.display = '';
     document.getElementById('trigger-card').style.display = 'none';
     // decision-card permanece visível para que o analista registre a decisão final após o comitê
+  }
+
+  /* ── Editar Parecer Final (aprovado/negado) ─────────────────────── */
+  function editarParecer() {
+    const card = document.getElementById('result-card');
+    const prazoOpts = [30,45,60,90,120,180,360].map(d =>
+      `<option value="${d}"${sol.prazoAprovado == d ? ' selected' : ''}>${d} dias</option>`).join('');
+    card.innerHTML = `
+      <div style="margin-bottom:.9rem;display:flex;align-items:center;gap:.55rem;">
+        <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:.78rem;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px;">Editar Parecer Final</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.55rem;">
+        <div>
+          <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Decisão</div>
+          <select id="ep-edit-status" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;outline:none;">
+            <option value="aprovado"${sol.status==='aprovado'?' selected':''}>✅ Aprovado</option>
+            <option value="negado"${sol.status==='negado'?' selected':''}>❌ Negado</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Validade (dias)</div>
+          <input id="ep-edit-validade" type="number" min="1" max="9999" value="${sol.validadeDias||''}" placeholder="Ex: 90"
+            style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;outline:none;box-sizing:border-box;" />
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.55rem;">
+        <div>
+          <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Limite Aprovado</div>
+          <div style="display:flex;align-items:center;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);overflow:hidden;">
+            <span style="padding:.45rem .6rem;color:var(--text-faint);font-size:.78rem;border-right:1px solid var(--input-border);background:rgba(255,255,255,.03);">R$</span>
+            <input id="ep-edit-limite" type="text" placeholder="0,00" oninput="maskMoneyComite(this)"
+              value="${sol.limiteAprovado||''}"
+              style="flex:1;background:none;border:none;outline:none;color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;" />
+          </div>
+        </div>
+        <div>
+          <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Prazo</div>
+          <select id="ep-edit-prazo" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;outline:none;">
+            <option value="">Selecione</option>
+            ${prazoOpts}
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:.6rem;">
+        <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Parecer Técnico</div>
+        <textarea id="ep-edit-parecer" rows="4"
+          style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.55rem .75rem;outline:none;resize:vertical;line-height:1.5;box-sizing:border-box;"
+          placeholder="Fundamentos técnicos da decisão, condições especiais, restrições…">${sol.parecerTecnico||''}</textarea>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <button onclick="renderDecisionResult()" style="flex:1;padding:.75rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-sm);color:var(--text-muted);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;">Cancelar</button>
+        <button onclick="salvarEdicaoParecer()" style="flex:2;padding:.75rem;background:linear-gradient(135deg,#c97d00,#f59e0b);color:#1a0f00;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:.83rem;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(245,158,11,.25);">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="margin-right:.35rem;vertical-align:middle;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
+          Salvar Alterações
+        </button>
+      </div>`;
+    card.style.display = '';
+  }
+
+  function salvarEdicaoParecer() {
+    const novoStatus  = document.getElementById('ep-edit-status')?.value || sol.status;
+    const novoLimite  = document.getElementById('ep-edit-limite')?.value.trim() || '';
+    const novoPrazo   = document.getElementById('ep-edit-prazo')?.value || '';
+    const novoParecer = document.getElementById('ep-edit-parecer')?.value.trim() || '';
+    const novaValid   = document.getElementById('ep-edit-validade')?.value || '';
+    DB.solicitacoes.update(sol.id, {
+      status:          novoStatus,
+      limiteAprovado:  novoLimite,
+      prazoAprovado:   novoPrazo ? Number(novoPrazo) : (sol.prazoAprovado || ''),
+      parecerTecnico:  novoParecer,
+      validadeDias:    novaValid ? Number(novaValid) : (sol.validadeDias || ''),
+    });
+    sol = DB.solicitacoes.getById(sol.id);
+    // Atualiza badge de status no hero
+    document.getElementById('hero-badge').innerHTML =
+      `<span class="badge ${DB.utils.statusBadge[sol.status] || 'pendente'}">${DB.utils.statusLabel[sol.status] || sol.status}</span>`;
+    renderDecisionResult();
+    showToast('Parecer atualizado com sucesso!', 'success');
   }
 
   /* ── Deliberação inline do Comitê (a partir da tela de análise) ── */
