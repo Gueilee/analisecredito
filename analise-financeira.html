@@ -603,6 +603,13 @@
     }
     .page-readonly-banner svg { width: 14px; height: 14px; flex-shrink: 0; }
 
+    @keyframes cardPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.5); }
+      60%  { box-shadow: 0 0 0 10px rgba(245,158,11,0); }
+      100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+    }
+    .card-edit-pulse { animation: cardPulse .7s ease-out; }
+
     body.view-only .fin-inp,
     body.view-only .fin-year-inp {
       pointer-events: none; opacity: .5; cursor: not-allowed;
@@ -3284,6 +3291,13 @@
         </button>
       </div>`;
     card.style.display = '';
+    // Rola até o form e destaca visualmente — botão pode estar no topbar, longe do card
+    requestAnimationFrame(() => {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      card.classList.remove('card-edit-pulse');
+      void card.offsetWidth; // força reflow para reiniciar a animação
+      card.classList.add('card-edit-pulse');
+    });
   }
 
   function _coletarDadosEdicaoParecer() {
