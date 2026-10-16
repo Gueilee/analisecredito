@@ -2192,8 +2192,11 @@
       });
 
       // Clientes ativos (ca_) sempre podem receber nova decisão — revisão periódica
-      if (canDecide) document.getElementById('decision-card').style.display = '';
-      else           document.getElementById('pending-decision-banner').style.display = '';
+      // em_comite: renderDecisionResult() cuida da UI do Comitê, não exibir form do financeiro
+      if (sol.status !== 'em_comite') {
+        if (canDecide) document.getElementById('decision-card').style.display = '';
+        else           document.getElementById('pending-decision-banner').style.display = '';
+      }
     }
 
     if (_isLicenciamento) {
@@ -2221,7 +2224,8 @@
     }
 
     // Painel de decisão para análise completa (Trade Encomenda / Licenciamento / genérico)
-    if (!_isSimplificado && !['aprovado', 'negado'].includes(sol.status)) {
+    // em_comite: renderDecisionResult() exibe UI de deliberação do Comitê; não mostrar form do financeiro
+    if (!_isSimplificado && !['aprovado', 'negado', 'em_comite'].includes(sol.status)) {
       if (canDecide) document.getElementById('decision-card').style.display = '';
       else           document.getElementById('pending-decision-banner').style.display = '';
     }
@@ -2248,12 +2252,15 @@
         `<span class="badge ${DB.utils.statusBadge['em_analise']}">${DB.utils.statusLabel['em_analise']}</span>`;
     }
 
-    // Se já tem decisão final, renderiza resultado; em_comite ainda mostra card de decisão
+    // Renderiza resultado/deliberação para aprovado, negado e em_comite
     // ca_ (clientes ativos) nunca são bloqueados — revisão periódica, sem lockReadOnly
-    if (!_isCaClientBoot && ['aprovado','negado'].includes(sol.status)) renderDecisionResult();
+    if (!_isCaClientBoot && ['aprovado','negado','em_comite'].includes(sol.status)) renderDecisionResult();
 
     // Bloquear edição em processos finalizados (nunca para ca_ — sempre permitem reanálise)
     if (!_isCaClientBoot && ['aprovado','negado'].includes(sol.status)) lockReadOnly(sol.status);
+
+    // Para em_comite: esconde botões de ação do financeiro sem exibir banner de "somente leitura"
+    if (!_isCaClientBoot && sol.status === 'em_comite') document.body.classList.add('view-only');
 
     // IDwall — renderizado no 2º bloco <script>, depois que renderIdwallCard é definido
 
@@ -3228,7 +3235,11 @@
 
     card.style.display = '';
     document.getElementById('trigger-card').style.display = 'none';
-    // decision-card permanece visível para que o analista registre a decisão final após o comitê
+    // Para em_comite: oculta o decision-card (form do financeiro) — Comitê usa result-card
+    if (sol.status === 'em_comite') {
+      const dc = document.getElementById('decision-card');
+      if (dc) dc.style.display = 'none';
+    }
   }
 
   /* ── Editar Parecer Final (aprovado/negado) ─────────────────────── */
