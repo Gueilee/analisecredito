@@ -3799,6 +3799,8 @@
       document.querySelector('.topbar-title h1').textContent = 'Editar Solicitação de Análise';
       document.querySelector('.topbar-title p').textContent  = 'Atualize os dados da solicitação — ' + editRecord.empresa;
       document.title = 'Editar — ' + editRecord.empresa + ' | Vendemmia';
+      const _btnNext = document.getElementById('btn-next');
+      if (_btnNext) _btnNext.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="1.7"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="1.7"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="1.7"/></svg> Salvar Alterações`;
     }
   }
 
@@ -5489,7 +5491,7 @@
       }
     }
 
-    window.location.href = 'index.html';
+    window.location.href = isEditMode ? 'analise-financeira.html?id=' + editId : 'index.html';
   }
 
   /* ── Salvar rascunho ─────────────────────────────────── */
