@@ -1686,18 +1686,45 @@
               <span>Esta operação exige deliberação do <strong>Comitê de Crédito</strong> (diretoria e sócios). Preencha seu parecer e envie ao Comitê para aprovação final.</span>
             </div>
 
-            <!-- Botão Comitê (apenas encomenda) -->
+            <!-- Aviso de Conta e Ordem (Comitê opcional) -->
+            <div class="encomenda-notice" id="conta-ordem-notice" style="display:none;background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.28);">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#a78bfa" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="#a78bfa" stroke-width="1.7"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#a78bfa" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <span style="color:rgba(167,139,250,.9);">Trade <strong style="color:#a78bfa;">Conta e Ordem</strong> — preencha o parecer e salve. Você poderá encaminhar ao Comitê de Crédito (opcional) ou decidir diretamente.</span>
+            </div>
+
+            <!-- Botão Comitê (apenas encomenda/licenciamento — obrigatório) -->
             <button id="dec-btn-comite" class="dec-btn comite" onclick="decideComite()" style="display:none;">
               <svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
               Enviar para Comitê de Crédito
             </button>
+
+            <!-- Botão Salvar Parecer (apenas Conta e Ordem — antes da opção de Comitê) -->
+            <button id="dec-btn-salvar-co" class="dec-btn" onclick="salvarParecerContaOrdem()" style="display:none;background:rgba(167,139,250,.12);color:#a78bfa;border:1.5px solid rgba(167,139,250,.35);">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
+              Salvar Parecer
+            </button>
+
+            <!-- Opções pós-parecer Conta e Ordem: Comitê opcional -->
+            <div id="dec-co-opcoes" style="display:none;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.22);border-radius:var(--radius-sm);padding:.85rem 1rem;margin-bottom:.5rem;">
+              <div style="font-size:.82rem;font-weight:700;color:#a78bfa;margin-bottom:.35rem;">Parecer salvo. Deseja encaminhar ao Comitê de Crédito?</div>
+              <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.75rem;">O Comitê é opcional para Conta e Ordem. Se enviar, o crédito aguardará deliberação da diretoria antes da decisão final.</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+                <button onclick="decideComite()" style="padding:.7rem;background:rgba(245,158,11,.12);color:#f59e0b;border:1.5px solid rgba(245,158,11,.35);border-radius:var(--radius-sm);font-family:inherit;font-size:.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.4rem;">
+                  <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Sim, enviar ao Comitê
+                </button>
+                <button onclick="mostrarBotoesCO()" style="padding:.7rem;background:rgba(255,255,255,.05);color:var(--text-muted);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-sm);font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;">
+                  Não, decidir agora
+                </button>
+              </div>
+            </div>
 
             <!-- Botão Aprovar (oculto para encomenda) -->
             <button id="dec-btn-aprovar" class="dec-btn aprovar" onclick="decide('aprovado')">
               <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               Aprovar Crédito
             </button>
-            <button class="dec-btn negar" onclick="decide('negado')">
+            <button id="dec-btn-negar" class="dec-btn negar" onclick="decide('negado')">
               <svg viewBox="0 0 24 24" fill="none"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
               Negar Crédito
             </button>
@@ -1918,6 +1945,14 @@
     if (!_isSimplificado && !['aprovado', 'negado'].includes(sol.status)) {
       if (canDecide) document.getElementById('decision-card').style.display = '';
       else           document.getElementById('pending-decision-banner').style.display = '';
+    }
+
+    // Conta e Ordem — Comitê opcional após parecer
+    if (_isContaOrdem && sol.status === 'em_analise' && canDecide) {
+      document.getElementById('conta-ordem-notice').style.display = '';
+      document.getElementById('dec-btn-salvar-co').style.display  = '';
+      document.getElementById('dec-btn-aprovar').style.display    = 'none';
+      document.getElementById('dec-btn-negar').style.display      = 'none';
     }
 
     // Auto-transição: pendente → em_analise ao abrir a tela de análise
@@ -2659,6 +2694,37 @@
     const label = newStatus === 'aprovado' ? 'Crédito aprovado!' : 'Crédito negado.';
     sessionStorage.setItem('vd_saved', label);
     location.href = 'index.html';
+  }
+
+  /* ── Conta e Ordem: salvar parecer e oferecer Comitê opcional ── */
+  function salvarParecerContaOrdem() {
+    const parecer = document.getElementById('dec-parecer').value.trim();
+    if (!parecer) {
+      const el = document.getElementById('dec-parecer');
+      if (el) { el.style.borderColor = 'var(--red)'; el.focus(); setTimeout(() => el.style.borderColor = '', 2000); }
+      showToast('Preencha o parecer técnico antes de salvar.', 'error');
+      return;
+    }
+    const limite   = document.getElementById('dec-limite').value.trim();
+    const prazo    = document.getElementById('dec-prazo').value;
+    const validade = parseInt(document.getElementById('dec-validade').value || '0', 10) || null;
+    DB.solicitacoes.update(sol.id, {
+      limiteAprovado:  limite,
+      prazoAprovado:   prazo,
+      parecerTecnico:  parecer,
+      validadeDias:    validade,
+      decisaoAnalista: session ? session.name : 'Analista',
+    });
+    sol = DB.solicitacoes.getById(sol.id);
+    document.getElementById('dec-btn-salvar-co').style.display = 'none';
+    document.getElementById('conta-ordem-notice').style.display = 'none';
+    document.getElementById('dec-co-opcoes').style.display      = '';
+  }
+
+  function mostrarBotoesCO() {
+    document.getElementById('dec-co-opcoes').style.display   = 'none';
+    document.getElementById('dec-btn-aprovar').style.display = '';
+    document.getElementById('dec-btn-negar').style.display   = '';
   }
 
   /* ── Enviar para Comitê ─────────────────────────────── */
