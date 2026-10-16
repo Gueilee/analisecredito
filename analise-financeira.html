@@ -240,6 +240,84 @@
     }
     .encomenda-notice svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: .05rem; }
 
+    /* ── XLS Simulação Financeira (Gestão / Conta e Ordem) ──── */
+    .xls-wrap {
+      margin-top: .9rem; overflow-x: auto; overflow-y: visible;
+      border: 1px solid var(--glass-border); border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+      scrollbar-width: thin; scrollbar-color: rgba(140,105,220,.35) transparent;
+    }
+    .xls-wrap::-webkit-scrollbar { height: 6px; }
+    .xls-wrap::-webkit-scrollbar-thumb { background: rgba(140,105,220,.35); border-radius: 3px; }
+    .xls-table {
+      border-collapse: collapse; table-layout: fixed;
+      width: 100%; min-width: 1440px; background: var(--purple-card);
+      font-family: inherit; font-size: .75rem;
+    }
+    .xls-th-label { width: 12%; }
+    .xls-th-ciclo { width: 10%; }
+    .xls-table thead th {
+      background: linear-gradient(175deg, #140f2d 0%, #1b163a 100%);
+      color: var(--purple-light);
+      padding: .72rem .22rem; text-align: center;
+      border-bottom: 2px solid rgba(140,105,220,.3);
+      font-size: .58rem; font-weight: 700; letter-spacing: .55px;
+      white-space: nowrap; line-height: 1.3; vertical-align: bottom;
+      text-transform: uppercase; overflow: hidden;
+    }
+    .xls-th-label { text-align: left !important; padding-left: .75rem !important; color: rgba(168,134,228,.55) !important; border-right: 1px solid rgba(140,105,220,.18); }
+    .xls-th-ciclo { border-right: 1px solid rgba(140,105,220,.18); color: rgba(168,134,228,.75) !important; }
+    .xls-table thead th:first-child { position: sticky; left: 0; z-index: 3; background: linear-gradient(175deg,#140f2d 0%,#1b163a 100%); box-shadow: 3px 0 8px -2px rgba(0,0,0,.6); }
+    .xls-table tbody .xls-td-label { position: sticky; left: 0; z-index: 1; padding: .5rem .5rem .5rem .78rem; font-size: .63rem; font-weight: 700; text-transform: uppercase; letter-spacing: .35px; white-space: nowrap; border-bottom: 1px solid rgba(140,105,220,.07); border-right: 1px solid rgba(140,105,220,.14); background: #13102a; box-shadow: 3px 0 8px -2px rgba(0,0,0,.5); color: var(--text-secondary); vertical-align: middle; }
+    .xls-table tbody .xls-td-label::before { content: ''; position: absolute; left: 0; top: 20%; bottom: 20%; width: 2.5px; border-radius: 0 2px 2px 0; background: rgba(140,105,220,.5); }
+    .xls-table tbody td:nth-child(2) { border-right: 1px solid rgba(140,105,220,.14) !important; }
+    .xls-td-edit { padding: 3px 3px; border-bottom: 1px solid rgba(140,105,220,.07); background: transparent; vertical-align: middle; overflow: hidden; }
+    .xls-inp { display: block; width: 100%; box-sizing: border-box; background: rgba(255,255,255,.055); border: 1px solid rgba(140,105,220,.2); border-radius: 7px; padding: .3rem .28rem; font-size: .72rem; color: var(--text-primary); text-align: right; font-family: inherit; outline: none; transition: border-color .15s, background .15s, box-shadow .15s; }
+    .xls-inp::placeholder { color: rgba(110,100,164,.5); }
+    .xls-inp:focus { background: rgba(168,134,228,.13); border-color: var(--purple-light); box-shadow: 0 0 0 3px rgba(168,134,228,.13); }
+    .xls-inp-num { text-align: center; font-weight: 600; }
+    .xls-inp-date { text-align: center; font-size: .67rem; padding: .28rem .22rem; color-scheme: dark; cursor: pointer; }
+    .xls-inp-date::-webkit-calendar-picker-indicator { filter: invert(.7) sepia(1) saturate(2.5) hue-rotate(200deg) brightness(1.1); opacity: .7; cursor: pointer; padding: 0; width: 13px; height: 13px; }
+    .xls-td-calc { padding: .5rem .28rem; text-align: right; border-bottom: 1px solid rgba(140,105,220,.07); background: transparent; color: var(--text-faint); font-size: .73rem; white-space: nowrap; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; }
+    .xls-td-calc-center { text-align: center !important; }
+    .xls-calc-bold  { font-weight: 700; color: var(--text-secondary); }
+    .xls-calc-muted { color: var(--text-faint) !important; font-weight: 500 !important; }
+    .xls-calc-neg   { color: #f87171 !important; font-weight: 700; }
+    .xls-calc-pos   { color: #01e18e !important; font-weight: 700; }
+    .xls-table tbody tr:last-child td { border-bottom: none; }
+    .xls-table tbody tr:not(.xls-row-spacer):hover .xls-td-label,
+    .xls-table tbody tr:not(.xls-row-spacer):hover .xls-td-edit,
+    .xls-table tbody tr:not(.xls-row-spacer):hover .xls-td-calc { background: rgba(140,105,220,.055) !important; }
+    .xls-table tbody tr:not(.xls-row-spacer):hover .xls-td-label { background: #1c1740 !important; }
+    .xls-row-gray .xls-td-label, .xls-row-gray .xls-td-calc { background: rgba(100,65,180,.16) !important; color: var(--text-secondary) !important; }
+    .xls-row-gray .xls-td-label::before { background: var(--purple-light); opacity: .7; }
+    .xls-row-gray-dark .xls-td-label, .xls-row-gray-dark .xls-td-calc { background: rgba(100,65,180,.26) !important; color: var(--text-secondary) !important; }
+    .xls-row-gray-dark .xls-td-label::before { background: var(--purple-light); }
+    .xls-row-tempo .xls-td-label { color: #f87171 !important; font-weight: 900; }
+    .xls-row-tempo .xls-td-label::before { background: #f87171 !important; }
+    .xls-row-tempo .xls-td-calc  { background: rgba(248,113,113,.08) !important; color: #f87171 !important; font-weight: 600; }
+    .xls-row-tempo .xls-td-edit  { background: rgba(248,113,113,.04); }
+    .xls-row-tempo .xls-inp      { color: #f87171; font-weight: 700; border-color: rgba(248,113,113,.28); background: rgba(248,113,113,.07); }
+    .xls-row-tempo .xls-inp:focus { box-shadow: 0 0 0 3px rgba(248,113,113,.14); border-color: #f87171; }
+    .xls-row-outflow .xls-td-label::before { background: #f87171 !important; }
+    .xls-row-outflow .xls-td-edit { position: relative; }
+    .xls-row-outflow .xls-td-edit::before { content: "−"; position: absolute; left: 6px; top: 50%; transform: translateY(-50%); color: #f87171; font-weight: 700; font-size: .74rem; pointer-events: none; z-index: 2; }
+    .xls-row-outflow .xls-td-edit .xls-inp { padding-left: .75rem; color: #f87171; border-color: rgba(248,113,113,.22); background: rgba(248,113,113,.06); }
+    .xls-row-outflow .xls-td-edit .xls-inp:focus { box-shadow: 0 0 0 3px rgba(248,113,113,.13); }
+    .xls-row-outflow .xls-td-calc { color: #f87171 !important; }
+    .xls-row-spacer td { height: 2px; padding: 0; border: none; background: linear-gradient(90deg, transparent, rgba(140,105,220,.22), transparent); }
+    .xls-lbl-tempo { color: #f87171 !important; }
+    .xls-fs-btn { display: inline-flex; align-items: center; gap: .38rem; padding: .32rem .8rem; border-radius: 6px; background: rgba(124,58,237,.12); border: 1px solid rgba(124,58,237,.3); color: var(--purple-light); font-family: inherit; font-size: .71rem; font-weight: 600; cursor: pointer; transition: all .14s; white-space: nowrap; }
+    .xls-fs-btn:hover { background: rgba(124,58,237,.22); border-color: rgba(124,58,237,.5); }
+    .xls-fs-btn svg { width: 11px; height: 11px; }
+    #xls-fs-overlay { display: none; position: fixed; inset: 0; z-index: 9100; background: rgba(4,2,14,.92); backdrop-filter: blur(8px); flex-direction: column; }
+    #xls-fs-modal { display: flex; flex-direction: column; height: 100%; }
+    #xls-fs-hd { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid rgba(140,105,220,.2); background: rgba(10,6,26,.98); flex-shrink: 0; box-shadow: 0 2px 16px rgba(0,0,0,.4); }
+    .xls-fs-close-btn { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem 1rem; border-radius: 6px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: var(--text-secondary); font-family: inherit; font-size: .76rem; font-weight: 600; cursor: pointer; transition: all .14s; }
+    .xls-fs-close-btn:hover { background: rgba(255,255,255,.11); color: var(--text-primary); }
+    #xls-fs-body { flex: 1; overflow: auto; padding: 1.8rem 2.5rem 2rem; }
+    #xls-fs-body .xls-wrap { margin-top: 0; }
+
     /* ── Encomenda hero banner ───────────────────────────── */
     .hero-encomenda {
       margin-top: .9rem;
@@ -1737,9 +1815,195 @@
           <!-- Resultado após decisão -->
           <div class="card" id="result-card" style="display:none;"></div>
 
+          <!-- Simulação Financeira — preenchida pelo Financeiro para Gestão / Conta e Ordem -->
+          <div class="card" id="sim-ciclo-card" style="display:none;">
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+              <div class="card-title" style="flex:1;margin-bottom:0;display:flex;align-items:center;gap:.55rem;">
+                <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                Simulação Financeira do Ciclo de Importação
+              </div>
+              <button class="xls-fs-btn" onclick="openXlsFullscreen()" title="Expandir em tela cheia">
+                <svg viewBox="0 0 24 24" fill="none"><polyline points="15 3 21 3 21 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="9 21 3 21 3 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="3" x2="14" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="21" x2="10" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Tela Cheia
+              </button>
+            </div>
+            <p style="font-size:.77rem;color:var(--text-muted);margin:.35rem 0 .6rem;">
+              Preencha os valores de cada etapa do ciclo. Campos calculados são atualizados automaticamente.
+            </p>
+
+            <div class="xls-wrap" id="sim-ciclo-wrap">
+              <table class="xls-table">
+                <thead>
+                  <tr>
+                    <th class="xls-th-label"></th>
+                    <th class="xls-th-ciclo">CICLO</th>
+                    <th data-stage="pedido">PEDIDO</th>
+                    <th data-stage="pront">PRONT.</th>
+                    <th data-stage="bl">BL</th>
+                    <th data-stage="transit">TRANSP.</th>
+                    <th data-stage="desemb">DESEMB.</th>
+                    <th data-stage="pagexp">PG.<br>EXP.</th>
+                    <th data-stage="fat">FATUR.</th>
+                    <th data-stage="recvdm">RECEB.<br>VDM</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="xls-row-outflow">
+                    <td class="xls-td-label">PAGTO FOB</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fob-ciclo">—</td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fob-pedido"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fob-pront"   type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fob-bl"      type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fob-transit" type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fob-desemb"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fob-pagexp"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fob-fat"     type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fob-recvdm"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                  </tr>
+                  <tr class="xls-row-outflow">
+                    <td class="xls-td-label">DESP / IMPOSTOS</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-di-ciclo">—</td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-di-pedido"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-di-pront"   type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-di-bl"      type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-di-transit" type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-di-desemb"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-di-pagexp"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-di-fat"     type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-di-recvdm"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                  </tr>
+                  <tr>
+                    <td class="xls-td-label">FATURAMENTO</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-vol-ciclo">—</td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fat-pedido"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fat-pront"   type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fat-bl"      type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fat-transit" type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fat-desemb"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fat-pagexp"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fat-fat"     type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-fat-recvdm"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                  </tr>
+                  <tr>
+                    <td class="xls-td-label">RECEB. VDM</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-rec-ciclo">—</td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-rec-pedido"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-rec-pront"   type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-rec-bl"      type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-rec-transit" type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-rec-desemb"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-rec-pagexp"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-rec-fat"     type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp" id="xls-rec-recvdm"  type="text" placeholder="" oninput="maskMoney(this);xlsUpdate()"></td>
+                  </tr>
+                  <tr class="xls-row-gray">
+                    <td class="xls-td-label">FLUXO CAIXA FINAN.</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-ciclo">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-pedido">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-pront">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-bl">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-transit">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-desemb">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-pagexp">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-fat">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-fluxo-recvdm">—</td>
+                  </tr>
+                  <tr class="xls-row-gray-dark">
+                    <td class="xls-td-label">EXP. SEGURO CRÉD.</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-ciclo">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-pedido">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-pront">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-bl">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-transit">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-desemb">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-pagexp">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-fat">—</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-exp-recvdm">—</td>
+                  </tr>
+                  <tr class="xls-row-tempo">
+                    <td class="xls-td-label xls-lbl-tempo">TEMP. A PARTIR DO PED.</td>
+                    <td class="xls-td-calc xls-calc-bold" id="xls-tempo-ciclo">115 dias</td>
+                    <td class="xls-td-calc xls-td-calc-center">Dia 0</td>
+                    <td class="xls-td-edit"><input class="xls-inp xls-inp-num" id="prazo-prep-embarque"   type="number" value="10" min="0" oninput="xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp xls-inp-num" id="prazo-embarque"        type="number" value="10" min="0" oninput="xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp xls-inp-num" id="prazo-transit"         type="number" value="30" min="0" oninput="xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp xls-inp-num" id="prazo-desembaraco"     type="number" value="2"  min="0" oninput="xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp xls-inp-num" id="prazo-pagto-exportador" type="number" value="83" min="0" oninput="xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp xls-inp-num" id="prazo-faturamento"     type="number" value="3"  min="0" oninput="xlsUpdate()"></td>
+                    <td class="xls-td-edit"><input class="xls-inp xls-inp-num" id="prazo-pagto-vendemmia" type="number" value="60" min="0" oninput="xlsUpdate()"></td>
+                  </tr>
+                  <tr class="xls-row-spacer"><td colspan="10"></td></tr>
+                  <tr>
+                    <td class="xls-td-label">TEMPO ACUMULADO</td>
+                    <td class="xls-td-calc xls-calc-muted xls-calc-bold" id="xls-cum-ciclo">115 dias</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center">0</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-cum-pront">10</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-cum-bl">20</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-cum-transit">50</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-cum-desemb">52</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-cum-pagexp">83</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-cum-fat">55</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-cum-recvdm">115</td>
+                  </tr>
+                  <tr>
+                    <td class="xls-td-label">DATA</td>
+                    <td class="xls-td-calc xls-calc-muted" id="xls-data-ciclo">—</td>
+                    <td class="xls-td-edit"><input id="prazo-invoice-data" type="date" class="xls-inp xls-inp-date" oninput="xlsUpdate()"></td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-data-pront">—</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-data-bl">—</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-data-transit">—</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-data-desemb">—</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-data-pagexp">—</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-data-fat">—</td>
+                    <td class="xls-td-calc xls-calc-muted xls-td-calc-center" id="xls-data-recvdm">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div><!-- /xls-wrap -->
+
+            <!-- Campos ocultos de sync (lidos por salvarSimulacaoFinanceira) -->
+            <div style="display:none;">
+              <input id="sim-fob-moeda" type="text">
+              <input id="sim-fob-valor" type="text">
+              <input id="sim-fob-cambio" type="text">
+              <input id="sim-desp" type="text">
+              <input id="sim-imp" type="text">
+              <input id="sim-vol" type="text">
+              <div id="sim-pag-list"></div>
+              <div id="sim-rec-list"></div>
+            </div>
+
+            <div style="margin-top:1.1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+              <button onclick="salvarSimulacaoFinanceira()" style="display:flex;align-items:center;gap:.5rem;padding:.7rem 1.4rem;background:linear-gradient(135deg,rgba(124,58,237,.8),rgba(109,40,217,.9));color:#e2d9f3;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:.83rem;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,.25);">
+                <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
+                Salvar Simulação
+              </button>
+              <div id="sim-ciclo-saved-notice" style="display:none;font-size:.76rem;color:#01e18e;font-weight:600;display:flex;align-items:center;gap:.35rem;">
+                <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Simulação salva — clique em <strong style="margin:0 .25rem;">"Simular Exposição"</strong> no topo para ver os gráficos.
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </main>
+  </div>
+</div>
+
+<!-- Fullscreen overlay para XLS Simulação Financeira -->
+<div id="xls-fs-overlay" onclick="if(event.target===this)closeXlsFullscreen()">
+  <div id="xls-fs-modal">
+    <div id="xls-fs-hd">
+      <span style="font-size:.9rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.5rem;">
+        <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.7"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        Simulação Financeira do Ciclo de Importação
+      </span>
+      <button class="xls-fs-close-btn" onclick="closeXlsFullscreen()">
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div id="xls-fs-body"></div>
   </div>
 </div>
 
@@ -1853,8 +2117,8 @@
       _btnEditParecer.style.display = '';
     }
 
-    // Botão Exposição: para todas as modalidades Trade completas
-    const _showExposicao = !_isSimplificado && !_isLicenciamento;
+    // Botão Exposição: Trade completo + Gestão/Conta e Ordem quando já tem simulação salva
+    const _showExposicao = (!_isSimplificado && !_isLicenciamento) || ((_isGestao || _isContaOrdem) && !!sol.xlsSimulacao);
     document.getElementById('btn-exposicao').style.display = _showExposicao ? '' : 'none';
     document.getElementById('btn-pdf').style.display = '';
 
@@ -1953,6 +2217,12 @@
       document.getElementById('dec-btn-salvar-co').style.display  = '';
       document.getElementById('dec-btn-aprovar').style.display    = 'none';
       document.getElementById('dec-btn-negar').style.display      = 'none';
+    }
+
+    // Simulação Financeira — visível para Gestão e Conta e Ordem (financeiro preenche)
+    if (_isGestao || _isContaOrdem) {
+      document.getElementById('sim-ciclo-card').style.display = '';
+      if (sol.xlsSimulacao) xlsPreFillFromSol();
     }
 
     // Auto-transição: pendente → em_analise ao abrir a tela de análise
@@ -5636,6 +5906,208 @@ window.addEventListener('unhandledrejection', function(ev) {
   if (/transition was skipped|aborted|ResizeObserver loop/i.test(msg)) return;
   if (typeof showToast === 'function') showToast('Erro async: ' + msg.slice(0, 120), 'error');
 });
+
+// ── Simulação Financeira (Gestão / Conta e Ordem) ──────────────────────────
+
+const STAGES_SC = ['pedido','pront','bl','transit','desemb','pagexp','fat','recvdm'];
+const STAGE_INPUT_SC = {
+  pront:  'prazo-prep-embarque',
+  bl:     'prazo-embarque',
+  transit:'prazo-transit',
+  desemb: 'prazo-desembaraco',
+  fat:    'prazo-faturamento',
+  recvdm: 'prazo-pagto-vendemmia',
+};
+
+function maskMoney(el) {
+  let v = el.value.replace(/[^\d]/g, '');
+  if (!v) { el.value = ''; return; }
+  const n = parseInt(v, 10) / 100;
+  el.value = n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function parseMoney(s) {
+  if (!s) return 0;
+  return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function fmtMoney(v) {
+  if (!v && v !== 0) return '—';
+  const abs = Math.abs(v);
+  const s = abs.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return (v < 0 ? '−' : '') + 'R$ ' + s;
+}
+
+function xlsUpdate() {
+  const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+
+  // Tempos acumulados
+  const prazos = {
+    pront:  parseInt(gv('prazo-prep-embarque')    || '10', 10),
+    bl:     parseInt(gv('prazo-embarque')          || '10', 10),
+    transit:parseInt(gv('prazo-transit')           || '30', 10),
+    desemb: parseInt(gv('prazo-desembaraco')       || '2',  10),
+    pagexp: parseInt(gv('prazo-pagto-exportador')  || '83', 10),
+    fat:    parseInt(gv('prazo-faturamento')       || '3',  10),
+    recvdm: parseInt(gv('prazo-pagto-vendemmia')   || '60', 10),
+  };
+
+  // Cumulativo: pedido=0, depois soma dos prazos na ordem do ciclo
+  const cumSeq = ['pront','bl','transit','desemb','fat','recvdm'];
+  let cum = { pedido: 0 };
+  let acc = 0;
+  for (const k of cumSeq) {
+    acc += (prazos[k] || 0);
+    cum[k] = acc;
+  }
+  // pagexp é independente (prazo a partir do pedido, não acumulado)
+  cum['pagexp'] = prazos['pagexp'] || 0;
+
+  const totalDias = cum['recvdm'];
+  const el_ciclo_tempo = document.getElementById('xls-tempo-ciclo');
+  if (el_ciclo_tempo) el_ciclo_tempo.textContent = totalDias + ' dias';
+  const el_cum_ciclo = document.getElementById('xls-cum-ciclo');
+  if (el_cum_ciclo) el_cum_ciclo.textContent = totalDias + ' dias';
+
+  // Atualiza cells de tempo acumulado
+  for (const st of STAGES_SC) {
+    if (st === 'pedido') continue;
+    const el = document.getElementById('xls-cum-' + st);
+    if (el) el.textContent = cum[st] !== undefined ? cum[st] : '—';
+  }
+
+  // Datas
+  const invoiceRaw = gv('prazo-invoice-data');
+  let baseDate = invoiceRaw ? new Date(invoiceRaw + 'T00:00:00') : null;
+  for (const st of STAGES_SC) {
+    const el = document.getElementById('xls-data-' + st);
+    if (!el) continue;
+    if (!baseDate) { el.textContent = '—'; continue; }
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + (cum[st] || 0));
+    el.textContent = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+
+  // Totais por linha
+  let totFob=0, totDi=0, totFat=0, totRec=0;
+  const perStage = {};
+  for (const st of STAGES_SC) {
+    const fob = parseMoney(gv('xls-fob-' + st));
+    const di  = parseMoney(gv('xls-di-'  + st));
+    const fat = parseMoney(gv('xls-fat-' + st));
+    const rec = parseMoney(gv('xls-rec-' + st));
+    totFob += fob; totDi += di; totFat += fat; totRec += rec;
+    perStage[st] = { fob, di, fat, rec };
+  }
+  const setT = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = fmtMoney(v); };
+  setT('xls-fob-ciclo', totFob);
+  setT('xls-di-ciclo',  totDi);
+  setT('xls-vol-ciclo', totFat);
+  setT('xls-rec-ciclo', totRec);
+
+  // Fluxo caixa e exposição por estágio (acumulado)
+  let cumFluxo = 0, cumExp = 0;
+  for (const st of STAGES_SC) {
+    const { fob, di, fat, rec } = perStage[st];
+    const fluxo = (fat + rec) - (fob + di);
+    cumFluxo += fluxo;
+    cumExp   = Math.max(cumExp - fluxo, 0); // exposição = máximo valor em risco
+    const stageExp = cumFluxo < 0 ? Math.abs(cumFluxo) : 0;
+    setT('xls-fluxo-' + st, cumFluxo);
+    setT('xls-exp-'   + st, stageExp);
+  }
+  const fluxoTotal = (totFat + totRec) - (totFob + totDi);
+  setT('xls-fluxo-ciclo', fluxoTotal);
+  setT('xls-exp-ciclo',   fluxoTotal < 0 ? Math.abs(fluxoTotal) : 0);
+
+  // Sync campos ocultos (lidos por exposicao.html via sol.*)
+  const setSh = (id, v) => { const e = document.getElementById(id); if (e) e.value = String(v); };
+  setSh('sim-fob-moeda', 'BRL');
+  setSh('sim-fob-valor', totFob.toFixed(2));
+  setSh('sim-desp',      totDi.toFixed(2));
+  setSh('sim-vol',       totFat.toFixed(2));
+}
+
+function openXlsFullscreen() {
+  const wrap = document.querySelector('#sim-ciclo-card .xls-wrap');
+  const body = document.getElementById('xls-fs-body');
+  const overlay = document.getElementById('xls-fs-overlay');
+  if (!wrap || !body || !overlay) return;
+  body.appendChild(wrap);
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeXlsFullscreen() {
+  const wrap = document.querySelector('#xls-fs-body .xls-wrap');
+  const card = document.getElementById('sim-ciclo-card');
+  const overlay = document.getElementById('xls-fs-overlay');
+  if (wrap && card) card.insertBefore(wrap, card.querySelector('div[style*="margin-top:1.1rem"]'));
+  if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function salvarSimulacaoFinanceira() {
+  const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const stageData = {};
+  const STAGES = ['pedido','pront','bl','transit','desemb','pagexp','fat','recvdm'];
+  for (const st of STAGES) {
+    stageData[st] = {
+      fob: gv('xls-fob-' + st),
+      di:  gv('xls-di-'  + st),
+      fat: gv('xls-fat-' + st),
+      rec: gv('xls-rec-' + st),
+    };
+  }
+  DB.solicitacoes.update(sol.id, {
+    prazoPrepEmbarque:   parseInt(gv('prazo-prep-embarque')    || '10', 10),
+    prazoEmbarque:       parseInt(gv('prazo-embarque')         || '10', 10),
+    prazoTransit:        parseInt(gv('prazo-transit')          || '30', 10),
+    prazoDesembaraco:    parseInt(gv('prazo-desembaraco')      || '2',  10),
+    prazoFaturamento:    parseInt(gv('prazo-faturamento')      || '3',  10),
+    prazoPagtoVendemmia: parseInt(gv('prazo-pagto-vendemmia')  || '60', 10),
+    prazoPagtoExportador:parseInt(gv('prazo-pagto-exportador') || '83', 10),
+    prazoInvoiceData:    gv('prazo-invoice-data'),
+    simFobMoeda: 'BRL',
+    simFobValor: gv('sim-fob-valor'),
+    simDesp:     gv('sim-desp'),
+    simVol:      gv('sim-vol'),
+    xlsSimulacao: { stages: stageData },
+  });
+  sol = DB.solicitacoes.getById(sol.id);
+
+  // Exibir aviso de sucesso e habilitar botão Exposição
+  const notice = document.getElementById('sim-ciclo-saved-notice');
+  if (notice) notice.style.display = 'flex';
+  document.getElementById('btn-exposicao').style.display = '';
+  showToast('Simulação financeira salva com sucesso', 'success');
+}
+
+function xlsPreFillFromSol() {
+  if (!sol) return;
+  const sv = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined && v !== null) el.value = v; };
+  sv('prazo-prep-embarque',   sol.prazoPrepEmbarque   ?? 10);
+  sv('prazo-embarque',        sol.prazoEmbarque        ?? 10);
+  sv('prazo-transit',         sol.prazoTransit         ?? 30);
+  sv('prazo-desembaraco',     sol.prazoDesembaraco     ?? 2);
+  sv('prazo-pagto-exportador',sol.prazoPagtoExportador ?? 83);
+  sv('prazo-faturamento',     sol.prazoFaturamento     ?? 3);
+  sv('prazo-pagto-vendemmia', sol.prazoPagtoVendemmia  ?? 60);
+  sv('prazo-invoice-data',    sol.prazoInvoiceData     ?? '');
+  const stages = sol.xlsSimulacao?.stages || {};
+  const STAGES = ['pedido','pront','bl','transit','desemb','pagexp','fat','recvdm'];
+  for (const st of STAGES) {
+    if (!stages[st]) continue;
+    sv('xls-fob-' + st, stages[st].fob || '');
+    sv('xls-di-'  + st, stages[st].di  || '');
+    sv('xls-fat-' + st, stages[st].fat || '');
+    sv('xls-rec-' + st, stages[st].rec || '');
+  }
+  xlsUpdate();
+  // Mostrar aviso se já tem dados
+  const notice = document.getElementById('sim-ciclo-saved-notice');
+  if (notice && sol.xlsSimulacao) notice.style.display = 'flex';
+}
 </script>
 </body>
 </html>
