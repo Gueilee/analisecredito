@@ -1812,7 +1812,7 @@
 
     // Simplificado: só IDwall + RF (sem IA, docs, contábil).
     // ca_ clientes ativos: sempre simplificado — são revisões periódicas, não novas solicitações.
-    const _isSimplificado = _isCaClientBoot || _isTransporte || _isArmazemVDM;
+    const _isSimplificado = _isCaClientBoot || _isTransporte || _isArmazemVDM || _isContaOrdem || _isGestao;
     window._modoSimplificado = _isSimplificado;
 
     // Botões de edição (depois de _isCaClientBoot estar definido)
@@ -1899,13 +1899,9 @@
       );
     }
 
-    if ((_isEncomenda || _isContaOrdem || _isGestao || _isLicenciamento) && !_isSimplificado) {
+    if ((_isEncomenda || _isLicenciamento) && !_isSimplificado) {
       const _comiteLabel = _isLicenciamento
         ? 'Licenciamento de Armazém — análise completa com aprovação obrigatória pelo Comitê de Crédito'
-        : _isContaOrdem
-        ? 'Trade Conta e Ordem — análise completa com Comitê de Crédito obrigatório'
-        : _isGestao
-        ? 'Trade Gestão — análise completa com Comitê de Crédito obrigatório'
         : 'Trade Encomenda — análise completa com Comitê de Crédito obrigatório';
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
         `<div class="hero-encomenda">
