@@ -1805,11 +1805,11 @@
 
     // Simplificado: só IDwall + RF (sem IA, docs, contábil).
     // ca_ clientes ativos: sempre simplificado — são revisões periódicas, não novas solicitações.
-    const _isSimplificado = _isCaClientBoot || _isTransporte || _isArmazemVDM || _isContaOrdem || _isGestao;
+    const _isSimplificado = _isCaClientBoot || _isTransporte || _isArmazemVDM;
     window._modoSimplificado = _isSimplificado;
 
-    // Botão Exposição: apenas para Trade Encomenda (operação de risco total)
-    const _showExposicao = !_isSimplificado && !_isLicenciamento && _isEncomenda;
+    // Botão Exposição: para todas as modalidades Trade completas
+    const _showExposicao = !_isSimplificado && !_isLicenciamento;
     document.getElementById('btn-exposicao').style.display = _showExposicao ? '' : 'none';
     document.getElementById('btn-pdf').style.display = '';
 
@@ -1881,9 +1881,13 @@
       );
     }
 
-    if ((_isEncomenda || _isLicenciamento) && !_isSimplificado) {
+    if ((_isEncomenda || _isContaOrdem || _isGestao || _isLicenciamento) && !_isSimplificado) {
       const _comiteLabel = _isLicenciamento
         ? 'Licenciamento de Armazém — análise completa com aprovação obrigatória pelo Comitê de Crédito'
+        : _isContaOrdem
+        ? 'Trade Conta e Ordem — análise completa com Comitê de Crédito obrigatório'
+        : _isGestao
+        ? 'Trade Gestão — análise completa com Comitê de Crédito obrigatório'
         : 'Trade Encomenda — análise completa com Comitê de Crédito obrigatório';
       document.querySelector('.hero-card .hero-top').insertAdjacentHTML('afterend',
         `<div class="hero-encomenda">
