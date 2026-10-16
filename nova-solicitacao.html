@@ -1150,7 +1150,7 @@
                   <svg viewBox="0 0 24 24" fill="none"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </div>
                 <div class="type-name">Trade</div>
-                <div class="type-desc">Importação, exportação e comércio exterior. Análise completa (Encomenda) ou simplificada (Gestão / Conta e Ordem).</div>
+                <div class="type-desc">Importação, exportação e comércio exterior. Análise completa com exposição financeira para todas as modalidades.</div>
                 <div class="type-footer trade"><span>3 tipos · Escolher subtipo</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
               <div class="type-card transporte" onclick="selectTipoAnalise('transporte')">
@@ -1195,16 +1195,16 @@
                   <svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 </div>
                 <div class="type-name">Conta e Ordem</div>
-                <div class="type-desc">Importação por conta e ordem de terceiros. Análise simplificada com dados básicos e documentos.</div>
-                <div class="type-footer transporte"><span>2 etapas · Análise simplificada</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="type-desc">Importação por conta e ordem de terceiros. Análise completa com limites operacionais, câmbio e simulação financeira.</div>
+                <div class="type-footer transporte"><span>5 etapas · Análise completa</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
               <div class="type-card armazem" onclick="selectTradeSubType('gestao')">
                 <div class="type-icon armazem">
                   <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 </div>
                 <div class="type-name">Gestão</div>
-                <div class="type-desc">Gestão de importação pelo cliente. Análise simplificada com dados básicos e documentos.</div>
-                <div class="type-footer armazem"><span>2 etapas · Análise simplificada</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="type-desc">Gestão de importação pelo cliente. Análise completa com limites operacionais, câmbio e simulação financeira.</div>
+                <div class="type-footer armazem"><span>5 etapas · Análise completa</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
             </div>
           </div>
@@ -3644,18 +3644,17 @@
 
   function selectTradeSubType(subtype) {
     document.getElementById('trade-subtype-selector').style.display = 'none';
-    if (subtype === 'encomenda') {
-      selectTipoAnalise('trade');
-      // pre-seleciona radio Encomenda
-      const radio = document.querySelector('input[name="tipo-op"][value="encomenda"]');
-      if (radio) radio.checked = true;
-    } else {
-      selectTipoAnalise('trade-simples');
-      // pre-seleciona o radio correspondente e pre-preenche tipo-op
-      const val = subtype === 'conta-ordem' ? 'conta-ordem' : 'gestao';
-      const radio = document.querySelector(`input[name="tipo-op"][value="${val}"]`);
-      if (radio) radio.checked = true;
-    }
+    selectTipoAnalise('trade');
+    // Atualiza label do wizard para refletir o subtipo selecionado
+    const _SUBTIPO_LABEL = { encomenda: 'Trade · Encomenda', 'conta-ordem': 'Trade · Conta e Ordem', gestao: 'Trade · Gestão' };
+    const _lbl = _SUBTIPO_LABEL[subtype] || 'Trade';
+    const tl = document.getElementById('tipo-display-label');
+    if (tl) tl.textContent = _lbl;
+    const tag = document.getElementById('wizard-tipo-tag');
+    if (tag) tag.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>${_lbl}<span style="opacity:.55;font-weight:400;"> · alterar tipo</span>`;
+    // pre-seleciona radio correspondente
+    const radio = document.querySelector(`input[name="tipo-op"][value="${subtype}"]`);
+    if (radio) radio.checked = true;
   }
 
   function showArmazemSubSelector() {
