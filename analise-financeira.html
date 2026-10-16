@@ -1765,12 +1765,6 @@
     document.getElementById('btn-ver-sol').href        = 'consultar.html?id=' + sol.id;
     document.getElementById('btn-exposicao').href = 'exposicao.html?id=' + sol.id;
     document.getElementById('btn-pdf').href       = 'relatorio.html?id=' + sol.id;
-    const _btnEdit = document.getElementById('btn-editar-sol');
-    if (_btnEdit && !_isCaClientBoot) {
-      _btnEdit.href = 'nova-solicitacao.html?id=' + sol.id;
-      _btnEdit.style.display = '';
-    }
-
     // Hero
     const av = sol.empresa.split(' ').filter(w => w.length > 2).slice(0,2).map(w => w[0].toUpperCase()).join('') || sol.empresa.slice(0,2).toUpperCase();
     document.getElementById('hero-av').textContent   = av;
@@ -1816,6 +1810,13 @@
     // ca_ clientes ativos: sempre simplificado — são revisões periódicas, não novas solicitações.
     const _isSimplificado = _isCaClientBoot || _isTransporte || _isArmazemVDM;
     window._modoSimplificado = _isSimplificado;
+
+    // Botão Editar Solicitação (depois de _isCaClientBoot estar definido)
+    const _btnEdit = document.getElementById('btn-editar-sol');
+    if (_btnEdit && !_isCaClientBoot) {
+      _btnEdit.href = 'nova-solicitacao.html?id=' + sol.id;
+      _btnEdit.style.display = '';
+    }
 
     // Botão Exposição: para todas as modalidades Trade completas
     const _showExposicao = !_isSimplificado && !_isLicenciamento;
