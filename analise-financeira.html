@@ -2212,8 +2212,8 @@
       });
 
       // Clientes ativos (ca_) sempre podem receber nova decisão — revisão periódica
-      // em_comite: renderDecisionResult() cuida da UI do Comitê, não exibir form do financeiro
-      if (sol.status !== 'em_comite') {
+      // aprovado/negado/em_comite: decision-card não deve aparecer (lockReadOnly ou renderDecisionResult cuidam)
+      if (!['aprovado', 'negado', 'em_comite'].includes(sol.status)) {
         if (canDecide) document.getElementById('decision-card').style.display = '';
         else           document.getElementById('pending-decision-banner').style.display = '';
       }
@@ -3276,7 +3276,9 @@
 
     card.style.display = '';
     document.getElementById('trigger-card').style.display = 'none';
-    // Para em_comite: oculta o decision-card (form do financeiro) — Comitê usa result-card
+    // Para qualquer estado final: oculta sempre o decision-card (form do financeiro)
+    const _dcHide = document.getElementById('decision-card');
+    if (_dcHide) _dcHide.style.display = 'none';
     if (sol.status === 'em_comite') {
       const dc = document.getElementById('decision-card');
       if (dc) dc.style.display = 'none';
