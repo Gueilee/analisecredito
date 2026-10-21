@@ -1141,7 +1141,7 @@
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Voltar
         </a>
-        <a href="#" id="btn-editar-parecer" onclick="editarParecer();return false;" class="btn btn-sm" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.35);">
+        <a href="#" id="btn-editar-parecer" onclick="(sol.status==='em_comite'?editarParecerComite():editarParecer());return false;" class="btn btn-sm" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.35);">
           <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Editar Parecer
         </a>
@@ -2191,7 +2191,7 @@
       _btnEdit.style.display = '';
     }
     const _btnEditParecer = document.getElementById('btn-editar-parecer');
-    if (_btnEditParecer && !_isCaClientBoot && ['aprovado','negado'].includes(sol.status)) {
+    if (_btnEditParecer && !_isCaClientBoot && ['aprovado','negado','em_comite'].includes(sol.status)) {
       _btnEditParecer.style.display = '';
     }
     const _btnEnviarComite = document.getElementById('btn-enviar-comite');
@@ -3169,7 +3169,18 @@
   }
 
   function renderDecisionResult() {
-    const card = document.getElementById('result-card');
+    let card = document.getElementById('result-card');
+    if (!card) {
+      // Para fluxos simplificados (Gestão/Conta e Ordem) o result-card pode ter sido removido
+      // pelo boot simplificado — recria como irmão do decision-card em .analysis-main
+      card = document.createElement('div');
+      card.id = 'result-card';
+      card.className = 'card';
+      card.style.display = 'none';
+      const _anchor = document.getElementById('decision-card') || document.getElementById('sim-ciclo-card');
+      const _main   = document.querySelector('.analysis-main');
+      if (_main) { if (_anchor) _main.insertBefore(card, _anchor); else _main.appendChild(card); }
+    }
     const emoji = { aprovado: '✅', negado: '❌', em_analise: '🔄', em_comite: '⚖️' };
 
     if (sol.status === 'em_comite') {
@@ -3188,11 +3199,18 @@
               ${_dtComite ? ' · ' + _dtComite : ''}
             </div>
           </div>
-          <button onclick="devolverParaAnalise()" title="Devolver para análise"
-            style="flex-shrink:0;display:flex;align-items:center;gap:.35rem;padding:.38rem .65rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--text-muted);font-family:inherit;font-size:.7rem;font-weight:600;cursor:pointer;">
-            <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="3 3 3 8 8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Reabrir
-          </button>
+          <div style="display:flex;gap:.45rem;flex-shrink:0;">
+            <button onclick="editarParecerComite()" title="Editar parecer do analista financeiro"
+              style="display:flex;align-items:center;gap:.35rem;padding:.38rem .65rem;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:6px;color:#f59e0b;font-family:inherit;font-size:.7rem;font-weight:600;cursor:pointer;">
+              <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Editar Parecer
+            </button>
+            <button onclick="devolverParaAnalise()" title="Devolver para análise"
+              style="display:flex;align-items:center;gap:.35rem;padding:.38rem .65rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--text-muted);font-family:inherit;font-size:.7rem;font-weight:600;cursor:pointer;">
+              <svg viewBox="0 0 24 24" fill="none" width="11" height="11"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="3 3 3 8 8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Reabrir
+            </button>
+          </div>
         </div>
 
         <!-- Parecer do analista -->
@@ -3287,7 +3305,7 @@
         </div>`;
     } else {
       const _vsReopen = sol.validadeDias ? calcValidadeStatus(sol) : null;
-      const _showReopen = _vsReopen && _vsReopen.days <= 30;
+      const _showReopen = true; // sempre visível — usuário pode reabrir qualquer análise finalizada
       card.innerHTML = `<div class="decision-result">
         <div class="big-emoji">${emoji[sol.status] || '—'}</div>
         <span class="badge ${DB.utils.statusBadge[sol.status] || 'pendente'}" style="font-size:.82rem;padding:.3rem .9rem;">${DB.utils.statusLabel[sol.status] || sol.status}</span>
@@ -3401,6 +3419,73 @@
     });
   }
 
+  /* ── Editar Parecer enquanto Em Comitê (sem alterar status) ── */
+  function editarParecerComite() {
+    let card = document.getElementById('result-card');
+    if (!card) return;
+    const prazoOpts = [30,45,60,90,120,180,360].map(d =>
+      `<option value="${d}"${sol.prazoAprovado == d ? ' selected' : ''}>${d} dias</option>`).join('');
+    card.innerHTML = `
+      <div style="margin-bottom:.9rem;display:flex;align-items:center;gap:.55rem;">
+        <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span style="font-size:.78rem;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px;">Editar Parecer do Analista</span>
+        <span style="font-size:.7rem;color:var(--text-faint);margin-left:.2rem;">Status permanece Em Comitê</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.55rem;">
+        <div>
+          <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Limite Sugerido</div>
+          <div style="display:flex;align-items:center;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);overflow:hidden;">
+            <span style="padding:.45rem .6rem;color:var(--text-faint);font-size:.78rem;border-right:1px solid var(--input-border);background:rgba(255,255,255,.03);">R$</span>
+            <input id="epc-limite" type="text" placeholder="0,00" oninput="maskMoneyComite(this)"
+              value="${sol.limiteAprovado||''}"
+              style="flex:1;background:none;border:none;outline:none;color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;" />
+          </div>
+        </div>
+        <div>
+          <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Prazo Sugerido</div>
+          <select id="epc-prazo" style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.45rem .65rem;outline:none;">
+            <option value="">Selecione</option>
+            ${prazoOpts}
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:.6rem;">
+        <div style="font-size:.58rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.25rem;">Parecer Técnico</div>
+        <textarea id="epc-parecer" rows="4"
+          style="width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);color:var(--text-primary);font-family:inherit;font-size:.82rem;padding:.55rem .75rem;outline:none;resize:vertical;line-height:1.5;box-sizing:border-box;"
+          placeholder="Fundamentos técnicos, limites, condições especiais…">${sol.parecerTecnico||''}</textarea>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button onclick="renderDecisionResult()" style="flex:1;min-width:90px;padding:.72rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-sm);color:var(--text-muted);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;">Cancelar</button>
+        <button onclick="salvarEdicaoParecerComite()" style="flex:2;min-width:130px;padding:.72rem;background:linear-gradient(135deg,#c97d00,#f59e0b);color:#1a0f00;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(245,158,11,.2);">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="margin-right:.35rem;vertical-align:middle;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z" stroke="currentColor" stroke-width="2"/><polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"/><polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2"/></svg>
+          Salvar Alterações
+        </button>
+      </div>`;
+    card.style.display = '';
+    requestAnimationFrame(() => {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      card.classList.remove('card-edit-pulse');
+      void card.offsetWidth;
+      card.classList.add('card-edit-pulse');
+    });
+  }
+
+  function salvarEdicaoParecerComite() {
+    const novoLimite  = (document.getElementById('epc-limite')?.value  || '').trim();
+    const novoPrazo   =  document.getElementById('epc-prazo')?.value   || '';
+    const novoParecer = (document.getElementById('epc-parecer')?.value || '').trim();
+    DB.solicitacoes.update(sol.id, {
+      limiteAprovado:  novoLimite,
+      prazoAprovado:   novoPrazo ? Number(novoPrazo) : (sol.prazoAprovado || ''),
+      parecerTecnico:  novoParecer,
+      decisaoAnalista: sol.decisaoAnalista || (session?.name || 'Analista'),
+    });
+    sol = DB.solicitacoes.getById(sol.id);
+    renderDecisionResult();
+    showToast('Parecer atualizado com sucesso!', 'success');
+  }
+
   function _coletarDadosEdicaoParecer() {
     return {
       novoStatus:  document.getElementById('ep-edit-status')?.value  || sol.status,
@@ -3424,11 +3509,11 @@
     document.getElementById('hero-badge').innerHTML =
       `<span class="badge ${DB.utils.statusBadge[sol.status] || 'pendente'}">${DB.utils.statusLabel[sol.status] || sol.status}</span>`;
     // Atualiza visibilidade dos botões do topbar caso o status tenha mudado
-    const _isFinal = ['aprovado','negado'].includes(sol.status);
+    const _isFinalOrComite = ['aprovado','negado','em_comite'].includes(sol.status);
     const _ep = document.getElementById('btn-editar-parecer');
     const _ec = document.getElementById('btn-enviar-comite');
-    if (_ep) _ep.style.display = _isFinal ? '' : 'none';
-    if (_ec) _ec.style.display = _isFinal ? '' : 'none';
+    if (_ep) _ep.style.display = _isFinalOrComite ? '' : 'none';
+    if (_ec) _ec.style.display = ['aprovado','negado'].includes(sol.status) ? '' : 'none';
     renderDecisionResult();
     showToast('Parecer atualizado com sucesso!', 'success');
   }
@@ -3557,7 +3642,7 @@
     showConfirm({
       title:    'Reabrir para reanálise?',
       sub:      sol.empresa || '',
-      body:     'A análise está ' + (calcValidadeStatus(sol)?.days < 0 ? 'vencida' : 'vencendo') + '. Todo o parecer, limites e decisão do Comitê serão apagados e o processo retornará para a fila de análise.',
+      body:     'Todo o parecer, limites e decisão registrados serão apagados e o processo retornará para a fila de análise.',
       variant:  'warn',
       okLabel:  'Sim, reabrir',
       onConfirm: () => {
