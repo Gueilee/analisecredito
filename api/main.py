@@ -828,8 +828,9 @@ async def _send_email(subject: str, html: str, to: list, from_name: str = "", fr
 
     try:
         await asyncio.to_thread(_do)
-    except Exception:
-        pass  # fire-and-forget; não bloqueia o fluxo do usuário
+        print(f"[MAIL OK] '{subject}' → {to}", flush=True)
+    except Exception as exc:
+        print(f"[MAIL ERR] '{subject}' → {to} | {type(exc).__name__}: {exc}", flush=True)
 
 
 # ── Constantes ────────────────────────────────────────────────────────────────
@@ -3322,6 +3323,7 @@ class NotifyEmailRequest(BaseModel):
     prazo:       Optional[str] = ""
     analista:    Optional[str] = ""
     deliberacao: Optional[str] = ""
+    parecer:     Optional[str] = ""   # Parecer técnico do analista (usado no evento "comite")
     sol_id:      Optional[str] = ""   # ID da solicitação — usado para links e lookup de e-mail
 
 
@@ -3442,6 +3444,43 @@ async def notify_email(
             except Exception:
                 pass
 
+        return {"ok": True}
+
+    elif body.event == "comite":
+        # Disparado quando o analista encaminha uma solicitação ao Comitê de Crédito
+        if not _NOTIFY_EMAILS:
+            return {"ok": False, "reason": "NOTIFY_EMAILS não configurado"}
+        sol_link = f"{app_url}/analise-financeira.html?id={sol_id_n}" if sol_id_n else f"{app_url}/solicitacoes.html"
+        subject  = f"[Encaminhado ao Comitê] {empresa} — Aguardando Deliberação"
+        rows = [
+            ("Empresa",          empresa),
+            ("CNPJ",             cnpj),
+            ("Analista",         analista),
+            ("Limite Sugerido",  body.limite or ""),
+            ("Prazo Sugerido",   (body.prazo + " dias") if body.prazo else ""),
+            ("Data/hora",        now_str),
+        ]
+        parecer_html = (
+            f'<p style="font-size:14px;color:#334155;line-height:1.6;margin:16px 0;'
+            f'border-left:3px solid #f59e0b;padding-left:12px;font-style:italic;">'
+            f'&ldquo;{body.parecer[:600]}&rdquo;</p>'
+        ) if body.parecer else ""
+        html = _email_html(
+            "Solicitação Encaminhada ao Comitê de Crédito", "#f59e0b",
+            rows,
+            intro=(
+                f"O analista <strong>{analista}</strong> encaminhou a solicitação de "
+                f"<strong>{empresa}</strong> ao Comitê de Crédito para deliberação."
+                + (f"<br><br>Parecer do analista:{parecer_html}" if parecer_html else "")
+            ),
+            cta_url=sol_link,
+            cta_label="Abrir Análise de Crédito",
+        )
+        asyncio.create_task(_send_email(
+            subject, html, _NOTIFY_EMAILS,
+            from_name=current_user.get("name", ""),
+            from_email=current_user.get("email", ""),
+        ))
         return {"ok": True}
 
     else:
