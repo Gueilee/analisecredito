@@ -745,16 +745,16 @@ def _email_html(
 ) -> str:
     rows_html = "".join(
         f'<tr>'
-        f'<td style="padding:8px 0;color:#64748b;font-size:13px;width:160px;vertical-align:top;border-bottom:1px solid #f1f5f9;">{k}</td>'
-        f'<td style="padding:8px 0;color:#0f172a;font-size:13px;font-weight:600;border-bottom:1px solid #f1f5f9;">{v}</td>'
+        f'<td style="padding:10px 0;color:#64748b;font-size:13px;width:150px;vertical-align:top;border-bottom:1px solid #f1f5f9;">{k}</td>'
+        f'<td style="padding:10px 0;color:#0f172a;font-size:13px;font-weight:600;border-bottom:1px solid #f1f5f9;">{v}</td>'
         f'</tr>'
         for k, v in rows if v
     )
-    intro_block = f'<p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.65;">{intro}</p>' if intro else ""
+    intro_block = f'<p style="margin:0 0 22px;color:#475569;font-size:14px;line-height:1.7;">{intro}</p>' if intro else ""
     cta_block = (
-        f'<table cellpadding="0" cellspacing="0" style="margin:24px 0 8px;">'
-        f'<tr><td style="background:{color};border-radius:7px;">'
-        f'<a href="{cta_url}" target="_blank" style="display:inline-block;padding:12px 26px;color:#fff;font-size:13px;font-weight:700;text-decoration:none;letter-spacing:.3px;">{cta_label}</a>'
+        f'<table cellpadding="0" cellspacing="0" style="margin-bottom:32px;">'
+        f'<tr><td style="background:{color};border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.18);">'
+        f'<a href="{cta_url}" target="_blank" style="display:inline-block;padding:13px 30px;color:#fff;font-size:13px;font-weight:700;text-decoration:none;letter-spacing:.3px;border-radius:8px;">{cta_label} &rarr;</a>'
         f'</td></tr></table>'
     ) if cta_url else ""
     footer_extra = f'<br>{footer_note}' if footer_note else ""
@@ -762,34 +762,39 @@ def _email_html(
     return f"""<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:36px 0;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:40px 0;">
   <tr><td align="center">
-    <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.09);">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.10);max-width:600px;">
 
-      <!-- Header -->
-      <tr><td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:26px 36px;">
+      <!-- Header com logo -->
+      <tr><td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:28px 38px;">
         <table width="100%" cellpadding="0" cellspacing="0"><tr>
           <td>
-            <img src="{logo_url}" alt="Vendemmia" height="38" style="height:38px;max-width:180px;object-fit:contain;display:block;">
+            <img src="{logo_url}" alt="Vendemmia" height="40" style="height:40px;max-width:190px;object-fit:contain;display:block;">
           </td>
-          <td align="right" style="color:rgba(255,255,255,.5);font-size:10px;letter-spacing:.8px;text-transform:uppercase;vertical-align:middle;">Análise de Crédito</td>
+          <td align="right" style="color:rgba(255,255,255,.45);font-size:10px;letter-spacing:1px;text-transform:uppercase;vertical-align:middle;white-space:nowrap;">Análise de Crédito</td>
         </tr></table>
       </td></tr>
 
-      <!-- Badge + conteúdo -->
-      <tr><td style="padding:32px 36px 8px;">
-        <span style="display:inline-block;background:{color};color:#fff;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:5px 13px;border-radius:5px;">{headline}</span>
-        <div style="height:20px;"></div>
+      <!-- Faixa colorida com título do evento -->
+      <tr><td style="background:{color};padding:16px 38px;">
+        <span style="color:#fff;font-size:13px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;">{headline}</span>
+      </td></tr>
+
+      <!-- Conteúdo -->
+      <tr><td style="padding:32px 38px 10px;">
         {intro_block}
-        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #f1f5f9;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid #f1f5f9;margin-bottom:28px;">
           {rows_html}
         </table>
         {cta_block}
       </td></tr>
 
       <!-- Footer -->
-      <tr><td style="padding:20px 36px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:11px;text-align:center;line-height:1.6;">
-        Sistema Interno &middot; Vendemmia Comércio Internacional &middot; Não responda este e-mail{footer_extra}
+      <tr><td style="padding:18px 38px 22px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+        <p style="margin:0;color:#94a3b8;font-size:11px;text-align:center;line-height:1.7;">
+          Sistema Interno &middot; Vendemmia Comércio Internacional &middot; Não responda este e-mail{footer_extra}
+        </p>
       </td></tr>
     </table>
   </td></tr>
