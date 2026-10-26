@@ -811,20 +811,24 @@ async def _send_email(subject: str, html: str, to: list, from_name: str = "", fr
         msg["To"]      = ", ".join(to)
         msg.attach(MIMEText(html, "html", "utf-8"))
         
+        # Azure Communication Services SMTP requer TLS sem verificação de certificado
+        # (replica o comportamento do nodemailer com rejectUnauthorized: false).
+        # O envelope MAIL FROM deve ser sempre o remetente verificado (_FROM_EMAIL).
+        _tls_ctx = _mk_ssl()
         if _SMTP_ENCRYPTION == "ssl":
-            with smtplib.SMTP_SSL(_SMTP_HOST, _SMTP_PORT, timeout=20) as s:
+            with smtplib.SMTP_SSL(_SMTP_HOST, _SMTP_PORT, timeout=20, context=_tls_ctx) as s:
                 if _SMTP_USER:
                     s.login(_SMTP_USER, _SMTP_PASS)
-                s.sendmail(sender_email, to, msg.as_string())
+                s.sendmail(_FROM_EMAIL, to, msg.as_string())
         else:
             with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT, timeout=20) as s:
                 s.ehlo()
                 if _SMTP_ENCRYPTION == "tls":
-                    s.starttls()
+                    s.starttls(context=_tls_ctx)
                     s.ehlo()
                 if _SMTP_USER:
                     s.login(_SMTP_USER, _SMTP_PASS)
-                s.sendmail(sender_email, to, msg.as_string())
+                s.sendmail(_FROM_EMAIL, to, msg.as_string())
 
     try:
         await asyncio.to_thread(_do)
