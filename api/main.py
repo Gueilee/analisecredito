@@ -3389,21 +3389,8 @@ async def notify_email(
             ("Data/hora",    now_str),
         ]
 
-        # 1. E-mail para o time financeiro
-        if _NOTIFY_EMAILS:
-            html_team = _email_html(
-                headline, color, rows_team,
-                intro=f"Decisão registrada para <strong>{empresa}</strong>.",
-                cta_url=link_ana,
-                cta_label="Ver Análise Completa",
-            )
-            asyncio.create_task(_send_email(
-                subject, html_team, _NOTIFY_EMAILS,
-                from_name=current_user.get("name", ""),
-                from_email=current_user.get("email", ""),
-            ))
-
-        # 2. E-mail para o requisitante (lookup via sol_id no banco)
+        # Somente o requisitante recebe o retorno da análise/comitê (sem envio para o time)
+        # 1. E-mail para o requisitante (lookup via sol_id no banco)
         if sol_id_n and _SMTP_HOST:
             try:
                 sol_rows = await _turso_query(
